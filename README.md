@@ -1,2 +1,2 @@
 # Flow
-R-based bioinformatics workflow management
+R-based genomics workflow management
