@@ -54,12 +54,18 @@ setMethod('initialize', 'Module', function(.Object,
                                              name = NULL ## default is 
                                              )
     {
+        if (!file.exists(path)) 
+            stop(sprintf('%s not found, check path', path))
+
         if (file.info(path)$isdir)
             path = paste(path, 'hydrant.deploy', sep = '/')
         else
             path = paste(file.dir(path), 'hydrant.deploy', sep = '/')
-        
+
         if (!file.exists(path))
+            path = paste(file.dir(path), 'flow.deploy', sep = '/')
+        
+        if (!file.exists(path)) 
             stop(sprintf('%s not found, check path', path))
 
         cmd.re = '^command\\s*[\\:\\=]\\s+'
@@ -73,7 +79,7 @@ setMethod('initialize', 'Module', function(.Object,
 
         
         ## need to replace $(\\w+ .* FEATURE_NAME) with just the internal and extract the FEATURE_NAME
-        pattern = '\\$\\{[a-z\\,]+( [^\\}]*)? (\\S+)\\s*\\}';              
+        pattern = '\\$\\{[a-z\\,]*( [^\\}]*)? (\\S+)\\s*\\}';              
         args = str_match_all(cmd, pattern)[[1]]
 
         args[,3] = gsub('\\=.*', '', args[,3])
@@ -2215,6 +2221,28 @@ setMethod('merge', signature(x='data.table', y="Job"), function(x, y, ...) {
         merge(y, x, ...)
     })
     
+
+
+#' @name more
+#' @title more
+#'
+#' @description
+#' "more" +/- grep vector of files
+#'
+#' @param x vector of iles
+#' @param grep string to grep in files (=NULL)
+#' @author Marcin Imielinski
+#' @export
+more = function(x, grep = NULL)
+{
+    if (is.null(grep))
+        x = paste('more', paste(x, collapse = ' '))
+    else
+        x = paste('grep -H', grep, paste(x, collapse = ' '), ' | more')
+    system(x)
+}
+
+
 
 
 ## #' @name merge

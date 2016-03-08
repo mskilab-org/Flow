@@ -1,12 +1,31 @@
 Package: Flow
-Title: Workflow and task management for genomics pipelines. 
+Title: Workflow and task management for genomics pipelines.
 Version: 0.0.0.9000
 Author: Marcin Imielinski <mimielinski@nygenome.org>
 Maintainer: Marcin Imielinski <mimielinski@nygenome.org>
 Authors@R: person("Marcin", "Imielinski", , "mimielinski@nygenome.org", role = c("aut", "cre"))
-Description:  Flow is an R package that enables local configuration and execution of  modules on annotated sets of entities (eg pairs, individuals, samples). Jobs can be either deployed locally or on LSF, then monitored and managed.   Once jobs complete, their outputs can be attached back to their respective entities as annotations for easy import back into firehose or other databases.  Like in firehose (http://www.broadinstitute.org/cancer/cga/firehose), a job consists of a task run on an entity (e.g. pair, individual, sample).  A task wraps around a module and binds module arguments to names of entity-specific annotations or fixed literals which can represent paths (eg a bam file path) or values (eg 200).  A task also specifies the binding of module outputs to output annotations.  A job is created by applying a task to a set of entities, which correspond to keyed table of entity-specific annotations (eg bam_file_wgs, seg_file, etc).  Once a job completes, one or more output annotations (i.e. paths to output files) are attached to the respective entity in an output table.  This table can now be merged into a flat "master" file or database of entity specific annotation.  Coming soon: A Flow object, which will represent a workflow, or a collection of Tasks run on entities, but will have very similar properties (vectorization, run control, status updating).  
-Depends: R (>= 3.1.0),
-	 data.table,
-	 stringr
+Description: Flow is an R package that enables local configuration and execution
+    of modules on annotated sets of entities (eg pairs, individuals, samples).
+    Jobs can be either deployed locally or on LSF, then monitored and managed. Once
+    jobs complete, their outputs can be attached back to their respective entities
+    as annotations for easy import back into firehose or other databases. Like in
+    firehose (http://www.broadinstitute.org/cancer/cga/firehose), a job consists
+    of a task run on an entity (e.g. pair, individual, sample). A task wraps around
+    a module and binds module arguments to names of entity-specific annotations
+    or fixed literals which can represent paths (eg a bam file path) or values (eg
+    200). A task also specifies the binding of module outputs to output annotations.
+    A job is created by applying a task to a set of entities, which correspond to
+    keyed table of entity-specific annotations (eg bam_file_wgs, seg_file, etc).
+    Once a job completes, one or more output annotations (i.e. paths to output
+    files) are attached to the respective entity in an output table. This table
+    can now be merged into a flat "master" file or database of entity specific
+    annotation. Coming soon: A Flow object, which will represent a workflow, or
+    a collection of Tasks run on entities, but will have very similar properties
+    (vectorization, run control, status updating).
+Depends:
+    R (>= 3.1.0),
+    data.table,
+    stringr
 License: GPL v3.0
 LazyData: true
+RoxygenNote: 5.0.1
