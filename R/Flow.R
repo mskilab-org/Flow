@@ -970,7 +970,7 @@ setMethod('purge', 'Job', function(object, check.inputs = TRUE)
 
 #' @name Job-class
 #' @rdname Job-class
-#' @exportMethod queue
+#' @exportMethod update
 #' @export
 setGeneric('update', function(object, ...) {standardGeneric('update')})
 
@@ -1302,7 +1302,6 @@ setReplaceMethod('mem', 'Job', function(.Object, value)
 #' @export
 setGeneric('queue', function(.Object) {standardGeneric('queue')})
 
-
 #' @name queue
 #' @title Gets queue associated with the jobs in the Job object
 #' @description
@@ -1315,7 +1314,6 @@ setMethod('queue', 'Job', function(.Object)
     {
         structure(.Object@runinfo[, queue], names = .Object@runinfo[[key(.Object@runinfo)]])
     })
-
 
 
 #' @export
@@ -1332,6 +1330,48 @@ setGeneric('queue<-', function(.Object, value) {standardGeneric('queue<-')})
 setReplaceMethod('queue', 'Job', function(.Object, value)
                  {
                      .Object@runinfo[, queue := value]
+                     .Object@runinfo = .update_cmd(.Object)
+                     return(.Object)
+                 })
+
+
+#' @name Job-class
+#' @rdname Job-class
+#' @exportMethod now
+#' @export
+setGeneric('now', function(.Object) {standardGeneric('now')})
+
+
+#' @name now
+#' @title Toggles whether to force jobs to run now
+#' @description
+#'
+#' @exportMethod queue
+#' @export
+#' @author Marcin Imielinski
+setMethod('now', 'Job', function(.Object)
+    {
+        structure(.Object@runinfo[, now], names = .Object@runinfo[[key(.Object@runinfo)]])
+    })
+
+
+
+
+
+#' @export
+setGeneric('now<-', function(.Object, value) {standardGeneric('now<-')})
+
+#' @name now<-
+#' @title Sets now param associated with the jobs in the Job object
+#' @description
+#' Setting LSF / SGE now associated with Job object
+#'
+#' @exportMethod now<-
+#' @export
+#' @author Marcin Imielinski
+setReplaceMethod('now', 'Job', function(.Object, value)
+                 {
+                     .Object@runinfo[, now := value]
                      .Object@runinfo = .update_cmd(.Object)
                      return(.Object)
                  })
@@ -1437,8 +1477,6 @@ setMethod('qcmd', 'Job', function(.Object, all = FALSE)
 
 #' @export
 setGeneric('qrun', function(.Object, ...) {standardGeneric('qrun')})
-
-
 #' @name qrun
 #' @title Runs jobs on LSF
 #' @exportMethod qrun
@@ -1447,7 +1485,10 @@ setGeneric('qrun', function(.Object, ...) {standardGeneric('qrun')})
 #' @author Marcin Imielinski
 setMethod('qrun', 'Job', function(.Object, mc.cores = 1)
     {
-        mclapply(qcmd(.Object), system, mc.cores = mc.cores)
+        res = lapply(qcmd(.Object), function(x) {p = pipe(x); out = readLines(p); close(p); return(out)})
+        jobids = sapply(res, function(x) gsub('Your job (\\d+) .*', '\\1', x))
+        mapply(function(d,j) writeLines(j, paste0(d,'/sge.jobid')), outdir(.Object), jobids) ## save last jobids
+        writeLines(paste('Deploying', jobids, 'for entity', ids(.Object)))
     })
 
 
@@ -1613,6 +1654,69 @@ setMethod('bjobs', 'Job', function(.Object, mc.cores = 1)
         return(out)            
     })
 
+
+
+#' @export
+setGeneric('qjobs', function(.Object, ...) {standardGeneric('qjobs')})
+
+
+#' @name qjobs
+#' @title Tracks down any SEG jobs associated with this Job object using a bjobs query (warning can be slow)
+#' @exportMethod jname
+#' @export
+#' @author Marcin Imielinski
+setMethod('qjobs', 'Job', function(.Object, mc.cores = 1, long = FALSE)
+    {
+        fn.jids = sapply(outdir(.Object), function(x) paste(x, 'sge.jobid', sep = '/'))
+        ix = file.exists(fn.jids)
+        out1 = out2 = NULL
+        nms = c('jobid', 'prior', 'name', 'user', 'state', 'start.sumit.at', 'queue', 'slots', 'taskid')
+        out = runinfo(.Object)[, key(.Object), with = FALSE]
+        for (nm in nms)
+            out[[nm]] = as.character(NA)
+        if (any(ix))
+            {
+                jids = rep(NA, length(.Object))
+                jids[ix] = sapply(fn.jids[ix], function(x) readLines(x)[1])
+                p = pipe('qstat')
+                tab = strsplit(readLines(p), '\\s+')
+                close(p)
+                iix = sapply(tab, length)<=9 & sapply(tab, length)>4
+                if (length(tab)>0)
+                    {
+                        tab = lapply(tab, function(x) x[1:9])
+                        tmp = as.data.table(matrix(unlist(tab[iix]), ncol = 9, byrow = TRUE))
+                        setnames(tmp, nms)
+                        setkey(tmp, jobid)
+                        out = cbind(runinfo(.Object)[, key(.Object), with = FALSE], tmp[jids, ])
+                        na = is.na(out$state)
+                        if (any(na))
+                            out$jobid[na] = NA
+                    }
+            }
+        return(out)
+    })
+
+#' @export
+setGeneric('qkill', function(.Object, ...) {standardGeneric('qkill')})
+
+#' @name qkill
+#' @title Kills any running SGE jobs associated with this Job object
+#' @exportMethod qkill
+#' @export
+#' @author Marcin Imielinski
+setMethod('qkill', 'Job', function(.Object, jid = NULL)
+    {
+        
+        qj = qjobs(.Object)
+        ix = !is.na(qj$jobid)
+        if (any(ix))
+            system(paste(c('qdel', qj$jobid[ix]), collapse = ' '))
+        else
+            cat('No queued or running SGE jobs to kill\n')
+    })
+
+
 #' @export
 setGeneric('bkill', function(.Object, ...) {standardGeneric('bkill')})
 
@@ -1647,6 +1751,16 @@ setGeneric('ids', function(.Object) { standardGeneric('ids')})
 
 
 #' @name ids
+#' @title returns vector of entity ids associated with this Job objedct
+#' @exportMethod ids
+#' @export
+#' @author Marcin Imielinskix
+setMethod('ids', 'Job', function(.Object)
+    {
+        .Object@runinfo[[key(.Object)]]
+    })
+
+                #' @name ids
 #' @title returns vector of entity ids associated with this Job objedct
 #' @exportMethod ids
 #' @export
@@ -1766,9 +1880,9 @@ qsub_cmd = function(script.fn, queue, jname = NULL, jlabel = NULL, jgroup = NULL
 
 #' @name Job-class
 #' @rdname Job-class
-#' @exportMethod status.info
+#' @exportMethod report
 #' @export
-setGeneric('report', function(.Object, ...) { standardGeneric('report')})
+setGeneric('report', function(.Object, ...)  standardGeneric('report'))
 
 
 #' @name report
@@ -1788,7 +1902,7 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
         out = cbind(data.table(runinfo(.Object)[, key(.Object), with = FALSE]), .parse.info(.Object@runinfo$stderr, mc.cores = mc.cores, force = force))
         suppressWarnings(out[ , key := NULL])
         setkeyv(out, key(.Object))
-        return(out)
+        return(out[1:nrow(out), ])
     })
 
 .parse.info = function(jname, detailed = F, force = FALSE, mc.cores = 1)
@@ -2244,6 +2358,61 @@ more = function(x, grep = NULL)
 
 
 
+#############################
+#' @name rrbind
+#' @title rrbind
+#'
+#' @description
+#'
+#' like rbind, but takes the intersecting columns of the dfs
+#'
+#' if union flag is used then will take union of columns (and put NA's for columns of df1 not in df2 and vice versa)
+#' 
+#' @param ... 
+#' @author Marcin Imielinski
+############################
+rrbind = function(..., union = T)
+  {     
+    dfs = list(...);  # gets list of data frames
+    if (any(ix <- sapply(dfs, function(x) class(x)[1])!='data.frame'))
+        dfs[ix] = lapply(dfs[ix], as.data.frame)
+
+    dfs = dfs[!sapply(dfs, is.null)]    
+    dfs = dfs[sapply(dfs, ncol)>0]
+
+    ## defactorize (need to do to cat without introducing NA's in weird places)
+    dfs = lapply(dfs, function(x) { for (y in names(x)) if (is.factor(x[,y])) x[, y] = as.character(x[, y]); return(x)})
+    
+    names.list = lapply(dfs, names);
+    classes = unlist(lapply(dfs, function(x) sapply(names(x), function(y) class(x[, y]))))
+    cols = unique(unlist(names.list));
+    unshared = lapply(names.list, function(x) setdiff(cols, x));
+    unshared.u = unique(unlist(unshared))
+    ix = which(sapply(dfs, nrow)>0)
+    expanded.dfs = lapply(ix, function(x)
+      {
+        dfs[[x]][, unshared[[x]]] = as.character(NA);
+        return(dfs[[x]][, cols, drop = F])
+      })
+    
+    out = do.call('rbind', expanded.dfs);
+    
+    if (any(uix <<- which(classes[unshared.u] != 'character')))
+      {
+          ix = match(unshared.u, names(out))
+          for (j in uix) ### HACK to prevent stupid class mismatches leading to NA BS
+              out[, ix[j]] = as(out[, ix[j]], classes[unshared.u[j]])
+      }
+    
+    if (!union)
+      {
+        shared = setdiff(cols, unique(unlist(unshared)))
+        out = out[, shared];
+      }    
+    
+   return(out)
+}
+
 
 ## #' @name merge
 ## #' @title Merges the output annotations associated with this job with another keyed data.table of entities.
@@ -2261,3 +2430,4 @@ more = function(x, grep = NULL)
 ## #' @param sep  separator to add to columns merged from the Job
 ## #' @author Marcin Imielinski
 ## #' @export
+

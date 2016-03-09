@@ -6,8 +6,12 @@
 \title{returns vector of entity ids associated with this Job objedct}
 \usage{
 \S4method{ids}{Job}(.Object)
+
+\S4method{ids}{Job}(.Object)
 }
 \author{
+Marcin Imielinskix
+
 Marcin Imielinskix
 }
 

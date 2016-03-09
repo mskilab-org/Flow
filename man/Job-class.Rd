@@ -22,6 +22,8 @@ mem(.Object)
 
 queue(.Object)
 
+now(.Object)
+
 \S4method{runinfo}{Job}(.Object)
 
 report(.Object, ...)
