@@ -600,7 +600,7 @@ FlowOutput = function(...) new('FlowOutput', ...)
 #' }
 #' @exportClass Job
 #' @export
-setClass('Job', representation(task = 'Task', rootdir = 'character', runinfo = 'data.table', inputs = "data.table", stamps = "data.table", outputs = "data.table"))
+setClass('Job', representation(task = 'Task', rootdir = 'character', entities = 'data.table', runinfo = 'data.table', inputs = "data.table", stamps = "data.table", outputs = "data.table"))
 
 setMethod('initialize', 'Job', function(.Object,
                                           task, ##Task wrapping around an Module expecting literal and annotation arguments
@@ -612,7 +612,7 @@ setMethod('initialize', 'Job', function(.Object,
                                           mem = NULL,                                          
                                         cores = 1,
                                         now = FALSE,
-                                          mock = FALSE
+                                        mock = FALSE
                                           )
     {
         require(stringr)
@@ -642,6 +642,8 @@ setMethod('initialize', 'Job', function(.Object,
         else
             if (is.null(key(entities)))
                 stop('Entities argument must be a keyed data.table, please add a key')
+
+        .Object@entities = copy(entities)
 
         tabstring = function(tab, sep = ', ')
             return(paste(names(tab), '(', tab, ')', sep = '', collapse = sep))        
@@ -695,8 +697,9 @@ setMethod('initialize', 'Job', function(.Object,
                  ### in which case the task output may appear to be falsely outdated
                  ### when we check in the future ..
                  ### but this (false positive outdating) is less dangerous than false-negative outdating
-                 ### ie if we thought that the task was up to date but in fact inputs have changed. 
-                 cat('Noting time stamps of inputs\n')
+### ie if we thought that the task was up to date but in fact inputs have changed.
+                if (!mock)
+                    cat('Noting time stamps of inputs\n')
                  for (this.arg in names(ann.args))
                      {
                          this.ann = ann.args[[this.arg]]@arg
@@ -705,14 +708,16 @@ setMethod('initialize', 'Job', function(.Object,
         #                 .Object@inputs[, eval(this.arg) := entities[[this.ann]]]
                          
                          if (.Object@task@args[[this.arg]]@path)
-                             {                                 
-                                 cat('\tfor', this.arg, sprintf('(%s paths)', nfiles), '\n')
+                             {
+                                 if (!mock)
+                                     cat('\tfor', this.arg, sprintf('(%s paths)', nfiles), '\n')
 
                                  if (is.numeric(entities[[this.ann]]))
                                      stop(sprintf('Numeric annotation %s provided as path argument %s to task - check task configuration or entities table', this.ann, this.arg)) 
                                  
                                  .Object@stamps[, eval(this.arg) := as.character(file.info(entities[[this.ann]])$mtime)]
-                                 print(this.arg)
+                                 if (!mock)
+                                     print(this.arg)
 
                                  cmd = paste(this.arg, ':= normalizePath(', this.arg, ')')
                                  .Object@inputs[!is.na(.Object@stamps[[this.arg]]), eval(parse(text = cmd))]
@@ -822,7 +827,8 @@ setMethod('initialize', 'Job', function(.Object,
         if (length(task@outputs)>0)
             if (sum(sapply(task@outputs, is, 'FlowOutput')>0))
                 {
-                    cat('initializing output annotations\n')
+                    if (!mock)
+                        cat('initializing output annotations\n')
                     for (nm in sapply(task@outputs, function(x) x@name))
                         .Object@outputs[, eval(nm) := as.character(NA)]
                 }
@@ -918,12 +924,15 @@ Job = function(
 #' @author Marcin Imielinski
 setMethod('c', 'Job', function(x, ...)
     {
-        obj = list(...)
+        if (!.hasSlot(x, 'entities'))
+            stop('older version of Flow object does not support concatenation')
+        
+        obj = c(list(x), list(...))
         same.same = all(sapply(obj, function(x) identical(x@task, obj[[1]]@task)))
         if (!all(same.same))
             stop('trying to conatenate incompatible Job objects: can only concatenate Jobs built from same Task')
 
-        ukey = unique(sapply(obj, function(x) key(x@input)))
+        ukey = unique(sapply(obj, function(x) key(x@inputs)))
         if (length(ukey)>1)
             stop('trying to concatenate incompatible Job objects built from different keys')
         
@@ -935,13 +944,21 @@ setMethod('c', 'Job', function(x, ...)
         ocol = names(obj[[1]]@outputs)
         scol = names(obj[[1]]@stamps)
         rcol = names(obj[[1]]@runinfo)
+        ecol = names(obj[[1]]@entities)
                 
-        inputs = rbindlist(lapply(obj, function(x) x@input[, icol, with = FALSE]))
-        outputs = rbindlist(lapply(obj, function(x) x@output[, ocol, with = FALSE]))
+        inputs = rbindlist(lapply(obj, function(x) x@inputs[, icol, with = FALSE]))
+        outputs = rbindlist(lapply(obj, function(x) x@outputs[, ocol, with = FALSE]))
         runinfo = rbindlist(lapply(obj, function(x) x@runinfo[, rcol, with = FALSE]))
         stamps = rbindlist(lapply(obj, function(x) x@stamps[, scol, with = FALSE]))
+        entities = rbindlist(lapply(obj, function(x) x@entities[, ecol, with = FALSE]))
+
+        setkeyv(entities, ukey)
+        setkeyv(inputs, ukey)
+        setkeyv(outputs, ukey)
+        setkeyv(runinfo, ukey)
+        setkeyv(stamps, ukey)
         
-        return(Job(obj[[1]]@task, entities = inputs, rootdir = urootdir[1], queue = runinfo$queue, mem = runinfo$mem))                
+        return(Job(obj[[1]]@task, entities = entities, rootdir = urootdir[1], queue = runinfo$queue, mem = runinfo$mem, nice = runinfo$nice, cores = runinfo$cores, now = runinfo$now, mock = TRUE)) 
     })
 
 #' @name purge
@@ -1148,7 +1165,9 @@ setMethod('[', 'Job', function(x, i, id = FALSE)
         x@inputs = x@inputs[i, ]
         x@outputs = x@outputs[i, ]
         x@stamps = x@stamps[i, ]
-        
+        if (.hasSlot(x, 'entities'))
+            x@entities = x@entities[i, ]
+                    
         ## some kind of data.table bug where key gets lost every w subsetting once in a while ... #CHECK
         setkeyv(x@runinfo, id)
         setkeyv(x@inputs, id)
@@ -1199,6 +1218,8 @@ setMethod('[<-', 'Job', function(x, i, value, id = FALSE)
         x@inputs[i,] = value@inputs
         x@outputs[i, ] = value@outputs
         x@stamps[i, ] = value@stamps
+        if (.hasSlot(x, 'entities') & .hasSlot(value, 'entities'))
+            x@entities[i, ] = value@entities
         return(x)
     })
 
@@ -1561,7 +1582,7 @@ setGeneric('outputs', function(.Object) {standardGeneric('outputs')})
 #' @author Marcin Imielinski
 setMethod('outputs', 'Job', function(.Object)
     {
-        .Object@outputs
+        copy(.Object@outputs)
     })
 
 
@@ -1584,7 +1605,7 @@ setGeneric('runinfo', function(.Object) {standardGeneric('runinfo')})
 #' @author Marcin Imielinski
 setMethod('runinfo', 'Job', function(.Object)
     {
-        .Object@runinfo
+        copy(.Object@runinfo)
     })
 
                     
@@ -1593,13 +1614,26 @@ setGeneric('inputs', function(.Object) {standardGeneric('inputs')})
 
 #' @name inputs
 #' @title returns keyed data.table of inputs annotation associated with the jobs in this Job object
-#' @exportMethod runinfo
 #' @export
 #' @author Marcin Imielinski
 setMethod('inputs', 'Job', function(.Object)
     {
-        .Object@inputs
+        copy(.Object@inputs)
     })
+
+
+#' @export
+setGeneric('entities', function(.Object) {standardGeneric('entities')})
+
+#' @name entities
+#' @title returns original keyed data.table of entities associated with this Job object
+#' @export
+#' @author Marcin Imielinski
+setMethod('entities', 'Job', function(.Object)
+    {
+        copy(.Object@entities)
+    })
+
 
 #' @export
 setGeneric('status', function(.Object) {standardGeneric('status')})
@@ -1799,7 +1833,13 @@ setMethod('show', 'Job', function(object)
     {
         .tabstring = function(tab, sep = ', ')
             return(paste(names(tab), ' (', tab, ')', sep = '', collapse = sep))
-        cat(sprintf('Job on %s entities with rootdir %s from task %s using module %s version %s\nJob status: %s\n', length(object), object@rootdir, object@task@name, object@task@module@name, object@task@module@stamp, .tabstring(table(status(object)))))
+
+        if (length(object)==1)
+            estring = ids(object)
+        else
+            estring = paste0(substr(paste(ids(object), collapse = ', '), 1, 20), '...')
+        
+        cat(sprintf('Job on %s entities (%s) with rootdir %s from task %s using module %s version %s\nJob status: %s\n', length(object), estring, object@rootdir, object@task@name, object@task@module@name, object@task@module@stamp, .tabstring(table(status(object)))))
     })
 
 
@@ -1894,7 +1934,6 @@ setGeneric('report', function(.Object, ...)  standardGeneric('report'))
 #'
 #' This is used by the Job update method, but can also be useful for debugging and diagnostics. 
 #' 
-#' @exportMethod report
 #' @export
 #' @author Marcin Imielinski
 setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
