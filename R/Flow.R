@@ -207,7 +207,7 @@ setMethod('initialize', 'Task', function(.Object,
 
                 lines = strsplit(grep('\\S+',
                     grep('^#', readLines(module), invert = TRUE, value = TRUE),
-                    value = TRUE), '\\s*\t\\s*')
+                    value = TRUE), '(\\s*\t\\s*)|(\\s\\s+)')
                 lens = unlist(sapply(lines, length))
                 if (lens[1] != 1)
                     stop(paste('Error reading .task task config file:\n', errstr))
@@ -841,7 +841,7 @@ setMethod('initialize', 'Job', function(.Object,
                 sapply(1:length(.Object), function(x) saveRDS(.Object[x], paste(.Object@runinfo$outdir[x], 'Job.rds', sep = '/')))
 
                 cache(.Object)
-                update(.Object, check.inputs = FALSE)
+                update(.Object, check.inputs = TRUE)
             }
 
         
