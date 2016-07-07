@@ -72,7 +72,7 @@ setMethod('initialize', 'Module', function(.Object,
         cmd = gsub(cmd.re, '', grep(cmd.re, readLines(path), value = TRUE))
 
         if (length(cmd)==0)
-            stop('Problem parsing hydrant.deploy, maybe it is an old version or a scatter gather task, which is not currently supported')
+            stop('Problem parsing .deploy file, maybe it is an old version or a scatter gather task, which is not currently supported')
 
         if (!grepl('sh', cmd))
             warning('Module command does not begin with "sh" - make sure that this is not a scatter gather command, which is not currently supported')
@@ -201,7 +201,7 @@ setMethod('initialize', 'Task', function(.Object,
 
         if (is.character(module)) ## interpret as path
             {
-                errstr = 'First non-#-commented line of task config file must be path to module directory with hydrant.deploy file, and remaining lines must consist of three tab delimited columns.  \nThe first column is in each line specifies whether that line is either input or output (with the corresponding text),  \nThe second column is a module argument name (if input) or an output annotation name (if output).  \nIf the line is an input, the third column is an unquoted string specifying an annotation name or a quoted string specifying a literal.  \nIf the line is an output, the third column is a bare string specifying a regex which tells Flow where to find the file to attach to the annotation\nFor inputs, an optional fourth column can specify whether it is a "path" or "value".  For input annotations an optional 5th column can specify default values'
+                errstr = 'First non-#-commented line of task config file must be path to module directory with .deploy file, and remaining lines must consist of three or more tab delimited columns.  \nThe first column is in each line specifies whether that line is either input or output (with the corresponding text),  \nThe second column is a module argument name (if input) or an output annotation name (if output).  \nIf the line is an input, the third column is an unquoted string specifying an annotation name or a quoted string specifying a literal.  \nIf the line is an output, the third column is a bare string specifying a regex which tells Flow where to find the file to attach to the annotation\nFor inputs, an optional fourth column can specify whether it is a "path" or "value".  For input annotations an optional 5th column can specify default values'
                 if (!file.exists(module))
                     stop(paste('module file', module, 'does not exist'))
 
@@ -641,8 +641,11 @@ setMethod('initialize', 'Job', function(.Object,
             }
         else
             if (is.null(key(entities)))
-                stop('Entities argument must be a keyed data.table, please add a key')
+                stop('CEntities argument must be a keyed data.table, please add a key')
 
+        if (any(duplicated(entities[[key(entities)]])))
+            stop(sprintf('Input entities table has duplicated keys! Check column "%s" of entities table or use a different column as a key', key(entities)))
+        
         .Object@entities = copy(entities)
 
         tabstring = function(tab, sep = ', ')
@@ -860,7 +863,9 @@ setMethod('initialize', 'Job', function(.Object,
         ix = which(status(.Object) != 'not ready')
         .Object@runinfo[ix, bcmd := .cmd2bcmd(cmd.og, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores)]
         .Object@runinfo[, cmd := '']
-        .Object@runinfo[ix, cmd := paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, 'nice ', ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
+        .Object@runinfo[, cmd.quiet := '']
+        .Object@runinfo[ix, cmd := paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, '(ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
+        .Object@runinfo[ix, cmd.quiet := paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, 'ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
 
         .Object@runinfo[, cmd.path := paste(outdir(.Object), '/', names(outdir(.Object)), '.cmd.sh', sep = '')]
 
@@ -1017,6 +1022,7 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
             ifelse(!is.na(rep$success),
                    ifelse(rep$success, 'completed', 'failed'),
                    ifelse(!is.na(st$mtime), 'running', 'ready')), 'ready')
+
         
         if (length(new.object@task@outputs)>0) ## check output args if they exist       
             if (sum(sapply(new.object@task@outputs, is, 'FlowOutput')))
@@ -1407,12 +1413,19 @@ setGeneric('cmd', function(.Object, ...) {standardGeneric('cmd')})
 #' @exportMethod cmd
 #' @export
 #' @author Marcin Imielinski
-setMethod('cmd', 'Job', function(.Object, all = FALSE)
+setMethod('cmd', 'Job', function(.Object, all = FALSE, quiet = TRUE)
     {
         if (!all)
             {
                 ix = runinfo(.Object)[, which(!(status %in% c('completed', 'not ready')))]
-                structure(.Object@runinfo[, cmd[ix]], names = ids(.Object)[ix])
+                if (quiet)
+                    if (is.null(.Object@runinfo$cmd.quiet))
+                        structure(.Object@runinfo[, cmd[ix]], names = ids(.Object)[ix])
+                    else
+                        structure(.Object@runinfo[, cmd.quiet[ix]], names = ids(.Object)[ix])
+                else
+                    structure(.Object@runinfo[, cmd[ix]], names = ids(.Object)[ix])
+                    
             }
         else
             structure(.Object@runinfo[, cmd], names = .Object@runinfo[[key(.Object@runinfo)]])
@@ -1429,14 +1442,19 @@ setGeneric('run', function(.Object, ...) {standardGeneric('run')})
 #' @export
 #' @param mc.cores Number of parallel cores to run jobs with (=1)
 #' @author Marcin Imielinski
-setMethod('run', 'Job', function(.Object, mc.cores = 1, all = FALSE)
+setMethod('run', 'Job', function(.Object, mc.cores = 1, all = FALSE, quiet = TRUE)
     {
         require(parallel)
+
+        cmds = cmd(.Object, quiet = quiet)
+        names(cmds) = ids(.Object)
         
-        mclapply(names(cmd(.Object)), function(x)
+                                        #        mclapply(names(cmd(.Object, quiet = quiet)), function(x)
+        mclapply(names(cmds), function(x)
             {
                 cat('Starting', task(.Object)@name, 'on entity',  x, '\n')
-                system(cmd(.Object)[x])
+                                        #                system(cmd(.Object, quiet = quiet)[x])
+                system(cmds[x])
             }, mc.cores = mc.cores)
     })
 
@@ -1631,7 +1649,11 @@ setGeneric('entities', function(.Object) {standardGeneric('entities')})
 #' @author Marcin Imielinski
 setMethod('entities', 'Job', function(.Object)
     {
-        copy(.Object@entities)
+        if (.hasSlot(.Object, 'entities'))
+            copy(.Object@entities)
+        else
+            data.table(fsno[, 1, with = FALSE])
+
     })
 
 
@@ -1694,17 +1716,19 @@ setMethod('bjobs', 'Job', function(.Object, mc.cores = 1)
 setGeneric('qjobs', function(.Object, ...) {standardGeneric('qjobs')})
 
 
+
 #' @name qjobs
-#' @title Tracks down any SEG jobs associated with this Job object using a bjobs query (warning can be slow)
+#' @title Tracks down any sGE jobs associated with this Job object using a bjobs query (warning can be slow)
 #' @exportMethod jname
 #' @export
 #' @author Marcin Imielinski
-setMethod('qjobs', 'Job', function(.Object, mc.cores = 1, long = FALSE)
+setMethod('qjobs', 'Job', function(.Object)
     {
-        fn.jids = sapply(outdir(.Object), function(x) paste(x, 'sge.jobid', sep = '/'))
+                fn.jids = sapply(outdir(.Object), function(x) paste(x, 'sge.jobid', sep = '/'))
         ix = file.exists(fn.jids)
         out1 = out2 = NULL
-        nms = c('jobid', 'prior', 'name', 'user', 'state', 'start.sumit.at', 'queue', 'slots', 'taskid')
+        nms = c('jobid','prior','ntckt','name','user','project','department','state','cpu','mem','io','tckts','ovrts','otckt','ftckt','stckt','share','queue','slots')
+#        nms = c('jobid', 'prior', 'name', 'user', 'state', 'start.sumit.at', 'queue', 'slots', 'taskid')
         out = runinfo(.Object)[, key(.Object), with = FALSE]
         for (nm in nms)
             out[[nm]] = as.character(NA)
@@ -1712,14 +1736,14 @@ setMethod('qjobs', 'Job', function(.Object, mc.cores = 1, long = FALSE)
             {
                 jids = rep(NA, length(.Object))
                 jids[ix] = sapply(fn.jids[ix], function(x) readLines(x)[1])
-                p = pipe('qstat')
+                p = pipe('qstat -ext')
                 tab = strsplit(readLines(p), '\\s+')
-                close(p)
-                iix = sapply(tab, length)<=9 & sapply(tab, length)>4
+                close(p)                
+                iix = sapply(tab, length)<=length(nms) & sapply(tab, length)>14
                 if (length(tab)>0)
                     {
-                        tab = lapply(tab, function(x) x[1:9])
-                        tmp = as.data.table(matrix(unlist(tab[iix]), ncol = 9, byrow = TRUE))
+                        tab = lapply(tab, function(x) x[1:length(nms)])
+                        tmp = as.data.table(matrix(unlist(tab[iix]), ncol = length(nms), byrow = TRUE))
                         setnames(tmp, nms)
                         setkey(tmp, jobid)
                         out = cbind(runinfo(.Object)[, key(.Object), with = FALSE], tmp[jids, ])
@@ -1728,8 +1752,22 @@ setMethod('qjobs', 'Job', function(.Object, mc.cores = 1, long = FALSE)
                             out$jobid[na] = NA
                     }
             }
-        return(out)
+                return(out)            
+            })
+
+#' @export
+setGeneric('qstat', function(.Object, ...) {standardGeneric('qstat')})
+
+#' @name qstat
+#' @title Tracks down any SGE jobs associated with this Job object using a bjobs query (warning can be slow)
+#' @exportMethod jname
+#' @export
+#' @author Marcin Imielinski
+setMethod('qstat', 'Job', function(.Object)
+    {
+        qjobs(.Object)
     })
+
 
 #' @export
 setGeneric('qkill', function(.Object, ...) {standardGeneric('qkill')})
@@ -1976,13 +2014,15 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
         fn = paste(dir, jname, '.bsub.out', sep = '')
         fn.err = paste(dir, jname, '.bsub.err', sep = '')
         fn.report = paste(dir, jname, '.bsub.report', sep = '')
+        fn.report.sge = paste(dir, jname, '.bsub.report', sep = '')
         
-        mtime = data.table(out = file.info(fn)$mtime, err = file.info(fn.err)$mtime, report = file.info(fn.report)$mtime)
+        mtime = data.table(out = file.info(fn)$mtime, err = file.info(fn.err)$mtime, report = file.info(fn.report)$mtime, report.sge = file.info(fn.report.sge)$mtime)
+        mtime[, report := pmax(report, report.sge, na.rm = TRUE)]
 
         ## we can use the report if the report exists and is younger than both the err and out
         ## or if (somehow) the err and out don't exist but the report does
         fn.rep.ex = mtime[ ,ifelse(!is.na(report), ifelse(!is.na(err) | is.na(out), pmin(report>err, report>out, na.rm = TRUE), FALSE), FALSE)] & !force
-
+        
         if (any(fn.rep.ex))
             outs[fn.rep.ex, ] = do.call(rbind, lapply(fn.report[fn.rep.ex], read.delim, strings = FALSE))[, names(outs)]
         
@@ -1995,7 +2035,9 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
         tmp = matrix(unlist(mclapply(which(fn.ex),
             function(i)
                 {
-                    y = readLines(fn[i]);                    
+                    p = pipe(paste('tail -n 100', fn[i]))
+                    y = readLines(p);
+                    close(p)
                     if (any(grepl('^Sender.*LSF System', y))) ## LSF job
                         {
                             y = split(y, cumsum(grepl('^Sender', y)))
@@ -2016,10 +2058,9 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
                         }
                     else if (any(jix <- grepl('^FLOW.SGE.JOBID', y))) ## SGE job
                         {
-
                             fn.report.sge = paste(fn.report[i], '.sge', sep = '')
                             jobnum = gsub('^FLOW.SGE.JOBID=(.*)', '\\1',  y[which(jix)])
-                            p = pipe(paste('qacct -j', jobnum))
+                            p = pipe(paste('qacct -j', jobnum[length(jobnum)]))
                             tmp = readLines(p)
                             close(p)
                             vals = structure(str_trim(gsub('^\\S+\\s+(.*)', '\\1', tmp, perl = TRUE)), names = gsub('(^\\S+) .*', '\\1', tmp, perl = TRUE))
@@ -2050,7 +2091,10 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
                         }
                     else ## interpret job as locally run with a /usr/bin/time -v output
                         {
-                            y = readLines(fn.err[i])
+                            if (file.exists(fn.err[i]))
+                                y = readLines(fn.err[i])
+                            else
+                                y = readLines(fn[i])
                             ix = grep('Command being timed', y)
                             if (length(ix)==0) ## fail
                                 return(rep(as.character(NA), 10))
@@ -2123,6 +2167,7 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
             write.table(outs[i, ], fn.report[i], sep = '\t', quote = F, row.names = FALSE)
     }
 
+    
   outs = as.data.table(outs)
   
   if (!is.null(input.jname))
@@ -2390,6 +2435,25 @@ more = function(x, grep = NULL)
 {
     if (is.null(grep))
         x = paste('more', paste(x, collapse = ' '))
+    else
+        x = paste('grep -H', grep, paste(x, collapse = ' '), ' | more')
+    system(x)
+}
+
+#' @name tailf
+#' @title tailf
+#'
+#' @description
+#' "tail -f" +/- grep vector of files
+#'
+#' @param x vector of iles
+#' @param grep string to grep in files (=NULL)
+#' @author Marcin Imielinski
+#' @export
+tailf = function(x, grep = NULL)
+{
+    if (is.null(grep))
+        x = paste('tail -f', paste(x, collapse = ' '))
     else
         x = paste('grep -H', grep, paste(x, collapse = ' '), ' | more')
     system(x)

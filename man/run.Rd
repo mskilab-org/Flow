@@ -5,7 +5,7 @@
 \alias{run}
 \title{Runs jobs as local commands from shell via R system calls}
 \usage{
-\S4method{run}{Job}(.Object, mc.cores = 1, all = FALSE)
+\S4method{run}{Job}(.Object, mc.cores = 1, all = FALSE, quiet = TRUE)
 }
 \arguments{
 \item{mc.cores}{Number of parallel cores to run jobs with (=1)}
