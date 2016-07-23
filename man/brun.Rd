@@ -5,7 +5,7 @@
 \alias{brun}
 \title{Runs jobs on LSF}
 \usage{
-\S4method{brun}{Job}(.Object, mc.cores = 1)
+\S4method{brun}{Job}(.Object, mc.cores = 1, all = FALSE)
 }
 \arguments{
 \item{mc.cores}{Number of parallel cores to run jobs with (=1)}

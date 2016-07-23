@@ -795,18 +795,18 @@ setMethod('initialize', 'Job', function(.Object,
         ## instantiate commands for each row in entities table         
         .Object@runinfo[, cmd.og := sapply(1:nrow(entities), function(this.entity)
             {
-                this.cmd = str_replace_all(module@cmd, stringr::fixed('<libdir>'), task@libdir)
-                
+                this.cmd = str_replace_all(module@cmd, stringr::fixed('<libdir>'), task@libdir)                
                 for (k in 1:length(task@args))
                     {
                         this.arg = names(task@args)[[k]]
                         this.val = .Object@inputs[this.entity, ][[gsub('\\-', '.', names(task@args)[k])]]
+                        if (is.na(this.val))
+                            this.val = ''
                         this.cmd = str_replace_all(this.cmd, stringr::fixed(paste('<', this.arg, '>', sep = '')), this.val)
                     }
                 ## final cmd with all placeholders replaced
                 return(this.cmd)
             })]
-        
 
         if (is.null(mem))
             mem = NA
@@ -824,7 +824,9 @@ setMethod('initialize', 'Job', function(.Object,
         .Object@runinfo[, stdout := paste(outdir, '/',  task@name, '.', entities[[key(entities)]], '.bsub.out', sep = '')]
 
         .Object@runinfo[, jname := .jname(outdir, task@name, entities[[key(entities)]])]
-        .Object@runinfo = .update_cmd(.Object) ## updates BCMD / CMD
+
+        if (!mock)
+            .Object@runinfo = .update_cmd(.Object) ## updates BCMD / CMD
         
         ## populate output collection
         if (length(task@outputs)>0)
@@ -1446,9 +1448,15 @@ setMethod('run', 'Job', function(.Object, mc.cores = 1, all = FALSE, quiet = TRU
     {
         require(parallel)
 
-        cmds = cmd(.Object, quiet = quiet)
-        names(cmds) = ids(.Object)
-        
+
+        cmds = cmd(.Object, quiet = quiet, all = all)
+        if (length(cmds)==0)
+            {
+                cat('No jobs to run\n')
+                return()                
+            }
+        if (is.null(names(cmds)))
+            names(cmds) = ids(.Object)        
                                         #        mclapply(names(cmd(.Object, quiet = quiet)), function(x)
         mclapply(names(cmds), function(x)
             {
@@ -1488,9 +1496,9 @@ setGeneric('brun', function(.Object, ...) {standardGeneric('brun')})
 #' @export
 #' @param mc.cores Number of parallel cores to run jobs with (=1)
 #' @author Marcin Imielinski
-setMethod('brun', 'Job', function(.Object, mc.cores = 1)
+setMethod('brun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
     {
-        mclapply(bcmd(.Object), system, mc.cores = mc.cores)
+        mclapply(bcmd(.Object, all = all), system, mc.cores = mc.cores)
     })
 
 
@@ -1522,11 +1530,12 @@ setGeneric('qrun', function(.Object, ...) {standardGeneric('qrun')})
 #' @export
 #' @param mc.cores Number of parallel cores to run jobs with (=1)
 #' @author Marcin Imielinski
-setMethod('qrun', 'Job', function(.Object, mc.cores = 1)
+setMethod('qrun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
     {
-        res = lapply(qcmd(.Object), function(x) {p = pipe(x); out = readLines(p); close(p); return(out)})
+        qcmds = qcmd(.Object, all = all)
+        res = lapply(qcmds, function(x) {p = pipe(x); out = readLines(p); close(p); return(out)})
         jobids = sapply(res, function(x) gsub('Your job (\\d+) .*', '\\1', x))
-        mapply(function(d,j) writeLines(j, paste0(d,'/sge.jobid')), outdir(.Object), jobids) ## save last jobids
+        mapply(function(d,j) writeLines(j, paste0(d,'/sge.jobid')), outdir(.Object)[names(qcmds)], jobids) ## save last jobids
         writeLines(paste('Deploying', jobids, 'for entity', ids(.Object)))
     })
 
@@ -1716,7 +1725,6 @@ setMethod('bjobs', 'Job', function(.Object, mc.cores = 1)
 setGeneric('qjobs', function(.Object, ...) {standardGeneric('qjobs')})
 
 
-
 #' @name qjobs
 #' @title Tracks down any sGE jobs associated with this Job object using a bjobs query (warning can be slow)
 #' @exportMethod jname
@@ -1737,8 +1745,8 @@ setMethod('qjobs', 'Job', function(.Object)
                 jids = rep(NA, length(.Object))
                 jids[ix] = sapply(fn.jids[ix], function(x) readLines(x)[1])
                 p = pipe('qstat -ext')
-                tab = strsplit(readLines(p), '\\s+')
-                close(p)                
+                tab = strsplit(str_trim(readLines(p)), '\\s+')
+                close(p)
                 iix = sapply(tab, length)<=length(nms) & sapply(tab, length)>14
                 if (length(tab)>0)
                     {
@@ -1754,19 +1762,6 @@ setMethod('qjobs', 'Job', function(.Object)
             }
                 return(out)            
             })
-
-#' @export
-setGeneric('qstat', function(.Object, ...) {standardGeneric('qstat')})
-
-#' @name qstat
-#' @title Tracks down any SGE jobs associated with this Job object using a bjobs query (warning can be slow)
-#' @exportMethod jname
-#' @export
-#' @author Marcin Imielinski
-setMethod('qstat', 'Job', function(.Object)
-    {
-        qjobs(.Object)
-    })
 
 
 #' @export
@@ -1944,6 +1939,7 @@ qsub_cmd = function(script.fn, queue, jname = NULL, jlabel = NULL, jgroup = NULL
                                         #        out_cmd = paste( "qsub -V -o ", qjout, " -e ",  qjerr)
         out_cmd = paste("qsub -V -j y -o ", qjout);
         out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-q ", queue)))
+        ##        if (!is.null(mem)) out_cmd = paste(out_cmd, " -l mem=", mem, "gb", sep = "");
         if (!is.null(mem)) out_cmd = paste(out_cmd, " -l mem=", mem, "g", sep = "");
         if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
         if (!is.null(cwd)) out_cmd = paste(out_cmd, " -wd ", cwd )
@@ -2002,7 +1998,7 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
         success = NA,
         stringsAsFactors = F)
   else
-    {
+      {          
         outs = data.frame(jname = gsub('\\.R$', '', jname),
             out.file = paste(dir,'/', jname, '.bsub.out', sep = ''),
             err.file = paste(dir, '/', jname, '.bsub.err', sep = ''),
@@ -2031,13 +2027,16 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
 
         if (!any(fn.ex))
             return(outs)
-
+        
         tmp = matrix(unlist(mclapply(which(fn.ex),
             function(i)
                 {
                     p = pipe(paste('tail -n 100', fn[i]))
                     y = readLines(p);
                     close(p)
+                    p = pipe(paste('head -n 100', fn[i]))
+                    sge = grep('FLOW', readLines(p), value = TRUE)
+                    close(p)                    
                     if (any(grepl('^Sender.*LSF System', y))) ## LSF job
                         {
                             y = split(y, cumsum(grepl('^Sender', y)))
@@ -2056,10 +2055,10 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
                                      c(gsub('[ ]+Max Threads[ ]+\\:[ ]+(.*)\\S*', '\\1', grep('^[ ]+Max Threads', y, value = T)), '')[1]
                                      ))
                         }
-                    else if (any(jix <- grepl('^FLOW.SGE.JOBID', y))) ## SGE job
+                    else if (length(sge)>0)
                         {
                             fn.report.sge = paste(fn.report[i], '.sge', sep = '')
-                            jobnum = gsub('^FLOW.SGE.JOBID=(.*)', '\\1',  y[which(jix)])
+                            jobnum = gsub('^FLOW.SGE.JOBID=(.*)', '\\1',  sge[1])
                             p = pipe(paste('qacct -j', jobnum[length(jobnum)]))
                             tmp = readLines(p)
                             close(p)
@@ -2091,9 +2090,8 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
                         }
                     else ## interpret job as locally run with a /usr/bin/time -v output
                         {
-                            if (file.exists(fn.err[i]))
-                                y = readLines(fn.err[i])
-                            else
+                            y = tryCatch(readLines(fn.err[i]), error = function(e) NULL)
+                            if (is.null(y))
                                 y = readLines(fn[i])
                             ix = grep('Command being timed', y)
                             if (length(ix)==0) ## fail
@@ -2431,13 +2429,22 @@ setMethod('merge', signature(x='data.table', y="Job"), function(x, y, ...) {
 #' @param grep string to grep in files (=NULL)
 #' @author Marcin Imielinski
 #' @export
-more = function(x, grep = NULL)
+more = function(x, grep = NULL, pipe = FALSE)
 {
     if (is.null(grep))
         x = paste('more', paste(x, collapse = ' '))
     else
         x = paste('grep -H', grep, paste(x, collapse = ' '), ' | more')
-    system(x)
+
+    if (pipe)
+        {
+            p = pipe(x)
+            out = readLines(p)
+            close(p)
+            return(out)
+        }
+    else
+        system(x)
 }
 
 #' @name tailf
