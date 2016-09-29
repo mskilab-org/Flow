@@ -1,11 +1,5 @@
-                             Flow quick tutorial
 
-                              Marcin Imielinski
-
-                       Updated Tuesday, March 8, 2016
-
-
-   Big Picture
+# Flow
 
 
    Flow is an R package that enables local configuration and execution of
@@ -30,9 +24,8 @@
 
 
 
-   [image004.png]
 
-   Setting up entities and tasks
+#   Setting up entities and tasks
 
 
    Entities are stored in a keyed R data.table of annotations. This table
