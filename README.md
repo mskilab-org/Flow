@@ -64,7 +64,7 @@
    files residing under their respective task / entity subfolder.
 
 
-   Example
+#   Example
 
 
    Here's an example of building a dummy module, configuring it to a task,
@@ -75,16 +75,16 @@
    To get started, (install and) load the Flow R package
 
 
-   install.packages('devtools')
+       install.packages('devtools')
 
 
-   library(devtools)
+       library(devtools)
 
 
-   install_github('mskilab/Flow')
+       install_github('mskilab/Flow')
 
 
-   library(Flow)
+       library(Flow)
 
 
    We grab the table of entities from a tab delimited file and set the key
