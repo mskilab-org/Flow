@@ -76,25 +76,16 @@
 
 
        install.packages('devtools')
-
-
        library(devtools)
-
-
        install_github('mskilab/Flow')
-
-
        library(Flow)
-
 
    We grab the table of entities from a tab delimited file and set the key
    to pair_id. This table comes with the Flow package.
 
 
-   entities = fread(system.file('extdata', 'entities.txt', package =
-   'Flow'))
-
-   setkey(entities, pair_id)
+       entities = fread(system.file('extdata', 'entities.txt', package = 'Flow'))
+       setkey(entities, pair_id)
 
 
    To get things set up we will set up a directory called ~/FlowExample.
@@ -103,9 +94,8 @@
    follows).
 
 
-   system('mkdir -p ~/FlowExample')
-
-   setwd('~/FlowExample')
+       system('mkdir -p ~/FlowExample')
+       setwd('~/FlowExample')
 
 
    Now we make a module, lets put it in a modules subdirectory of
@@ -114,7 +104,7 @@
    multiple task configurations and apply to many different jobs)
 
 
-   system('mkdir -p ~/FlowExample/modules/dummymodule')
+       system('mkdir -p ~/FlowExample/modules/dummymodule')
 
 
    The module directory contains all the libraries and code associated
@@ -125,21 +115,20 @@
    Let's create the flow.deploy file in this location
 
 
-   ~/FlowExample/modules/dummymodule/flow.deploy
-
+       ~/FlowExample/modules/dummymodule/flow.deploy
 
    In this file, put one line:
 
 
-   command: <libdir>dummyscript.sh ${ analysis_id } ${ tumor_bam } ${
-   normal_bam } ${ error_rate } ${ panel_of_normals } ${ variant_mask }
+       command: <libdir>dummyscript.sh ${ analysis_id } ${ tumor_bam } ${
+       normal_bam } ${ error_rate } ${ panel_of_normals } ${ variant_mask }
 
 
    All this file needs is a single line prefaced by "command:" (everything
    else is ignored). In this example, that lin contains a call to
    dummyscript.sh and some placeholder variables that are the module
-   inputs. The module inputs are specified using the syntax: ${ INPUTNAME
-   } (spaces included).
+   inputs. The module inputs are specified using the syntax: `${ INPUTNAME
+   }` (spaces included).
 
 
    The <libdir> in the flow.deploy file is a reserved word that points to
@@ -153,29 +142,27 @@
    Let's make the actual dummy script which we store in an executable file
 
 
-   ~/FlowExample/modules/dummymodule/dummyscript.sh
+       ~/FlowExample/modules/dummymodule/dummyscript.sh
 
 
    In this file we write a simple script that makes a blank vcf and
    outputs a useless report:
 
 
-   #!/bin/sh
+       #!/bin/sh
+       echo
+       "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t$1.tumor\t$1.no
+       rmal" > $1.vcf
 
-
-   echo
-   "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t$1.tumor\t$1.no
-   rmal" > $1.vcf
-
-   echo "analyze bam files $2 and $3 on pair $1 using dummy algo with
-   error rate $4 and panel of normals $5 and variant mask $6" >
-   $1.report.txt
+       echo "analyze bam files $2 and $3 on pair $1 using dummy algo with
+       error rate $4 and panel of normals $5 and variant mask $6" >
+       $1.report.txt
 
 
    If you haven't done so make sure the script file is executable
 
 
-   system('chmod +x ~/FlowExample/modules/dummymodule/dummyscript.sh')
+       system('chmod +x ~/FlowExample/modules/dummymodule/dummyscript.sh')
 
 
    (milestone: we've finished making a module!)
@@ -192,13 +179,13 @@
    First make a tasks directory - this will store task configurations.
 
 
-   system('mkdir -p ~/FlowExample/tasks')
+       system('mkdir -p ~/FlowExample/tasks')
 
 
    To generate a skeleton .task configuration for our dummy module, call
 
 
-   Module('~/FlowExample/modules/dummymodule/')
+       Module('~/FlowExample/modules/dummymodule/')
 
 
    This will output to the screen  a skeleton task configuration that you
