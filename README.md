@@ -22,7 +22,7 @@
    or more output annotations (i.e. paths to output files) are attached to
    the respective entity in an output table. See illustration below:
    
-   ![alt tag](http://imgur.com/a/X7CUk)
+   ![Flow Schema](Flow_schema.png)
 
 
 #   Setting up entities and tasks
