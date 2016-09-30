@@ -1349,18 +1349,12 @@
    analytic progress.
 
 
-   Quick reference / cheat sheet of methods associated with an Job object
-   'jobs':
+# Quick reference / cheat sheet of methods associated with an Job object 'jobs':
 
-
-   Method
-
-   Description
-
-                           run(jobs, mc.cores = 1)
-
-   Run jobs locally from R with optional mc.cores param to run jobs in
-   parallel across mc.cores CPUs.
+| Method                  | Description         | 
+| ----------------------- |:-------------------:| 
+| run(jobs, mc.cores = 1) | Run jobs locally from R with optional mc.cores param to run jobs in |
+|                         | parallel across mc.cores CPUs.                                      |
 
                           brun(jobs, mc.cores = 1)
 
