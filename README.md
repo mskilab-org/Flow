@@ -169,7 +169,7 @@
        system('mkdir -p ~/FlowExample/tasks')
 
 
-   To generate a skeleton .task configuration for our dummy module, call
+   To generate a skeleton `.task` configuration for our dummy module, call
 
 
        Module('~/FlowExample/modules/dummymodule/')
@@ -181,56 +181,35 @@
    fourth column.
 
 
-   #Module dummymodule ("<libdir>dummyscript.sh <tumor_bam> <normal_bam>
-   <error_rate> <panel_of_normals> <variant_mask> <fla...")
-
-   ~/FlowExample/modules/dummymodule///
-
-   input      tumor_bam <INPUT_BINDING> <(path)|(value)>
-
-   input      normal_bam <INPUT_BINDING>      <(path)|(value)>
-
-   input      error_rate       <INPUT_BINDING> <(path)|(value)>
-
-   input      panel_of_normals      <INPUT_BINDING> <(path)|(value)>
-
-   input      variant_mask     <INPUT_BINDING> <(path)|(value)>
-
-   input      flags      <INPUT_BINDING> <(path)|(value)>
-
-   output        <OUTPUT_ANNOTATION>   <OUTPUT_REGEXP>
+       #Module dummymodule ("<libdir>dummyscript.sh <tumor_bam> <normal_bam> <error_rate> <panel_of_normals> <variant_mask> <fla...>")
+       ~/FlowExample/modules/dummymodule///
+       input      tumor_bam         <INPUT_BINDING>       <(path)|(value)>
+       input      normal_bam        <INPUT_BINDING>       <(path)|(value)>
+       input      error_rate        <INPUT_BINDING>       <(path)|(value)>
+       input      panel_of_normals  <INPUT_BINDING>       <(path)|(value)>
+       input      variant_mask      <INPUT_BINDING>       <(path)|(value)>
+       input      flags             <INPUT_BINDING>       <(path)|(value)>
+       output                       <OUTPUT_ANNOTATION>   <OUTPUT_REGEXP>
 
 
    Copy and paste this text to a .task file in the tasks directory:
-   "~/FlowExample/tasks/dummy.task". Now, fill in this task configuration
+   "`~/FlowExample/tasks/dummy.task`". Now, fill in this task configuration
    by binding the module inputs to table columns or static values (or just
    paste the fully configured task text below).
 
 
-   #Module dummymodule ("<libdir>dummyscript.sh <tumor_bam> <normal_bam>
-   <error_rate> <panel_of_normals> <variant_mask> <fla...")
-
-   ~/FlowExample/modules/dummymodule/
-
-   input  tumor_bam     Tumor_clean_bam_file_wgs     path
-
-   input  normal_bam    Normal_clean_bam_file_wgs    path
-
-   input  error_rate    "0"    value
-
-   input  analysis_id  pair_id       value
-
-   input  panel_of_normals
-   "~/FlowExample/testdata/panel_of_normals.txt"     path
-
-   input  variant_mask  "~/FlowExample/testdata/mask.bed.gz"       path
-
-   output        vcf    .vcf$
-
-   output        quality_metrics       report.txt$
-
-
-   The first non-'#' row in the .task file refers to the module directory.
+       #Module dummymodule ("<libdir>dummyscript.sh <tumor_bam> <normal_bam> <error_rate> <panel_of_normals> <variant_mask> <fla...>")
+       ~/FlowExample/modules/dummymodule/
+       input      tumor_bam         Tumor_clean_bam_file_wgs                        path
+       input      normal_bam        Normal_clean_bam_file_wgs                       path
+       input      error_rate        "0"                                             value
+       input      analysis_id       pair_id                                         value
+       input      panel_of_normals  "~/FlowExample/testdata/panel_of_normals.txt"   path
+       input      variant_mask      "~/FlowExample/testdata/mask.bed.gz"            path
+       output     vcf               .vcf$
+       output     quality_metrics   report.txt$
+    
+   The first non-'#' row in the `.task` file refers to the module directory.
    Note that there are "input" rows and "output" rows, each which are tab
    delimited. The format is pretty flexible, but you need be sure there is
    at least one tab or at least two spaces between each column.
@@ -250,7 +229,7 @@
    regular expressions to the annotation fields $vcf and $quality_metrics.
 
 
-   Using the Module() function is one way to generate a .task file.  You
+   Using the `Module()` function is one way to generate a .task file.  You
    can also just do it manually, once you understand this simple format.
    If you have trouble getting this task config to run by cutting and
    pasting, it may be a text formatting issue with your terminal app or
@@ -259,90 +238,67 @@
 
    To check if the task config parses run:
 
-
-   Task('~/FlowExample/tasks/dummy.task')
-
+       Task('~/FlowExample/tasks/dummy.task')
 
    If this is breaking (sometimes copy / pasting from browser will mess up
    whitespaces) just copy a correctly formatted version of the .task file
    which is distributed with the package and try again.
 
 
-   system(paste('cp', system.file('extdata', 'dummy.task', package =
-   'Flow'), '~/FlowExample/tasks/dummy.task'))
+       system(paste('cp', system.file('extdata', 'dummy.task', package = 'Flow'), '~/FlowExample/tasks/dummy.task'))
 
 
-   (milestone: we've finished making a task!)
+   **(milestone: we've finished making a task!)**
 
 
-   The above stuff (writing modules, configuring tasks) is something we
+   The above procedure (i.e. writing modules, configuring tasks) is something we
    only need to do once or maybe a few times once a module is relatively
    stable.  The stuff that follows we will doing over-and-over again by
    applying many tasks to many datasets.   Back to work:
 
 
-   Now that we have a .task file, we combine it with the entities table to
-   create an Job object.   Again, entities is a data.table and the only
+   Now that we have a  `.task` file, we combine it with the entities table to
+   create an `Job` object.   Again, `entities` is a `data.table` and the only
    requirements are that it is (1) it is keyed by a unique entity id and
    (2) it contains all annotation columns that the task is expecting as
    its entity-specific inputs. Now, we're ready to set up jobs for this
    task x entities combination.
 
 
-   > jobs = Job('~/FlowExample/tasks/dummy.task', entities)
+       > jobs = Job('~/FlowExample/tasks/dummy.task', entities)
+       
+           Noting time stamps of inputs
+           for tumor_bam (113 paths)
+           [1] "tumor_bam"
+           for normal_bam (113 paths)
+           [1] "normal_bam"
+           making output directories under
+           /nethome/mimielinski/FlowExample/Flow/dummy
+           initializing output annotations
+           Dumping out 113 Job.rds files to subdirectories of
+           /nethome/mimielinski/FlowExample/Flow
+           Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
+           Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
+           
+           not ready
+           113
+           Warning message:
+           In .local(.Object, ...) :
+           missing annotations resulting causing 113 jobs to be not ready.
+           Breakdown of detailed statuses (with # entities with each specific
+           status):
+           tumor_bam,normal_bam,panel_of_normals,variant_mask not ready(113)
 
 
-   Noting time stamps of inputs
+   We've combined the `.task` config with the entities data.table. The
+   output 'jobs' is an `Job` object.
 
-   for tumor_bam (113 paths)
+       > jobs
 
-   [1] "tumor_bam"
-
-   for normal_bam (113 paths)
-
-   [1] "normal_bam"
-
-   making output directories under
-   /nethome/mimielinski/FlowExample/Flow/dummy
-
-   initializing output annotations
-
-   Dumping out 113 Job.rds files to subdirectories of
-   /nethome/mimielinski/FlowExample/Flow
-
-   Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
-
-   Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
-
-
-   not ready
-
-   113
-
-   Warning message:
-
-   In .local(.Object, ...) :
-
-   missing annotations resulting causing 113 jobs to be not ready.
-
-   Breakdown of detailed statuses (with # entities with each specific
-   status):
-
-   tumor_bam,normal_bam,panel_of_normals,variant_mask not ready(113)
-
-
-   We've combined the .task config with the entities data.table. The
-   output 'jobs' is an Job object.
-
-
-   > jobs
-
-
-    Job on 113 entities (LUAD-CIP-LU-A08-43-T...) with rootdir
-   /nethome/mimielinski/FlowExample/Flow from task dummy using module
-   dummymodule version
-
-    Job status: not ready (113)
+           Job on 113 entities (LUAD-CIP-LU-A08-43-T...) with rootdir
+           /nethome/mimielinski/FlowExample/Flow from task dummy using module
+           dummymodule version
+           Job status: not ready (113)
 
 
    This vectorized object keeps track of entity specific inputs and
@@ -353,7 +309,7 @@
    A few things happen as 'jobs' is instantiated: An Flow directory is
    created in the current working directory. This Flow directory contains
    a subdirectory with the task name (Snowman) and 113 subdirectories, one
-   for each entity, which will collect task outputs. Job is noting the
+   for each entity, which will collect task outputs. `Job` is noting the
    time stamps of file path inputs and creating an output data.table that
    will catch job outputs and populate the appropriate entities with
    annotations as specified by the task config.   The location and name of
@@ -375,29 +331,19 @@
    To get the jobs ready we need to make some "fake data", dummy files
    that sit in the file paths pointed to by columns of the entities table.
 
+       system('mkdir -p ~/FlowExample/testdata')
 
-   system('mkdir -p ~/FlowExample/testdata')
-
-
-   sapply(entities$Tumor_clean_bam_file_wgs, function(x)
-   system(paste('touch', x)))
-
-   sapply(entities$Normal_clean_bam_file_wgs, function(x)
-   system(paste('touch', x)))
-
+       sapply(entities$Tumor_clean_bam_file_wgs, function(x) system(paste('touch', x)))
+       sapply(entities$Normal_clean_bam_file_wgs, function(x) system(paste('touch', x)))
 
    We also have to create the variant mask and panel of normal that are
    pointed to as static paths in the task configuration above.
 
-
-   system('touch ~/FlowExample/testdata/panel_of_normals.txt')
-
-   system('touch ~/FlowExample/testdata/mask.bed.gz')
-
+       system('touch ~/FlowExample/testdata/panel_of_normals.txt')
+       system('touch ~/FlowExample/testdata/mask.bed.gz')
 
    Now we can update the jobs object will re-check paths and assess
    readiness to run.
-
 
    > update(jobs)
 
