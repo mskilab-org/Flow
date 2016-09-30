@@ -21,8 +21,8 @@
    annotations (eg bam_file_wgs, seg_file, etc). Once a job completes, one
    or more output annotations (i.e. paths to output files) are attached to
    the respective entity in an output table. See illustration below:
-
-
+   
+   ![alt tag](http://imgur.com/a/X7CUk)
 
 
 #   Setting up entities and tasks
