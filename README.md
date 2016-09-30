@@ -11,12 +11,12 @@
 
 
    Like in the Broad Institute's Firehose platform
-   (https://www.broadinstitute.org/cancer/cga/Firehose), a job consists of
-   a task run on an entity (e.g. pair, individual, sample). A task wraps
+   (https://www.broadinstitute.org/cancer/cga/Firehose), a **job** consists of
+   a **task** run on an **entity** (e.g. pair, individual, sample). A **task** wraps
    around a module and binds module arguments to names of entity-specific
    annotations or fixed literals which can represent paths (eg a bam file
    path) or values (eg 200). A task also specifies the binding of module
-   outputs to output annotations. A job is created by applying a task to a
+   outputs to output annotations. A **job** is created by applying a task to a
    set of entities, which correspond to keyed table of entity-specific
    annotations (eg bam_file_wgs, seg_file, etc). Once a job completes, one
    or more output annotations (i.e. paths to output files) are attached to
@@ -28,15 +28,15 @@
 #   Setting up entities and tasks
 
 
-   Entities are stored in a keyed R data.table of annotations. This table
+   Entities are stored in a keyed R `data.table` of annotations. This table
    can be pulled down from firehose or fiss and imported into R via the
-   data.table function fread(). It can also be obtained via fiss_get() in
-   db.R or obtained from a data.frame using as.data.frame(). The entities
+   `data.table` function `fread()`. It can also be obtained via `fiss_get()` in
+   db.R or obtained from a data.frame using `as.data.frame()`. The entities
    data.table must have a key (eg pair_id) and that key must have a unique
    value for each entity / row.
 
 
-   Tasks are configured via an .task file. This is a text file whose first
+   Tasks are configured via an `.task` file. This is a text file whose first
    (non #-commented) line is a path to a firehose module directory (i.e. a
    directory containing a hydrant.deploy file). The subsequent rows are
    tab delimited with 3 or 4 columns, and specify the input and output
@@ -50,14 +50,14 @@
    from the module output directory. See the example below.
 
 
-   An entity table is combined with an .task task configuration to create
+   An entity table is combined with an `.task` task configuration to create
    an Job, which is a vectorized R object used to run, manage, query, and
    poll the outputs associated with a set of jobs. Instantiation of an Job
-   object creates a bunch of subdirectories (by default under ./Flow/)
+   object creates a bunch of subdirectories (by default under `./Flow/`)
    with the task name as sub-directory and entity names as sub-sub
-   directories. One can use cmd() or bcmd() methods to extract shell
+   directories. One can use `cmd()` or `bcmd()` methods to extract shell
    commands for running the jobs locally or on LSF, or the jobs can be
-   launched directly from R via the run() or brun() methods. As jobs are
+   launched directly from R via the `run()` or `brun()` methods. As jobs are
    executed locally or on LSF, their outputs will be placed into their
    appropriate entity-specific subdirectories (as in firehose), and any
    output annotations that are attached after job completion will refer to
@@ -74,7 +74,6 @@
 
    To get started, (install and) load the Flow R package
 
-
        install.packages('devtools')
        library(devtools)
        install_github('mskilab/Flow')
@@ -83,29 +82,23 @@
    We grab the table of entities from a tab delimited file and set the key
    to pair_id. This table comes with the Flow package.
 
-
        entities = fread(system.file('extdata', 'entities.txt', package = 'Flow'))
        setkey(entities, pair_id)
-
 
    To get things set up we will set up a directory called ~/FlowExample.
    (Make sure you don't have an important directory called ~/FlowExample,
    and if so just replace this path with another path in all the text that
    follows).
 
-
        system('mkdir -p ~/FlowExample')
        setwd('~/FlowExample')
-
 
    Now we make a module, lets put it in a modules subdirectory of
    FlowExample. (In practice, you will have a static directory containing
    all your modules, which represent reusable code that you will bind to
    multiple task configurations and apply to many different jobs)
 
-
        system('mkdir -p ~/FlowExample/modules/dummymodule')
-
 
    The module directory contains all the libraries and code associated
    with a given module. It also contains a flow.deploy file containing a
@@ -114,15 +107,12 @@
 
    Let's create the flow.deploy file in this location
 
-
        ~/FlowExample/modules/dummymodule/flow.deploy
 
    In this file, put one line:
 
-
        command: <libdir>dummyscript.sh ${ analysis_id } ${ tumor_bam } ${
        normal_bam } ${ error_rate } ${ panel_of_normals } ${ variant_mask }
-
 
    All this file needs is a single line prefaced by "command:" (everything
    else is ignored). In this example, that lin contains a call to
@@ -150,13 +140,10 @@
 
 
        #!/bin/sh
-       echo
-       "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t$1.tumor\t$1.no
-       rmal" > $1.vcf
+       echo "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t$1.tumor\t$1.normal" > $1.vcf
 
-       echo "analyze bam files $2 and $3 on pair $1 using dummy algo with
-       error rate $4 and panel of normals $5 and variant mask $6" >
-       $1.report.txt
+       echo "analyze bam files $2 and $3 on pair $1 using dummy algo with error rate $4 and panel of normals $5 
+       and variant mask $6" >  $1.report.txt
 
 
    If you haven't done so make sure the script file is executable
@@ -165,7 +152,7 @@
        system('chmod +x ~/FlowExample/modules/dummymodule/dummyscript.sh')
 
 
-   (milestone: we've finished making a module!)
+   **(milestone: we've finished making a module!)**
 
 
    Next thing to do is to make a task configuration to wrap around this
