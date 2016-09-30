@@ -1351,102 +1351,51 @@
 
 # Quick reference / cheat sheet of methods associated with an Job object 'jobs':
 
-| Method                  | Description         | 
-| ----------------------- |:-------------------:| 
-| run(jobs, mc.cores = 1) | Run jobs locally from R with optional mc.cores param to run jobs in |
-|                         | parallel across mc.cores CPUs.                                      |
+| Method                        | Description                                                                                         | 
+| ----------------------------- |:---------------------------------------------------------------------------------------------------:| 
+| **run(jobs, mc.cores = 1)**       | Run jobs locally from R with optional mc.cores param to run jobs in parallel <br>across mc.cores CPUs.  |
+|                               |                                                                                                     |
+| **brun(jobs, mc.cores = 1)**      | Submit jobs to LSF from R with optional mc.cores param to submit jobs <br>in parallel across mc.cores CPUs  |
+|                               |                                                                                                     |
+| **qrun(jobs, mc.cores = 1)**      | Submit jobs to SGE / UGER from R with optional mc.cores param to submit <br>jobs in parallel across mc.cores CPUs  |
+|                               |                                                                                                     |
+| **update(jobs)**      | Update status of jobs and populate output annotations by scraping / <br>parsing output directories.  |
+|                               |  
+| **outputs(jobs)**      | Return data.table of output annotations  |
+|                               |                        |
+| **inputs(jobs)**       | Return data.table of entity-specific input arguments to module.  |
+|                               |                        |
+| **report(jobs)**       | Return data.table of detailed run info for each job, including max <br>memory usage, run time, job_type (local vs lsf), etc.  |
+|                               |  
+| **status(jobs)**       | Get short status of jobs (e.g. complete, failed, ready)  |
+|                               |      
+| **status.info(jobs)**       | Get more detailed status of jobs, including what inputs and outputs <br>might be missing. |
+|                               |      
+| **jobs[i]**      | Subset jobs using index. 'i' can also be a character, in which case it<br> is interpreted as a regexp against status(jobs). e.g. jobs['complete']<br> will return complete jobs. |
+|                               |      
+| **cmd(jobs)**       | Get vector of local shell commands associated with jobs.  |
+|                               |      
+| **bcmd(jobs)**       | Get vector of LSF commands associated with jobs.  |
+|                               |      
+| **qcmd(jobs)**       | Get vector of SGE / UGER commands associated with jobs.  |
+|                               |      
+| **cache(jobs)**       | Caches Job object to standard location (<rootdir>/<taskname>.rds)  |
+|                               |      
+| **key(jobs)**       | Returns the key (name of the column specifying entity id) associated<br> with jobs object.  |
+|                               |      
+| **cache(jobs)**       | Caches Job object to standard location (<rootdir>/<taskname>.rds)  |
+|                               |      
+| **ids(jobs)**       | Returns the ids of entities associated with this job object.  |
+|                               |    
+| **out(jobs)**       | Returns paths to stdout files associated with this job object.  |
+|                               |    
+| **err(jobs)**       | Returns paths to stderr files associated with this job object.  |
+|                               |    
+| **dirs(jobs)**       | Returns list of directory contents for each job, takss additional<br> arguments to base function dir()  |
+|                               |    
+| **purge(jobs)**       | Resets all job output directories to their initial states (deletes all<br> current job outputs, creates fresh directory tree)  |
+|                               |    
+| **merge(entities, jobs, force = FALSE)**       | Outputs data.table with output annotations from jobs added / updated to<br> 'master' data.table entities. If a given row of entities points to an<br> older path for a given entity-annotation combo, that path will be<br> updated in the output. <br>Otherwise if the entities table contains a newer path than jobs,<br> a warning is thrown and the path is not overwritten <br> in the output (unless force = TRUE).  |
+|                               |    
 
-                          brun(jobs, mc.cores = 1)
 
-   Submit jobs to LSF from R with optional mc.cores param to submit jobs
-   in parallel across mc.cores CPUs
-
-                          qrun(jobs, mc.cores = 1)
-
-   Submit jobs to SGE / UGER from R with optional mc.cores param to submit
-   jobs in parallel across mc.cores CPUs
-
-                                update(jobs)
-
-   Update status of jobs and populate output annotations by scraping /
-   parsing output directories.
-
-                                outputs(jobs)
-
-   Return data.table of output annotations
-
-                                inputs(jobs)
-
-   Return data.table of entity-specific input arguments to module.
-
-                                report(jobs)
-
-   Return data.table of detailed run info for each job, including max
-   memory usage, run time, job_type (local vs lsf), etc.
-
-                                status(jobs)
-
-   Get short status of jobs (e.g. complete, failed, ready)
-
-                              status.info(jobs)
-
-   Get more detailed status of jobs, including what inputs and outputs
-   might be missing.
-
-                                   jobs[i]
-
-   Subset jobs using index. 'i' can also be a character, in which case it
-   is interpreted as a regexp against status(jobs). e.g. jobs['complete']
-   will return complete jobs.
-
-                                  cmd(jobs)
-
-   Get vector of local shell commands associated with jobs.
-
-                                 bcmd(jobs)
-
-   Get vector of LSF commands associated with jobs.
-
-                                 qcmd(jobs)
-
-   Get vector of SGE / UGER commands associated with jobs.
-
-                                 cache(jobs)
-
-   Caches Job object to standard location (<rootdir>/<taskname>.rds)
-
-                                  key(jobs)
-
-   Returns the key (name of the column specifying entity id) associated
-   with jobs object.
-
-                                  ids(jobs)
-
-   Returns the ids of entities associated with this job object.
-
-                                  out(jobs)
-
-   Returns paths to stdout files associated with this job object.
-
-                                  err(jobs)
-
-   Returns paths to stderr files associated with this job object.
-
-                                 dirs(jobs)
-
-   Returns list of directory contents for each job, takss additional
-   arguments to base function dir()
-
-                                 purge(jobs)
-
-   Resets all job output directories to their initial states (deletes all
-   current job outputs, creates fresh directory tree)
-
-                    merge(entities, jobs, force = FALSE)
-
-   Outputs data.table with output annotations from jobs added / updated to
-   'master' data.table entities. If a given row of entities points to an
-   older path for a given entity-annotation combo, that path will be
-   updated in the output. Otherwise if the entities table contains a newer
-   path than jobs, a warning is thrown and the path is not overwritten in
-   the output (unless force = TRUE).
