@@ -1353,11 +1353,11 @@
 
 | Method                        | Description                                                                                         | 
 | ----------------------------- |:---------------------------------------------------------------------------------------------------:| 
-| **run(jobs, mc.cores = 1)**       | Run jobs locally from R with optional mc.cores param to run jobs in parallel <br>across mc.cores CPUs.  |
+| **run(jobs, mc.cores = 1)**       | Run jobs locally from R with optional mc.cores param to run jobs in parallel across mc.cores CPUs.  |
 |                               |                                                                                                     |
 | **brun(jobs, mc.cores = 1)**      | Submit jobs to LSF from R with optional mc.cores param to submit jobs <br>in parallel across mc.cores CPUs  |
 |                               |                                                                                                     |
-| **qrun(jobs, mc.cores = 1)**      | Submit jobs to SGE / UGER from R with optional mc.cores param to submit <br>jobs in parallel across mc.cores CPUs  |
+| **qrun(jobs, mc.cores = 1)**      | Submit jobs to SGE / UGER from R with optional mc.cores param to submit jobs in parallel across mc.cores CPUs  |
 |                               |                                                                                                     |
 | **update(jobs)**      | Update status of jobs and populate output annotations by scraping / <br>parsing output directories.  |
 |                               |  
