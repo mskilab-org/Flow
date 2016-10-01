@@ -368,9 +368,9 @@
    corresponds to entity.
 
 
-          > length(jobs)
+      > length(jobs)
           [1] 113
-          > jobs[1:10]
+      > jobs[1:10]
           Job on 10 entities with rootdir /cga/meyerson/home/marcin/temp/Flow from task Snowman using module Snowman, version 2015-04-12 10:37:38
 
 
@@ -379,37 +379,37 @@
    config file.
 
 
-          > task(jobs)
-                 #Module Snowman [Task: Snowman ] ('<libdir>snow.sh <libdir>snowman_150410 run -t <tumor_bam> -n <normal_bam> -e <error_rate> -p ...')
-                 /cga/meyerson/home/marcin/svn/CancerGenomeAnalysis/trunk/analysis_pipeline/genepattern/modules/Snowman//
-                 input tumor_bam Tumor_clean_bam_file_wgs path
-                input normal_bam Normal_clean_bam_file_wgs path
-                 input error_rate '0' value
-                input cpus '1' value
-                 input analysis_id pair_id value
-                 input panel_of_normals
-                 '/xchip/gistic/Jeremiah/Projects/Lung/lung_snow24_pon.txt.gz' path
-                 input indel_mask
-                 '/xchip/gistic/Jeremiah/Projects/HengLiMask/um75-hs37d5.bed.gz' path
-                 input flags '--no-r2c-bam' value
-                 output snowman_somatic_vcf .*DATECODE.somatic.sv.vcf
-                 output snowman_germline_vcf .*DATECODE.germline.sv.vcf
-                 output snowman_somatic_indel_vcf .*DATECODE.somatic.indel.vcf
-                 output snowman_germline_indel_vcf .*DATECODE.germline.indel.vcf
+      > task(jobs)
+             #Module Snowman [Task: Snowman ] ('<libdir>snow.sh <libdir>snowman_150410 run -t <tumor_bam> -n <normal_bam> -e <error_rate> -p ...')
+             /cga/meyerson/home/marcin/svn/CancerGenomeAnalysis/trunk/analysis_pipeline/genepattern/modules/Snowman//
+             input tumor_bam Tumor_clean_bam_file_wgs path
+             input normal_bam Normal_clean_bam_file_wgs path
+             input error_rate '0' value
+             input cpus '1' value
+             input analysis_id pair_id value
+             input panel_of_normals
+             '/xchip/gistic/Jeremiah/Projects/Lung/lung_snow24_pon.txt.gz' path
+             input indel_mask
+             '/xchip/gistic/Jeremiah/Projects/HengLiMask/um75-hs37d5.bed.gz' path
+             input flags '--no-r2c-bam' value
+             output snowman_somatic_vcf .*DATECODE.somatic.sv.vcf
+             output snowman_germline_vcf .*DATECODE.germline.sv.vcf
+             output snowman_somatic_indel_vcf .*DATECODE.somatic.indel.vcf
+             output snowman_germline_indel_vcf .*DATECODE.germline.indel.vcf
 
 
    Each job has a status (a la firehose) e.g. 'ready', 'complete',
    'failed', etc.
 
 
-          > status(jobs)[1:3]
+        > status(jobs)[1:3]
 
-                LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
-                 'ready'
-                 LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
-                 'ready'
-                 LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
-                 'ready'
+             LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
+             'ready'
+             LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
+             'ready'
+             LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
+             'ready'
 
    OK let's run some jobs. How about we run the first three entities
    locally (ie on the current machine where R is running).
@@ -417,9 +417,9 @@
 
           > run(jobs[1:3])
 
-                 Starting dummy on entity LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
-                 Starting dummy on entity LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
-                 Starting dummy on entity LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
+              Starting dummy on entity LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
+              Starting dummy on entity LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
+              Starting dummy on entity LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
 
 
    After launching jobs let's run update() to update the object with the
@@ -430,27 +430,27 @@
 
           > update(jobs)
 
-                 Checking input date stamps
-                 for tumor_bam (113 files)
-                 for normal_bam (113 files)
-                 for error_rate (1 files)
-                 for analysis_id (113 files)
-                 for panel_of_normals (1 files)
-                 for variant_mask (1 files)
-                 Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
+              Checking input date stamps
+              for tumor_bam (113 files)
+              for normal_bam (113 files)
+              for error_rate (1 files)
+              for analysis_id (113 files)
+              for panel_of_normals (1 files)
+              for variant_mask (1 files)
+              Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
 
-                 completed ready
-                 3 110
+              completed ready
+              3 110
 
    Great! 3 jobs are finished. We can quickly subset the jobs object using
    a character syntax which searches jobs statuses by regexp. Here we
    subset only the "completed" jobs.
 
 
-          > jobs['completed']
+       > jobs['completed']
    
-                 Job on 3 entities with rootdir /nethome/mimielinski/FlowExample/Flow from task dummy using module dummymodule version
-                 Job status: completed (3)
+            Job on 3 entities with rootdir /nethome/mimielinski/FlowExample/Flow from task dummy using module dummymodule version
+            Job status: completed (3)
 
 
    This subsetting syntax is especially useful if jobs fail. We can use
@@ -464,20 +464,20 @@
    respective output directory of each job.
 
 
-         > outputs(jobs['completed'])
+       > outputs(jobs['completed'])
 
-                 pair_id
-                 1: LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
-                 2: LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
-                 3: LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
-                 vcf
-                 1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.vcf
-                 2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.vcf
-                 3:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.vcf
-                 quality_metrics
-                 1:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.report.txt
-                 2:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.report.txt
-                 3:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.report.txt
+               pair_id
+               1: LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
+               2: LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
+               3: LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
+               vcf
+               1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.vcf
+               2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.vcf
+               3:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.vcf
+               quality_metrics
+               1:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.report.txt
+               2:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.report.txt
+               3:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.report.txt
 
 
    We can examine the error stream associated with the first of these
