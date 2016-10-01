@@ -2,66 +2,65 @@
 # Flow
 
 
-   Flow is an R package that enables local configuration and execution of
-   analysis modules on annotated sets of entities (eg pairs, individuals,
-   samples). Jobs can be either deployed locally or to a cluster, then
-   monitored and managed. Once jobs complete, their outputs can be
-   attached back to their respective entities as annotations for easy
-   import back into a database or merging with a flat file table.
+Flow is an R package that enables local configuration and execution of
+analysis modules on annotated sets of entities (eg pairs, individuals,
+samples). Jobs can be either deployed locally or to a cluster, then
+monitored and managed. Once jobs complete, their outputs can be
+attached back to their respective entities as annotations for easy
+import back into a database or merging with a flat file table.
 
-
-   Like in the Broad Institute's Firehose platform
-   (https://www.broadinstitute.org/cancer/cga/Firehose), a **job** consists of
-   a **task** run on an **entity** (e.g. pair, individual, sample). A **task** wraps
-   around a module and binds module arguments to names of entity-specific
-   annotations or fixed literals which can represent paths (eg a bam file
-   path) or values (eg 200). A task also specifies the binding of module
-   outputs to output annotations. A **job** is created by applying a task to a
-   set of entities, which correspond to keyed table of entity-specific
-   annotations (eg bam_file_wgs, seg_file, etc). Once a job completes, one
-   or more output annotations (i.e. paths to output files) are attached to
-   the respective entity in an output table. See illustration below:
+Like in the Broad Institute's Firehose platform
+(https://www.broadinstitute.org/cancer/cga/Firehose), a **job** consists of
+a **task** run on an **entity** (e.g. pair, individual, sample). A **task** wraps
+around a module and binds module arguments to names of entity-specific
+annotations or fixed literals which can represent paths (eg a bam file
+path) or values (eg 200). A task also specifies the binding of module
+outputs to output annotations. A **job** is created by applying a task to a
+set of entities, which correspond to keyed table of entity-specific
+annotations (eg bam_file_wgs, seg_file, etc). Once a job completes, one
+or more output annotations (i.e. paths to output files) are attached to
+the respective entity in an output table. See illustration below:
    
-   ![Flow Schema](Flow_schema.png)
+![Flow Schema](Flow_schema.png)
 
 
 #   Setting up entities and tasks
 
 
-   Entities are stored in a keyed R `data.table` of annotations. This table
-   can be pulled down from firehose or fiss and imported into R via the
-   `data.table` function `fread()`. It can also be obtained via `fiss_get()` in
-   db.R or obtained from a data.frame using `as.data.frame()`. The entities
-   data.table must have a key (eg pair_id) and that key must have a unique
-   value for each entity / row.
+Entities are stored in a keyed R `data.table` of annotations. This table
+can be pulled down from firehose or fiss and imported into R via the
+`data.table` function `fread()`. It can also be obtained via `fiss_get()` in
+db.R or obtained from a data.frame using `as.data.frame()`. The entities
+data.table must have a key (eg pair_id) and that key must have a unique
+value for each entity / row.
 
 
-   Tasks are configured via an `.task` file. This is a text file whose first
-   (non #-commented) line is a path to a firehose module directory (i.e. a
-   directory containing a hydrant.deploy file). The subsequent rows are
-   tab delimited with 3 or 4 columns, and specify the input and output
-   bindings of a task. The first column of every row is 'input' or
-   'output'. If the first column is 'input', the second column specifies
-   the module argument name that is being bound, the third column
-   specifies the annotation, and fourth column has value 'path' or 'value'
-   depending on whether the annotation specifies a path or a value. If the
-   first column is output, then the second column is the output annotation
-   name and the third column is a regexp specifying how to pull the file
-   from the module output directory. See the example below.
+Tasks are configured via an `.task` file. This is a text file whose first
+(non #-commented) line is a path to a firehose module directory (i.e. a
+directory containing a hydrant.deploy file). The subsequent rows are
+tab delimited with 3 or 4 columns, and specify the input and output
+bindings of a task. The first column of every row is 'input' or
+'output'. If the first column is 'input', the second column specifies
+the module argument name that is being bound, the third column
+specifies the annotation, and fourth column has value 'path' or 'value'
+depending on whether the annotation specifies a path or a value. If the
+first column is output, then the second column is the output annotation
+name and the third column is a regexp specifying how to pull the file
+from the module output directory. See the example below.
 
 
-   An entity table is combined with an `.task` task configuration to create
-   an Job, which is a vectorized R object used to run, manage, query, and
-   poll the outputs associated with a set of jobs. Instantiation of an Job
-   object creates a bunch of subdirectories (by default under `./Flow/`)
-   with the task name as sub-directory and entity names as sub-sub
-   directories. One can use `cmd()` or `bcmd()` methods to extract shell
-   commands for running the jobs locally or on LSF, or the jobs can be
-   launched directly from R via the `run()` or `brun()` methods. As jobs are
-   executed locally or on LSF, their outputs will be placed into their
-   appropriate entity-specific subdirectories (as in firehose), and any
-   output annotations that are attached after job completion will refer to
-   files residing under their respective task / entity subfolder.
+An entity table is combined with an `.task` task configuration to create
+an Job, which is a vectorized R object used to run, manage, query, and
+poll the outputs associated with a set of jobs. Instantiation of an Job
+object creates a bunch of subdirectories (by default under `./Flow/`)
+with the task name as sub-directory and entity names as sub-sub
+directories. One can use `cmd()` or `bcmd()` methods to extract shell
+commands for running the jobs locally or on LSF, or the jobs can be
+launched directly from R via the `run()` or `brun()` methods. As jobs are
+executed locally or on LSF, their outputs will be placed into their
+appropriate entity-specific subdirectories (as in firehose), and any
+output annotations that are attached after job completion will refer to
+files residing under their respective task / entity subfolder.
 
 
 #   Example
