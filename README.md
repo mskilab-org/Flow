@@ -817,9 +817,8 @@
            113: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-\SM-2XLCJ-SM-2XLE4.vcf
            \
            quality_metrics
-           1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-\SM-13WXF-SM-13WWL.report.txt
-           2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-\
-   SM-1D1N5-SM-1D1N6.report.txt
+           1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.report.txt
+           2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.report.txt
            3: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-\SM-1D1ND-SM-1D1NE.report.txt
            4: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-\SM-1D1NM-SM-1D1K8.report.txt
            5: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-\SM-1UVTT-SM-1UVTU.report.txt
