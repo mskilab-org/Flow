@@ -180,15 +180,15 @@ can paste into a document and populate with values (i.e. bind
 fourth column.
 
 
-   #Module dummymodule ("<libdir>dummyscript.sh <tumor_bam> <normal_bam> <error_rate> <panel_of_normals> <variant_mask> <fla...>")
-   ~/FlowExample/modules/dummymodule///
-   input      tumor_bam         <INPUT_BINDING>       <(path)|(value)>
-   input      normal_bam        <INPUT_BINDING>       <(path)|(value)>
-   input      error_rate        <INPUT_BINDING>       <(path)|(value)>
-   input      panel_of_normals  <INPUT_BINDING>       <(path)|(value)>
-   input      variant_mask      <INPUT_BINDING>       <(path)|(value)>
-   input      flags             <INPUT_BINDING>       <(path)|(value)>
-   output                       <OUTPUT_ANNOTATION>   <OUTPUT_REGEXP>
+     #Module dummymodule ("<libdir>dummyscript.sh <tumor_bam> <normal_bam> <error_rate> <panel_of_normals> <variant_mask> <fla...>")
+     ~/FlowExample/modules/dummymodule///
+     input      tumor_bam         <INPUT_BINDING>       <(path)|(value)>
+     input      normal_bam        <INPUT_BINDING>       <(path)|(value)>
+     input      error_rate        <INPUT_BINDING>       <(path)|(value)>
+     input      panel_of_normals  <INPUT_BINDING>       <(path)|(value)>
+     input      variant_mask      <INPUT_BINDING>       <(path)|(value)>
+     input      flags             <INPUT_BINDING>       <(path)|(value)>
+     output                       <OUTPUT_ANNOTATION>   <OUTPUT_REGEXP>
 
 
 Copy and paste this text to a .task file in the tasks directory:
@@ -197,16 +197,16 @@ by binding the module inputs to table columns or static values (or just
 paste the fully configured task text below).
 
 
-   #Module dummymodule ("<libdir>dummyscript.sh <tumor_bam> <normal_bam> <error_rate> <panel_of_normals> <variant_mask> <fla...>")
-   ~/FlowExample/modules/dummymodule/
-   input      tumor_bam         Tumor_clean_bam_file_wgs                        path
-   input      normal_bam        Normal_clean_bam_file_wgs                       path
-   input      error_rate        "0"                                             value
-   input      analysis_id       pair_id                                         value
-   input      panel_of_normals  "~/FlowExample/testdata/panel_of_normals.txt"   path
-   input      variant_mask      "~/FlowExample/testdata/mask.bed.gz"            path
-   output     vcf               .vcf$
-   output     quality_metrics   report.txt$
+    #Module dummymodule ("<libdir>dummyscript.sh <tumor_bam> <normal_bam> <error_rate> <panel_of_normals> <variant_mask> <fla...>")
+    ~/FlowExample/modules/dummymodule/
+    input      tumor_bam         Tumor_clean_bam_file_wgs                        path
+    input      normal_bam        Normal_clean_bam_file_wgs                       path
+    input      error_rate        "0"                                             value
+    input      analysis_id       pair_id                                         value
+    input      panel_of_normals  "~/FlowExample/testdata/panel_of_normals.txt"   path
+    input      variant_mask      "~/FlowExample/testdata/mask.bed.gz"            path
+    output     vcf               .vcf$
+    output     quality_metrics   report.txt$
     
 The first non-'#' row in the `.task` file refers to the module directory.
 Note that there are "input" rows and "output" rows, each which are tab
@@ -214,217 +214,217 @@ delimited. The format is pretty flexible, but you need be sure there is
 at least one tab or at least two spaces between each column.
 
 
-   Note the difference between the input rows (4 columns) vs the output
-   rows (3 columns). The third column of each output row specifies a
-   regular expression that will be matched against the files outputted in
-   each entity's job output directory when it completes. This will bind
-   the job-specific output to the annotation specified in the second
-   column. Every line beginning with a '#' is ignored.
+Note the difference between the input rows (4 columns) vs the output
+rows (3 columns). The third column of each output row specifies a
+regular expression that will be matched against the files outputted in
+each entity's job output directory when it completes. This will bind
+the job-specific output to the annotation specified in the second
+column. Every line beginning with a '#' is ignored.
 
 
-   Here, we know that the simple script we wrote will output a file ending
-   in ".vcf" and "report.txt", and so we configure the task to search the
-   job output directory and attach the module outputs matching these
-   regular expressions to the annotation fields $vcf and $quality_metrics.
+Here, we know that the simple script we wrote will output a file ending
+in ".vcf" and "report.txt", and so we configure the task to search the
+job output directory and attach the module outputs matching these
+regular expressions to the annotation fields $vcf and $quality_metrics.
 
 
-   Using the `Module()` function is one way to generate a .task file.  You
-   can also just do it manually, once you understand this simple format.
-   If you have trouble getting this task config to run by cutting and
-   pasting, it may be a text formatting issue with your terminal app or
-   browser corrupting the tab characters.
+Using the `Module()` function is one way to generate a .task file.  You
+can also just do it manually, once you understand this simple format.
+If you have trouble getting this task config to run by cutting and
+pasting, it may be a text formatting issue with your terminal app or
+browser corrupting the tab characters.
 
 
-   To check if the task config parses run:
+To check if the task config parses run:
 
-       Task('~/FlowExample/tasks/dummy.task')
+    Task('~/FlowExample/tasks/dummy.task')
 
-   If this is breaking (sometimes copy / pasting from browser will mess up
-   whitespaces) just copy a correctly formatted version of the .task file
-   which is distributed with the package and try again.
-
-
-       system(paste('cp', system.file('extdata', 'dummy.task', package = 'Flow'), '~/FlowExample/tasks/dummy.task'))
+If this is breaking (sometimes copy / pasting from browser will mess up
+whitespaces) just copy a correctly formatted version of the .task file
+which is distributed with the package and try again.
 
 
-   **(milestone: we've finished making a task!)**
+    system(paste('cp', system.file('extdata', 'dummy.task', package = 'Flow'), '~/FlowExample/tasks/dummy.task'))
 
 
-   The above procedure (i.e. writing modules, configuring tasks) is something we
-   only need to do once or maybe a few times once a module is relatively
-   stable.  The stuff that follows we will doing over-and-over again by
-   applying many tasks to many datasets.   Back to work:
+**(milestone: we've finished making a task!)**
 
 
-   Now that we have a  `.task` file, we combine it with the entities table to
-   create an `Job` object.   Again, `entities` is a `data.table` and the only
-   requirements are that it is (1) it is keyed by a unique entity id and
-   (2) it contains all annotation columns that the task is expecting as
-   its entity-specific inputs. Now, we're ready to set up jobs for this
-   task x entities combination.
+The above procedure (i.e. writing modules, configuring tasks) is something we
+only need to do once or maybe a few times once a module is relatively
+stable.  The stuff that follows we will doing over-and-over again by
+applying many tasks to many datasets.   Back to work:
 
 
-       > jobs = Job('~/FlowExample/tasks/dummy.task', entities)
-       
-           Noting time stamps of inputs
-           for tumor_bam (113 paths)
-           [1] "tumor_bam"
-           for normal_bam (113 paths)
-           [1] "normal_bam"
-           making output directories under
-           /nethome/mimielinski/FlowExample/Flow/dummy
-           initializing output annotations
-           Dumping out 113 Job.rds files to subdirectories of
-           /nethome/mimielinski/FlowExample/Flow
-           Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
-           Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
+Now that we have a  `.task` file, we combine it with the entities table to
+create an `Job` object.   Again, `entities` is a `data.table` and the only
+requirements are that it is (1) it is keyed by a unique entity id and
+(2) it contains all annotation columns that the task is expecting as
+its entity-specific inputs. Now, we're ready to set up jobs for this
+task x entities combination.
+
+
+    > jobs = Job('~/FlowExample/tasks/dummy.task', entities) 
+    
+       Noting time stamps of inputs
+       for tumor_bam (113 paths)
+       [1] "tumor_bam"
+       for normal_bam (113 paths)
+       [1] "normal_bam"
+       making output directories under
+       /nethome/mimielinski/FlowExample/Flow/dummy
+       initializing output annotations
+       Dumping out 113 Job.rds files to subdirectories of
+       /nethome/mimielinski/FlowExample/Flow
+       Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
+       Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
            
-           not ready
-           113
-           Warning message:
-           In .local(.Object, ...) :
-           missing annotations resulting causing 113 jobs to be not ready.
-           Breakdown of detailed statuses (with # entities with each specific
-           status):
-           tumor_bam,normal_bam,panel_of_normals,variant_mask not ready(113)
+       not ready
+       113
+       Warning message:
+       In .local(.Object, ...) :
+       missing annotations resulting causing 113 jobs to be not ready.
+       Breakdown of detailed statuses (with # entities with each specific
+       status):
+       tumor_bam,normal_bam,panel_of_normals,variant_mask not ready(113)
 
 
-   We've combined the `.task` config with the entities data.table. The
-   output 'jobs' is an `Job` object.
+We've combined the `.task` config with the entities data.table. The
+output 'jobs' is an `Job` object.
 
-       > jobs
+   > jobs
 
-           Job on 113 entities (LUAD-CIP-LU-A08-43-T...) with rootdir
-           /nethome/mimielinski/FlowExample/Flow from task dummy using module
-           dummymodule version
-           Job status: not ready (113)
-
-
-   This vectorized object keeps track of entity specific inputs and
-   outputs, stores local, LSF, and SGE / UGER commands for running the
-   job, and contains all the task and module information used to build it
+       Job on 113 entities (LUAD-CIP-LU-A08-43-T...) with rootdir
+       /nethome/mimielinski/FlowExample/Flow from task dummy using module
+       dummymodule version
+       Job status: not ready (113)
 
 
-   A few things happen as 'jobs' is instantiated: An Flow directory is
-   created in the current working directory. This Flow directory contains
-   a subdirectory with the task name (Snowman) and 113 subdirectories, one
-   for each entity, which will collect task outputs. `Job` is noting the
-   time stamps of file path inputs and creating an output data.table that
-   will catch job outputs and populate the appropriate entities with
-   annotations as specified by the task config.   The location and name of
-   this directory can be modified at the time of instantiation (see ?Job).
+This vectorized object keeps track of entity specific inputs and
+outputs, stores local, LSF, and SGE / UGER commands for running the
+job, and contains all the task and module information used to build it
 
 
-   Optional arguments to Job include rootdir (changing root directory from
-   cwd/Flow), mem (for specifying max memory in GB associated with LSF
-   jobs), and queue (for specifying queue on which to run LSF jobs).
+A few things happen as 'jobs' is instantiated: An Flow directory is
+created in the current working directory. This Flow directory contains
+a subdirectory with the task name (Snowman) and 113 subdirectories, one
+for each entity, which will collect task outputs. `Job` is noting the
+time stamps of file path inputs and creating an output data.table that
+will catch job outputs and populate the appropriate entities with
+annotations as specified by the task config.   The location and name of
+this directory can be modified at the time of instantiation (see ?Job).
 
 
-   Looking at the output above, we see that the jobs are not ready because
-   the input files are missing, i.e. tumor_bam, normal_bam,
-   panel_of_normals, and variant_mask. Flow will check inputs and
-   determine whether jobs are ready to launch, and has correctly
-   determined that these jobs are not ready.
+Optional arguments to Job include rootdir (changing root directory from
+cwd/Flow), mem (for specifying max memory in GB associated with LSF
+jobs), and queue (for specifying queue on which to run LSF jobs).
 
 
-   To get the jobs ready we need to make some "fake data", dummy files
-   that sit in the file paths pointed to by columns of the entities table.
+Looking at the output above, we see that the jobs are not ready because
+the input files are missing, i.e. tumor_bam, normal_bam,
+panel_of_normals, and variant_mask. Flow will check inputs and
+determine whether jobs are ready to launch, and has correctly
+determined that these jobs are not ready.
 
-       system('mkdir -p ~/FlowExample/testdata')
 
-       sapply(entities$Tumor_clean_bam_file_wgs, function(x) system(paste('touch', x)))
-       sapply(entities$Normal_clean_bam_file_wgs, function(x) system(paste('touch', x)))
+To get the jobs ready we need to make some "fake data", dummy files
+that sit in the file paths pointed to by columns of the entities table.
 
-   We also have to create the variant mask and panel of normal that are
-   pointed to as static paths in the task configuration above.
+    system('mkdir -p ~/FlowExample/testdata')
 
-       system('touch ~/FlowExample/testdata/panel_of_normals.txt')
-       system('touch ~/FlowExample/testdata/mask.bed.gz')
+    sapply(entities$Tumor_clean_bam_file_wgs, function(x) system(paste('touch', x)))
+    sapply(entities$Normal_clean_bam_file_wgs, function(x) system(paste('touch', x)))
 
-   Now we can update the jobs object will re-check paths and assess
-   readiness to run.
+We also have to create the variant mask and panel of normal that are
+pointed to as static paths in the task configuration above.
 
-          > update(jobs)
+    system('touch ~/FlowExample/testdata/panel_of_normals.txt')
+    system('touch ~/FlowExample/testdata/mask.bed.gz')
+
+Now we can update the jobs object will re-check paths and assess
+readiness to run.
+
+     > update(jobs)
    
-          Checking input date stamps
-          for tumor_bam (113 files)
-          for normal_bam (113 files)
-          for error_rate (1 files)
-          for analysis_id (113 files)
-          for panel_of_normals (1 files)
-          for variant_mask (1 files)
-          Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
+     Checking input date stamps
+     for tumor_bam (113 files)
+     for normal_bam (113 files)
+     for error_rate (1 files)
+     for analysis_id (113 files)
+     for panel_of_normals (1 files)
+     for variant_mask (1 files)
+     Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
    
-          ready
-          113
+     ready
+      113
 
 
-   Voilà! The jobs are ready so we can run them. Before we do, some basics
-   about the Job object:
+Voilà! The jobs are ready so we can run them. Before we do, some basics
+about the Job object:
 
 
-   It is vectorized, so it has length and can be subsetted. Each element
-   corresponds to entity.
+It is vectorized, so it has length and can be subsetted. Each element
+corresponds to entity.
 
 
-      > length(jobs)
-          [1] 113
-      > jobs[1:10]
-          Job on 10 entities with rootdir /cga/meyerson/home/marcin/temp/Flow from task Snowman using module Snowman, version 2015-04-12 10:37:38
+  > length(jobs)
+      [1] 113
+  > jobs[1:10]
+      Job on 10 entities with rootdir /cga/meyerson/home/marcin/temp/Flow from task Snowman using module Snowman, version 2015-04-12 10:37:38
 
 
-   There is a task (Task object) object associated with 'jobs' that you
-   can inspect. When you display the task, you see a printout of the .task
-   config file.
+There is a task (Task object) object associated with 'jobs' that you
+can inspect. When you display the task, you see a printout of the .task
+config file.
 
 
-      > task(jobs)
-             #Module Snowman [Task: Snowman ] ('<libdir>snow.sh <libdir>snowman_150410 run -t <tumor_bam> -n <normal_bam> -e <error_rate> -p ...')
-             /cga/meyerson/home/marcin/svn/CancerGenomeAnalysis/trunk/analysis_pipeline/genepattern/modules/Snowman//
-             input tumor_bam Tumor_clean_bam_file_wgs path
-             input normal_bam Normal_clean_bam_file_wgs path
-             input error_rate '0' value
-             input cpus '1' value
-             input analysis_id pair_id value
-             input panel_of_normals
-             '/xchip/gistic/Jeremiah/Projects/Lung/lung_snow24_pon.txt.gz' path
-             input indel_mask
-             '/xchip/gistic/Jeremiah/Projects/HengLiMask/um75-hs37d5.bed.gz' path
-             input flags '--no-r2c-bam' value
-             output snowman_somatic_vcf .*DATECODE.somatic.sv.vcf
-             output snowman_germline_vcf .*DATECODE.germline.sv.vcf
-             output snowman_somatic_indel_vcf .*DATECODE.somatic.indel.vcf
-             output snowman_germline_indel_vcf .*DATECODE.germline.indel.vcf
+    > task(jobs)
+        #Module Snowman [Task: Snowman ] ('<libdir>snow.sh <libdir>snowman_150410 run -t <tumor_bam> -n <normal_bam> -e <error_rate> -p ...')
+        /cga/meyerson/home/marcin/svn/CancerGenomeAnalysis/trunk/analysis_pipeline/genepattern/modules/Snowman//
+        input tumor_bam Tumor_clean_bam_file_wgs path
+        input normal_bam Normal_clean_bam_file_wgs path
+        input error_rate '0' value
+        input cpus '1' value
+        input analysis_id pair_id value
+        input panel_of_normals
+        '/xchip/gistic/Jeremiah/Projects/Lung/lung_snow24_pon.txt.gz' path
+        input indel_mask
+        '/xchip/gistic/Jeremiah/Projects/HengLiMask/um75-hs37d5.bed.gz' path
+        input flags '--no-r2c-bam' value
+        output snowman_somatic_vcf .*DATECODE.somatic.sv.vcf
+        output snowman_germline_vcf .*DATECODE.germline.sv.vcf
+        output snowman_somatic_indel_vcf .*DATECODE.somatic.indel.vcf
+        output snowman_germline_indel_vcf .*DATECODE.germline.indel.vcf
 
 
-   Each job has a status (a la firehose) e.g. 'ready', 'complete',
-   'failed', etc.
+Each job has a status (a la firehose) e.g. 'ready', 'complete',
+'failed', etc.
 
 
-        > status(jobs)[1:3]
+    > status(jobs)[1:3]
 
-             LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
-             'ready'
-             LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
-             'ready'
-             LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
-             'ready'
+        LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
+        'ready'
+        LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
+        'ready'
+        LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
+        'ready'
 
-   OK let's run some jobs. How about we run the first three entities
-   locally (ie on the current machine where R is running).
-
-
-          > run(jobs[1:3])
-
-              Starting dummy on entity LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
-              Starting dummy on entity LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
-              Starting dummy on entity LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
+OK let's run some jobs. How about we run the first three entities
+locally (ie on the current machine where R is running).
 
 
-   After launching jobs let's run update() to update the object with the
-   latest information. In addition to checking inputs, update will check
-   job status, whether a job successfully completed (by analyzing stdout
-   and stderr files and polling the directory for relevant outputs).
+      > run(jobs[1:3])
+
+         Starting dummy on entity LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
+         Starting dummy on entity LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
+         Starting dummy on entity LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
+
+
+After launching jobs let's run update() to update the object with the
+latest information. In addition to checking inputs, update will check
+job status, whether a job successfully completed (by analyzing stdout
+and stderr files and polling the directory for relevant outputs).
 
 
           > update(jobs)
