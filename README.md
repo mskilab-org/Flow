@@ -292,7 +292,7 @@ task x entities combination.
 We've combined the `.task` config with the entities data.table. The
 output 'jobs' is an `Job` object.
 
-   > jobs
+    > jobs
 
        Job on 113 entities (LUAD-CIP-LU-A08-43-T...) with rootdir
        /nethome/mimielinski/FlowExample/Flow from task dummy using module
@@ -367,10 +367,10 @@ It is vectorized, so it has length and can be subsetted. Each element
 corresponds to entity.
 
 
-  > length(jobs)
-      [1] 113
-  > jobs[1:10]
-      Job on 10 entities with rootdir /cga/meyerson/home/marcin/temp/Flow from task Snowman using module Snowman, version 2015-04-12 10:37:38
+    > length(jobs)
+        [1] 113
+    > jobs[1:10]
+        Job on 10 entities with rootdir /cga/meyerson/home/marcin/temp/Flow from task Snowman using module Snowman, version 2015-04-12 10:37:38
 
 
 There is a task (Task object) object associated with 'jobs' that you
