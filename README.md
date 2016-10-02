@@ -66,152 +66,152 @@ files residing under their respective task / entity subfolder.
 #   Example
 
 
-   Here's an example of building a dummy module, configuring it to a task,
-   and applying that task to a bunch of entities representing tumor normal
-   pairs.
+Here's an example of building a dummy module, configuring it to a task,
+and applying that task to a bunch of entities representing tumor normal
+pairs.
 
 
-   To get started, (install and) load the Flow R package
+To get started, (install and) load the Flow R package
 
-       install.packages('devtools')
-       library(devtools)
-       install_github('mskilab/Flow')
-       library(Flow)
+    install.packages('devtools')
+    library(devtools)
+    install_github('mskilab/Flow')
+    library(Flow)
 
-   We grab the table of entities from a tab delimited file and set the key
-   to pair_id. This table comes with the Flow package.
+We grab the table of entities from a tab delimited file and set the key
+to pair_id. This table comes with the Flow package.
 
-       entities = fread(system.file('extdata', 'entities.txt', package = 'Flow'))
-       setkey(entities, pair_id)
+    entities = fread(system.file('extdata', 'entities.txt', package = 'Flow'))
+    setkey(entities, pair_id)
 
-   To get things set up we will set up a directory called ~/FlowExample.
-   (Make sure you don't have an important directory called ~/FlowExample,
-   and if so just replace this path with another path in all the text that
-   follows).
+To get things set up we will set up a directory called ~/FlowExample.
+(Make sure you don't have an important directory called ~/FlowExample,
+and if so just replace this path with another path in all the text that
+follows).
 
-       system('mkdir -p ~/FlowExample')
-       setwd('~/FlowExample')
+    system('mkdir -p ~/FlowExample')
+    setwd('~/FlowExample')
 
-   Now we make a module, lets put it in a modules subdirectory of
-   FlowExample. (In practice, you will have a static directory containing
-   all your modules, which represent reusable code that you will bind to
-   multiple task configurations and apply to many different jobs)
+Now we make a module, lets put it in a modules subdirectory of
+FlowExample. (In practice, you will have a static directory containing
+all your modules, which represent reusable code that you will bind to
+multiple task configurations and apply to many different jobs)
 
-       system('mkdir -p ~/FlowExample/modules/dummymodule')
+    system('mkdir -p ~/FlowExample/modules/dummymodule')
 
-   The module directory contains all the libraries and code associated
-   with a given module. It also contains a flow.deploy file containing a
-   one-liner with placeholders that will be executed at runtime.
-
-
-   Let's create the flow.deploy file in this location
-
-       ~/FlowExample/modules/dummymodule/flow.deploy
-
-   In this file, put one line:
-
-       command: <libdir>dummyscript.sh ${ analysis_id } ${ tumor_bam } ${
-       normal_bam } ${ error_rate } ${ panel_of_normals } ${ variant_mask }
-
-   All this file needs is a single line prefaced by "command:" (everything
-   else is ignored). In this example, that lin contains a call to
-   dummyscript.sh and some placeholder variables that are the module
-   inputs. The module inputs are specified using the syntax: `${ INPUTNAME
-   }` (spaces included).
+The module directory contains all the libraries and code associated
+with a given module. It also contains a flow.deploy file containing a
+one-liner with placeholders that will be executed at runtime.
 
 
-   The <libdir> in the flow.deploy file is a reserved word that points to
-   the directory where the module (and all of its code and files) is
-   sitting. At runtime, the code will be run in a job specific output
-   directory, and it will need to have a pointer to the module directory
-   e.g. to reference scripts and libraries. For example, here it's used to
-   specify the path to dummyscript.sh, which we still need to create.
+Let's create the flow.deploy file in this location
+
+    ~/FlowExample/modules/dummymodule/flow.deploy
+
+In this file, put one line:
+
+    command: <libdir>dummyscript.sh ${ analysis_id } ${ tumor_bam } ${
+    normal_bam } ${ error_rate } ${ panel_of_normals } ${ variant_mask }
+
+All this file needs is a single line prefaced by "command:" (everything
+else is ignored). In this example, that lin contains a call to
+dummyscript.sh and some placeholder variables that are the module
+inputs. The module inputs are specified using the syntax: `${ INPUTNAME
+}` (spaces included).
 
 
-   Let's make the actual dummy script which we store in an executable file
+The <libdir> in the flow.deploy file is a reserved word that points to
+the directory where the module (and all of its code and files) is
+sitting. At runtime, the code will be run in a job specific output
+directory, and it will need to have a pointer to the module directory
+e.g. to reference scripts and libraries. For example, here it's used to
+specify the path to dummyscript.sh, which we still need to create.
 
 
-       ~/FlowExample/modules/dummymodule/dummyscript.sh
+Let's make the actual dummy script which we store in an executable file
 
 
-   In this file we write a simple script that makes a blank vcf and
-   outputs a useless report:
+   ~/FlowExample/modules/dummymodule/dummyscript.sh
 
 
-       #!/bin/sh
-       echo "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t$1.tumor\t$1.normal" > $1.vcf
-
-       echo "analyze bam files $2 and $3 on pair $1 using dummy algo with error rate $4 and panel of normals $5 
-       and variant mask $6" >  $1.report.txt
+In this file we write a simple script that makes a blank vcf and
+outputs a useless report:
 
 
-   If you haven't done so make sure the script file is executable
+   #!/bin/sh
+   echo "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t$1.tumor\t$1.normal" > $1.vcf
+
+   echo "analyze bam files $2 and $3 on pair $1 using dummy algo with error rate $4 and panel of normals $5 
+   and variant mask $6" >  $1.report.txt
 
 
-       system('chmod +x ~/FlowExample/modules/dummymodule/dummyscript.sh')
+If you haven't done so make sure the script file is executable
 
 
-   **(milestone: we've finished making a module!)**
+   system('chmod +x ~/FlowExample/modules/dummymodule/dummyscript.sh')
 
 
-   Next thing to do is to make a task configuration to wrap around this
-   module, and store it in a .task file. Again, the .task file binds the
-   module arguments to the columns of the entities data.table and/or
-   literal arguments, which can be either paths or values. This
-   configuration will also be relatively static across many jobs that you
-   will end up running on different entities tables.
+**(milestone: we've finished making a module!)**
 
 
-   First make a tasks directory - this will store task configurations.
+Next thing to do is to make a task configuration to wrap around this
+module, and store it in a .task file. Again, the .task file binds the
+module arguments to the columns of the entities data.table and/or
+literal arguments, which can be either paths or values. This
+configuration will also be relatively static across many jobs that you
+will end up running on different entities tables.
 
 
-       system('mkdir -p ~/FlowExample/tasks')
+First make a tasks directory - this will store task configurations.
 
 
-   To generate a skeleton `.task` configuration for our dummy module, call
+   system('mkdir -p ~/FlowExample/tasks')
 
 
-       Module('~/FlowExample/modules/dummymodule/')
+To generate a skeleton `.task` configuration for our dummy module, call
 
 
-   This will output to the screen  a skeleton task configuration that you
-   can paste into a document and populate with values (i.e. bind
-   <INPUT_BINDING> to an actual value and choose path or value) for the
-   fourth column.
+   Module('~/FlowExample/modules/dummymodule/')
 
 
-       #Module dummymodule ("<libdir>dummyscript.sh <tumor_bam> <normal_bam> <error_rate> <panel_of_normals> <variant_mask> <fla...>")
-       ~/FlowExample/modules/dummymodule///
-       input      tumor_bam         <INPUT_BINDING>       <(path)|(value)>
-       input      normal_bam        <INPUT_BINDING>       <(path)|(value)>
-       input      error_rate        <INPUT_BINDING>       <(path)|(value)>
-       input      panel_of_normals  <INPUT_BINDING>       <(path)|(value)>
-       input      variant_mask      <INPUT_BINDING>       <(path)|(value)>
-       input      flags             <INPUT_BINDING>       <(path)|(value)>
-       output                       <OUTPUT_ANNOTATION>   <OUTPUT_REGEXP>
+This will output to the screen  a skeleton task configuration that you
+can paste into a document and populate with values (i.e. bind
+<INPUT_BINDING> to an actual value and choose path or value) for the
+fourth column.
 
 
-   Copy and paste this text to a .task file in the tasks directory:
-   "`~/FlowExample/tasks/dummy.task`". Now, fill in this task configuration
-   by binding the module inputs to table columns or static values (or just
-   paste the fully configured task text below).
+   #Module dummymodule ("<libdir>dummyscript.sh <tumor_bam> <normal_bam> <error_rate> <panel_of_normals> <variant_mask> <fla...>")
+   ~/FlowExample/modules/dummymodule///
+   input      tumor_bam         <INPUT_BINDING>       <(path)|(value)>
+   input      normal_bam        <INPUT_BINDING>       <(path)|(value)>
+   input      error_rate        <INPUT_BINDING>       <(path)|(value)>
+   input      panel_of_normals  <INPUT_BINDING>       <(path)|(value)>
+   input      variant_mask      <INPUT_BINDING>       <(path)|(value)>
+   input      flags             <INPUT_BINDING>       <(path)|(value)>
+   output                       <OUTPUT_ANNOTATION>   <OUTPUT_REGEXP>
 
 
-       #Module dummymodule ("<libdir>dummyscript.sh <tumor_bam> <normal_bam> <error_rate> <panel_of_normals> <variant_mask> <fla...>")
-       ~/FlowExample/modules/dummymodule/
-       input      tumor_bam         Tumor_clean_bam_file_wgs                        path
-       input      normal_bam        Normal_clean_bam_file_wgs                       path
-       input      error_rate        "0"                                             value
-       input      analysis_id       pair_id                                         value
-       input      panel_of_normals  "~/FlowExample/testdata/panel_of_normals.txt"   path
-       input      variant_mask      "~/FlowExample/testdata/mask.bed.gz"            path
-       output     vcf               .vcf$
-       output     quality_metrics   report.txt$
+Copy and paste this text to a .task file in the tasks directory:
+"`~/FlowExample/tasks/dummy.task`". Now, fill in this task configuration
+by binding the module inputs to table columns or static values (or just
+paste the fully configured task text below).
+
+
+   #Module dummymodule ("<libdir>dummyscript.sh <tumor_bam> <normal_bam> <error_rate> <panel_of_normals> <variant_mask> <fla...>")
+   ~/FlowExample/modules/dummymodule/
+   input      tumor_bam         Tumor_clean_bam_file_wgs                        path
+   input      normal_bam        Normal_clean_bam_file_wgs                       path
+   input      error_rate        "0"                                             value
+   input      analysis_id       pair_id                                         value
+   input      panel_of_normals  "~/FlowExample/testdata/panel_of_normals.txt"   path
+   input      variant_mask      "~/FlowExample/testdata/mask.bed.gz"            path
+   output     vcf               .vcf$
+   output     quality_metrics   report.txt$
     
-   The first non-'#' row in the `.task` file refers to the module directory.
-   Note that there are "input" rows and "output" rows, each which are tab
-   delimited. The format is pretty flexible, but you need be sure there is
-   at least one tab or at least two spaces between each column.
+The first non-'#' row in the `.task` file refers to the module directory.
+Note that there are "input" rows and "output" rows, each which are tab
+delimited. The format is pretty flexible, but you need be sure there is
+at least one tab or at least two spaces between each column.
 
 
    Note the difference between the input rows (4 columns) vs the output
