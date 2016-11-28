@@ -37,7 +37,7 @@ value for each entity / row.
 
 Tasks are configured via an `.task` file. This is a text file whose first
 (non #-commented) line is a path to a firehose module directory (i.e. a
-directory containing a hydrant.deploy file). The subsequent rows are
+directory containing a `hydrant.deploy` file). The subsequent rows are
 tab delimited with 3 or 4 columns, and specify the input and output
 bindings of a task. The first column of every row is 'input' or
 'output'. If the first column is 'input', the second column specifies
