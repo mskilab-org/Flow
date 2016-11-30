@@ -3,7 +3,7 @@
 
 
 Flow is an R package that enables local configuration and execution of
-analysis modules on annotated sets of entities (eg pairs, individuals,
+analysis modules on annotated sets of entities (e.g. pairs, individuals,
 samples). Jobs can be either deployed locally or to a cluster, then
 monitored and managed. Once jobs complete, their outputs can be
 attached back to their respective entities as annotations for easy
@@ -13,11 +13,11 @@ Like in the Broad Institute's Firehose platform
 (https://www.broadinstitute.org/cancer/cga/Firehose), a **job** consists of
 a **task** run on an **entity** (e.g. pair, individual, sample). A **task** wraps
 around a module and binds module arguments to names of entity-specific
-annotations or fixed literals which can represent paths (eg a bam file
-path) or values (eg 200). A task also specifies the binding of module
+annotations or fixed literals which can represent paths (e.g. a bam file
+path) or values (e.g. 200). A task also specifies the binding of module
 outputs to output annotations. A **job** is created by applying a task to a
 set of entities, which correspond to keyed table of entity-specific
-annotations (eg bam_file_wgs, seg_file, etc). Once a job completes, one
+annotations (e.g. bam_file_wgs, seg_file, etc). Once a job completes, one
 or more output annotations (i.e. paths to output files) are attached to
 the respective entity in an output table. See illustration below:
    
@@ -31,7 +31,7 @@ Entities are stored in a keyed R `data.table` of annotations. This table
 can be pulled down from firehose or fiss and imported into R via the
 `data.table` function `fread()`. It can also be obtained via `fiss_get()` in
 db.R or obtained from a data.frame using `as.data.frame()`. The entities
-data.table must have a key (eg pair_id) and that key must have a unique
+data.table must have a key (e.g. pair_id) and that key must have a unique
 value for each entity / row.
 
 
@@ -360,7 +360,7 @@ readiness to run.
 
 
 Voilà! The jobs are ready so we can run them. Before we do, some basics
-about the Job object:
+about the `Job` object:
 
 
 It is vectorized, so it has length and can be subsetted. Each element
@@ -411,7 +411,7 @@ Each job has a status (a la firehose) e.g. 'ready', 'complete',
         'ready'
 
 OK let's run some jobs. How about we run the first three entities
-locally (ie on the current machine where R is running).
+locally (i.e. on the current machine where R is running).
 
 
       > run(jobs[1:3])
@@ -421,7 +421,7 @@ locally (ie on the current machine where R is running).
          Starting dummy on entity LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
 
 
-After launching jobs let's run update() to update the object with the
+After launching jobs let's run `update()` to update the object with the
 latest information. In addition to checking inputs, update will check
 job status, whether a job successfully completed (by analyzing stdout
 and stderr files and polling the directory for relevant outputs).
@@ -441,7 +441,7 @@ and stderr files and polling the directory for relevant outputs).
               completed ready
               3 110
 
-   Great! 3 jobs are finished. We can quickly subset the jobs object using
+   Great! Three jobs are finished. We can quickly subset the jobs object using
    a character syntax which searches jobs statuses by regexp. Here we
    subset only the "completed" jobs.
 
@@ -689,7 +689,7 @@ and stderr files and polling the directory for relevant outputs).
 
 
    If you want to look under the hood, you'll see that each job is
-   associated with a `cmd` (local command), bcmd (LSF command), and `qcmd`
+   associated with a `cmd` (local command), `bcmd` (LSF command), and `qcmd`
    (UGER / SGE command) which can be accessed using `cmd()`, `bcmd()`, and
    `qcmd()` respectively.   These each return a named vector of shell
    commands. These commands are the result of populating the arguments of
