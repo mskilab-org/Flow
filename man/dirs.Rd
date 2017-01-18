@@ -5,7 +5,7 @@
 \alias{dirs}
 \title{returns list of character vectors containing the contents of directory associated with these jobs}
 \usage{
-\S4method{dirs}{Job}(.Object, full = TRUE, ...)
+\S4method{dirs}{Job}(.Object, pattern = NULL, full = TRUE, ...)
 }
 \author{
 Marcin Imielinski

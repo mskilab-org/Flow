@@ -26,7 +26,6 @@
 
 #' @import parallel
 #' @import data.table
-#' @import GenomicRanges
 #' @import stringr
 
 
@@ -641,7 +640,7 @@ setMethod('initialize', 'Job', function(.Object,
             }
         else
             if (is.null(key(entities)))
-                stop('CEntities argument must be a keyed data.table, please add a key')
+                stop('Entities argument must be a keyed data.table, please add a key')
 
         if (any(duplicated(entities[[key(entities)]])))
             stop(sprintf('Input entities table has duplicated keys! Check column "%s" of entities table or use a different column as a key', key(entities)))
@@ -707,6 +706,13 @@ setMethod('initialize', 'Job', function(.Object,
                      {
                          this.ann = ann.args[[this.arg]]@arg
                          nfiles = length(setdiff(entities[[this.ann]], NA))
+                         
+                         if (is.list(entities[[this.ann]]))
+                         {
+                             warning(sprintf('Annotation column "%s" is a list and not a vector.  Flow currently only supports entities tables with vector columns.  Will default to taking first element of each list item.  Please check the %s column to ensure that the data is correct.', this.ann, this.ann))
+                             entities[[this.ann]] = sapply(entities[[this.ann]], '[', 1)
+                         }
+                             
                          .Object@inputs[[this.arg]] = entities[[this.ann]]
         #                 .Object@inputs[, eval(this.arg) := entities[[this.ann]]]
                          
@@ -718,31 +724,36 @@ setMethod('initialize', 'Job', function(.Object,
                                  if (is.numeric(entities[[this.ann]]))
                                      stop(sprintf('Numeric annotation %s provided as path argument %s to task - check task configuration or entities table', this.ann, this.arg)) 
                                  
-                                 .Object@stamps[, eval(this.arg) := as.character(file.info(entities[[this.ann]])$mtime)]
-                                 if (!mock)
-                                     print(this.arg)
+                                 .Object@stamps[, eval(this.arg) := as.character(file.info(ifelse(is.na(entities[[this.ann]]), '', entities[[this.ann]]))$mtime)]
+#                                 if (!mock)
+#                                     print(this.arg)
 
                                  cmd = paste(this.arg, ':= normalizePath(', this.arg, ')')
                                  .Object@inputs[!is.na(.Object@stamps[[this.arg]]), eval(parse(text = cmd))]
                                  
                                  if (!is.null(default(ann.args[[this.arg]])))
-                                     if (any(fenix <- !file.exists(.Object@inputs[[this.arg]])))
+                                     if (any(fenix <- !file.exists(ifelse(is.na(.Object@inputs[[this.arg]]), '', entities[[this.ann]]))))                                    
+#                                     if (any(fenix <- !file.exists(.Object@inputs[[this.arg]])))
                                          {
                                              .Object@inputs[fenix, eval(this.arg) := default(ann.args[[this.arg]])]
                                              .Object@stamps[fenix, eval(this.arg) := as.character(Sys.time())]
                                          }
                              }
                          else
-                             {                                 
-                                 if (any(nix <- (nchar(str_trim(.Object@inputs[[this.arg]]))==0)))
-                                     .Object@inputs[nix, eval(this.arg) := NA]
-                                 
-                                 if (!is.null(default(ann.args[[this.arg]])))
-                                     if (any(fenix <- is.na(.Object@inputs[[this.arg]])))
-                                         .Object@inputs[[this.arg]][fenix] = default(ann.args[[this.arg]])
+                         {
 
-                                 .Object@stamps[, eval(this.arg) := ifelse(!is.na(.Object@inputs[[this.arg]]), as.character(Sys.time()), NA)]
-                             }
+                             nix = (nchar(str_trim(.Object@inputs[[this.arg]]))==0)
+                             nix = nix[!is.na(nix)]
+                             if (length(nix)>0)
+                                 if (any(nix))
+                                     .Object@inputs[nix, eval(this.arg) := NA]
+                             
+                             if (!is.null(default(ann.args[[this.arg]])))
+                                 if (any(fenix <- is.na(.Object@inputs[[this.arg]])))
+                                     .Object@inputs[[this.arg]][fenix] = default(ann.args[[this.arg]])
+                             
+                             .Object@stamps[, eval(this.arg) := ifelse(!is.na(.Object@inputs[[this.arg]]), as.character(Sys.time()), NA)]
+                         }
                      }                                                     
              }
 
@@ -825,8 +836,9 @@ setMethod('initialize', 'Job', function(.Object,
 
         .Object@runinfo[, jname := .jname(outdir, task@name, entities[[key(entities)]])]
 
-        if (!mock)
-            .Object@runinfo = .update_cmd(.Object) ## updates BCMD / CMD
+#        if (!mock)
+        .Object@runinfo = .update_cmd(.Object) ## updates BCMD / CMD
+
         
         ## populate output collection
         if (length(task@outputs)>0)
@@ -846,7 +858,11 @@ setMethod('initialize', 'Job', function(.Object,
                 sapply(1:length(.Object), function(x) saveRDS(.Object[x], paste(.Object@runinfo$outdir[x], 'Job.rds', sep = '/')))
 
                 cache(.Object)
+                ids = ids(.Object)
                 update(.Object, check.inputs = TRUE)
+                path = paste(.Object@rootdir, '/', task(.Object)@name, '.rds', sep = '')
+#                cat('Refreshing object from', path, '\n')
+                .Object = readRDS(path)[ids, id = TRUE]
             }
 
         
@@ -869,11 +885,13 @@ setMethod('initialize', 'Job', function(.Object,
         .Object@runinfo[ix, cmd := paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, '(ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
         .Object@runinfo[ix, cmd.quiet := paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, 'ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
 
-        .Object@runinfo[, cmd.path := paste(outdir(.Object), '/', names(outdir(.Object)), '.cmd.sh', sep = '')]
+        .Object@runinfo$cmd.path = paste(outdir(.Object), '/', names(outdir(.Object)), '.cmd.sh', sep = '')
 
         ## write cmd.og to file for qsub command
 #        .Object@runinfo[, mapply(function(text, path) writeLines(text, path), paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; /usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = ''), cmd.path)] ## writes cmd to path        
-        .Object@runinfo[, mapply(function(text, path) writeLines(text, path), paste('echo "FLOW.SGE.JOBID=$JOB_ID"; cd ', outdir, ';touch ', outdir, '/started; ~/Software/time/time -v ', cmd.og, '; cp ', stdout, ' ', stderr, sep = ''), cmd.path)] ## writes cmd to path        
+                                        #        .Object@runinfo[, mapply(function(text, path) writeLines(text, path), paste('echo "FLOW.SGE.JOBID=$JOB_ID"; cd ', outdir, ';touch ', outdir, '/started; ~/Software/time/time -v ', cmd.og, '; cp ', stdout, ' ', stderr, sep = ''), cmd.path)] ## writes cmd to path
+
+        .Object@runinfo[, mapply(function(text, path) writeLines(text, path), cmd, cmd.path)] ## writes cmd to path        
         .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now)]
         
         return(.Object@runinfo)
@@ -991,6 +1009,7 @@ setMethod('purge', 'Job', function(object, check.inputs = TRUE)
         sapply(1:length(object), function(x) saveRDS(object[x], paste(outdir(object)[x], 'Job.rds', sep = '/')))
         cat('Done\n')
     })
+
 
 #' @name Job-class
 #' @rdname Job-class
@@ -1145,8 +1164,52 @@ setGeneric('cache', function(object, ...) {standardGeneric('cache')})
 setMethod('cache', 'Job', function(object, verbose = TRUE)
     {
         path = paste(object@rootdir, '/', task(object)@name, '.rds', sep = '')
-        cat('Caching object to', path, '\n')
+
+        if (file.exists(path))
+            {
+                old.cached = readRDS(path)                
+                if (length(others <- setdiff(ids(old.cached), ids(object)))>0)
+                    {
+                        new.ids = union(ids(old.cached), ids(object))
+                        object = tryCatch(c(old.cached[others, id = TRUE], object), error = function(e) NULL)
+                        if (is.null(object))
+                            stop(sprintf('Error merging object with existing object in %s, please check format of stored object and fix or delete the corresponding .rds file', path))
+                        object = object[new.ids, id = TRUE]
+                cat('Caching object to', path, 'after merging with', length(others), 'additional entities \n')
+                    }
+                else
+                    cat('Caching object to', path, '\n')
+            }
+        else
+            cat('Caching object to', path, '\n')
+            
         saveRDS(object, path)
+    })
+
+
+#' @export
+setGeneric('refresh', function(object, ...) {standardGeneric('refresh')})
+
+
+#' @name refresh
+#' @title refreshes .rds copy of job object from standard location (TASK.NAME.rds in Job output root directory)
+#' 
+#' @exportMethod cache
+#' @export
+#' @author Marcin Imielinski
+setMethod('refresh', 'Job', function(object, verbose = TRUE)
+    {
+        path = paste(object@rootdir, '/', task(object)@name, '.rds', sep = '')
+        cat('Refreshing object from', path, '\n')
+        new.object = readRDS(path)
+        eval(
+            eval(
+                substitute(
+                    expression(object <<- new.object)
+                   ,env=parent.frame(1) )
+                )
+            )
+        cat('')
     })
 
 #' @name [
@@ -1161,21 +1224,27 @@ setMethod('cache', 'Job', function(object, verbose = TRUE)
 #' @author Marcin Imielinski
 setMethod('[', 'Job', function(x, i, id = FALSE)
     {
-
         if (!id & is.character(i))
             i = grep(i, status(x), ignore.case = TRUE)        
         else
             if (is.logical(i))
                 i = which(i)
-        
+
+        if (length(i) ==0)
+          i = 0 ## data.table-ese for empty data.table, otherwise NULL
+
         id = key(x)
         x@runinfo = x@runinfo[i, ]
         x@inputs = x@inputs[i, ]
         x@outputs = x@outputs[i, ]
         x@stamps = x@stamps[i, ]
         if (.hasSlot(x, 'entities'))
+        {
+            setkeyv(x@entities, id)
             x@entities = x@entities[i, ]
-                    
+            setkeyv(x@entities, id)
+        }
+        
         ## some kind of data.table bug where key gets lost every w subsetting once in a while ... #CHECK
         setkeyv(x@runinfo, id)
         setkeyv(x@inputs, id)
@@ -1206,7 +1275,7 @@ setMethod('[', 'Job', function(x, i, id = FALSE)
 #' @export
 #' @author Marcin Imielinski
 setMethod('[<-', 'Job', function(x, i, value, id = FALSE)
-    {
+    {          
         if (!is(value, 'Job'))
             stop('Must replace with Job object')
 
@@ -1221,7 +1290,9 @@ setMethod('[<-', 'Job', function(x, i, value, id = FALSE)
         else
             if (is.logical(i))
                 i = which(i)
-                
+
+        if (ncol(value@runinfo) != ncol(x@runinfo))
+            stop('Either object or replacement value are corrupt: please try regenerating Job object')
         x@runinfo[i,] = value@runinfo
         x@inputs[i,] = value@inputs
         x@outputs[i, ] = value@outputs
@@ -1430,7 +1501,12 @@ setMethod('cmd', 'Job', function(.Object, all = FALSE, quiet = TRUE)
                     
             }
         else
-            structure(.Object@runinfo[, cmd], names = .Object@runinfo[[key(.Object@runinfo)]])
+            {
+                if (quiet)
+                    structure(.Object@runinfo[, cmd.quiet], names = .Object@runinfo[[key(.Object@runinfo)]])
+                else
+                    structure(.Object@runinfo[, cmd], names = .Object@runinfo[[key(.Object@runinfo)]])
+            }
     })
 
 
@@ -1512,12 +1588,18 @@ setGeneric('qcmd', function(.Object, ...) {standardGeneric('qcmd')})
 #' @param all logical flag whether to run all jobs (including completed)
 #' @author Marcin Imielinski
 setMethod('qcmd', 'Job', function(.Object, all = FALSE)
+{
+    if (!('qcmd' %in% names(.Object@runinfo)))
     {
+        warning('Job object corrupted: qcmd missing')
+        .Object@runinfo = .update_cmd(.Object)
+    }
+        
         if (!all)
-            {
-                ix = runinfo(.Object)[, which(!(status %in% c('completed', 'not ready')))]
-                structure(.Object@runinfo[, qcmd[ix]], names = ids(.Object)[ix])
-            }
+        {
+            ix = runinfo(.Object)[, which(!(status %in% c('completed', 'not ready')))]
+            structure(.Object@runinfo[, qcmd[ix]], names = ids(.Object)[ix])
+        }
         else
             structure(.Object@runinfo[, qcmd], names = .Object@runinfo[[key(.Object@runinfo)]])
     })
@@ -1564,9 +1646,9 @@ setGeneric('dirs', function(.Object, ...) {standardGeneric('dirs')})
 #' @exportMethod dirs
 #' @export
 #' @author Marcin Imielinski
-setMethod('dirs', 'Job', function(.Object, full = TRUE, ...)
+setMethod('dirs', 'Job', function(.Object, pattern = NULL, full = TRUE, ...)
     {
-        out = lapply(outdir(.Object), dir, full = full, ...)
+        out = lapply(outdir(.Object), dir, pattern = pattern, full = full, ...)
         return(out)
     })
 
@@ -2351,7 +2433,7 @@ dedup = function(x, suffix = '.')
 #' @author Marcin Imielinski
 #' @export
 setGeneric('merge', function(x, y, ...) standardGeneric('merge'))
-setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix = NULL, prefix = NULL, force = FALSE, sep = '_') {        
+setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix = NULL, prefix = NULL, force = FALSE, sep = '_') {
         if (!is.data.table(y))
             stop('y must be keyed data.table')
 
@@ -2371,9 +2453,24 @@ setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix =
                 warning('entities data.table has duplicate columns, deduping, check table')
                 y = y[, unique(names(y)), with = FALSE]
             }
-            
+
+        if (any(duplicated(y[[key(x)]])))
+            stop('Input table has duplicate instances of table key')
         
+        ids = intersect(ids(x), y[[key(x)]])
+        oids = setdiff(y[[key(x)]], ids)
         out = merge(y[, col, with = FALSE], outputs(x), by = key(x), all.x = TRUE)
+
+        if (length(oids)>0) ## correct weird merge behavior in R
+        {
+            rn = dedup(out[[key(x)]])
+            out = as.data.frame(out)
+            rownames(out) = rn
+            out[oids, colnames(y)] = as.data.frame(y[oids, colnames(y), with = FALSE])
+            out = as.data.table(out)
+            setkeyv(out, key(x))
+        }
+        
 
         if (length(ov)>0)
             {
@@ -2383,19 +2480,24 @@ setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix =
                     {                        
                         ix = !is.na(new[[this.ov]]) | !is.na(old[[this.ov]])
                         ix[ix] = new[[this.ov]][ix] != old[[this.ov]][ix]
-                        old.mtime = file.info(old[[this.ov]][ix])$mtime
-                        new.mtime = file.info(new[[this.ov]][ix])$mtime
-                        if (!force & any(ix2 <- old.mtime>new.mtime, na.rm = TRUE))
+                        ix <- ifelse(is.na(ix), FALSE, ix)
+                        if (any(ix))
                             {
-                                warning('Newer annotations in external data.table are being over-written by new ones, keeping old annotations, call with force = TRUE to override')
-                                new[[this.ov]][ix][ix2] = old[[this.ov]][ix][ix2]
-                            }
+                                old.mtime = file.info(old[[this.ov]][ix])$mtime
+                                new.mtime = file.info(new[[this.ov]][ix])$mtime
+                                ix2 <- ifelse(is.na(old.mtime>new.mtime), FALSE, old.mtime>new.mtime)
+                                if (!force & any(ix2))
+                                {
+                                    warning('Newer annotations in external data.table are being over-written by new ones, keeping old annotations, call with force = TRUE to override')
+                                    new[[this.ov]][ix][ix2] = old[[this.ov]][ix][ix2]
+                                }
 
-                        if (!force &
-                            any(ix <- is.na(new[[this.ov]]) & !is.na(old[[this.ov]]), na.rm = TRUE))
-                            {
-                                warning('Existing annotations in external data.table are being over-written by NA annotations, keeping old annotations, call with force = TRUE to override')
-                                new[[this.ov]][ix2] = old[[this.ov]][ix2]
+                                if (!force &
+                                    any(ix <- is.na(new[[this.ov]]) & !is.na(old[[this.ov]]), na.rm = TRUE))
+                                {
+                                    warning('Existing annotations in external data.table are being over-written by NA annotations, keeping old annotations, call with force = TRUE to override')
+                                    new[[this.ov]][ix2] = old[[this.ov]][ix2]
+                                }
                             }
                         setkeyv(out, key(x))
                         out[ids(x),][[this.ov]] = new[[this.ov]]
@@ -2408,7 +2510,7 @@ setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix =
         
         if (!is.null(suffix))
             setnames(out, ix, paste(names(out)[ix], suffix, sep = sep))
-        
+
         setkeyv(out, key(y))
         return(out)
     })
@@ -2457,10 +2559,13 @@ more = function(x, grep = NULL, pipe = FALSE)
 #' @param grep string to grep in files (=NULL)
 #' @author Marcin Imielinski
 #' @export
-tailf = function(x, grep = NULL)
+tailf = function(x, n = NULL, grep = NULL)
 {
     if (is.null(grep))
-        x = paste('tail -f', paste(x, collapse = ' '))
+        if (is.null(n))
+            x = paste('tail -f', paste(x, collapse = ' '))
+        else
+            x = paste('tail -n', n, paste(x, collapse = ' '))
     else
         x = paste('grep -H', grep, paste(x, collapse = ' '), ' | more')
     system(x)
