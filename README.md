@@ -846,6 +846,7 @@ and stderr files and polling the directory for relevant outputs).
 | **qrun(jobs, mc.cores = 1)**      | Submit jobs to SGE / UGER from R with optional mc.cores param to submit jobs in parallel across mc.cores CPUs  |
 |                               |                                                                                                     |
 | **mem(jobs) = 30**            |  Submit jobs with 10G RAM (equivalent to `-l h_vmem=30G` via qsub)                                |
+|                               |  
 | **update(jobs)**      | Update status of jobs and populate output annotations by scraping / <br>parsing output directories.  |
 |                               |  
 | **outputs(jobs)**      | Return data.table of output annotations  |
