@@ -2022,7 +2022,7 @@ qsub_cmd = function(script.fn, queue, jname = NULL, jlabel = NULL, jgroup = NULL
         out_cmd = paste("qsub -V -j y -o ", qjout);
         out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-q ", queue)))
         ##        if (!is.null(mem)) out_cmd = paste(out_cmd, " -l mem=", mem, "gb", sep = "");
-        if (!is.null(mem)) out_cmd = paste(out_cmd, " -l mem=", mem, "g", sep = "");
+        if (!is.null(mem)) out_cmd = paste(out_cmd, " -l h_vmem=", mem, "g", sep = "");
         if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
         if (!is.null(cwd)) out_cmd = paste(out_cmd, " -wd ", cwd )
         if (!is.null(qjname)) out_cmd = paste(out_cmd, " -N ", jlabel)
