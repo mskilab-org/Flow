@@ -79,7 +79,7 @@ setMethod('initialize', 'Module', function(.Object,
         
         ## need to replace $(\\w+ .* FEATURE_NAME) with just the internal and extract the FEATURE_NAME
         pattern = '\\$\\{[a-z\\,]*( [^\\}]*)? (\\S+)\\s*\\}';              
-        args = str_match_all(cmd, pattern)[[1]]
+        args = stringi::stri_match_all_regex(cmd, pattern, omit_no_match = TRUE, cg_missing = "")[[1]]
 
         args[,3] = gsub('\\=.*', '', args[,3])
         
