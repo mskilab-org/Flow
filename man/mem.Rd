@@ -13,4 +13,3 @@ getting max mem (in GB) associated with Job object
 \author{
 Marcin Imielinski
 }
-

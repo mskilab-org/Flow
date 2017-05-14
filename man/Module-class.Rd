@@ -17,7 +17,7 @@ Class \code{Module} defines an unconfigured module that is scraped from a "modul
   \item{stamp}{version stamp of this module}
 }
 }
+
 \author{
 Marcin Imielinski
 }
-

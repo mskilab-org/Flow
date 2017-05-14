@@ -3,11 +3,19 @@
 \docType{class}
 \name{Job-class}
 \alias{Job-class}
-\alias{[,Job-class}
+\alias{Job-class}
 \alias{[<-}
+\alias{[,Job-class}
+\alias{Job-class}
+\alias{Job-class}
+\alias{Job-class}
+\alias{Job-class}
+\alias{Job-class}
+\alias{runinfo}
+\alias{[,Job-class}
+\alias{Job-class}
 \alias{merge}
 \alias{merge,Job-class}
-\alias{runinfo}
 \title{Class representing a set of jobs, each which is the combination of a Task and entity (i.e. a sample, pair, or set)}
 \usage{
 update(object, ...)
@@ -95,6 +103,7 @@ Merge Job output annotations with data.table
            complete) and columns for table key + 0 or more output annotations with filled in values if job is complete or NA}
 }
 }
+
 \author{
 Marcin Imielinski
 
@@ -102,4 +111,3 @@ Marcin Imielinski
 
 Marcin Imielinski
 }
-

@@ -10,4 +10,3 @@
 \author{
 Marcin Imielinski
 }
-

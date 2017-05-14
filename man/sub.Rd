@@ -14,4 +14,3 @@ of status, or status.info if status.info = TRUE
 \author{
 Marcin Imielinski
 }
-

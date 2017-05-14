@@ -3,6 +3,7 @@
 \docType{methods}
 \name{ids}
 \alias{ids}
+\alias{ids}
 \title{returns vector of entity ids associated with this Job objedct}
 \usage{
 \S4method{ids}{Job}(.Object)
@@ -14,4 +15,3 @@ Marcin Imielinskix
 
 Marcin Imielinskix
 }
-

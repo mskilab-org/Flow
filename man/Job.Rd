@@ -41,4 +41,3 @@ Job(task, entities, rootdir = "./Flow/", queue = as.character(NA),
 \author{
 Marcin Imielinski
 }
-

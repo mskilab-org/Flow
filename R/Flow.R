@@ -712,7 +712,7 @@ setMethod('initialize', 'Job', function(.Object,
                              warning(sprintf('Annotation column "%s" is a list and not a vector.  Flow currently only supports entities tables with vector columns.  Will default to taking first element of each list item.  Please check the %s column to ensure that the data is correct.', this.ann, this.ann))
                              entities[[this.ann]] = sapply(entities[[this.ann]], '[', 1)
                          }
-                             
+
                          .Object@inputs[[this.arg]] = entities[[this.ann]]
         #                 .Object@inputs[, eval(this.arg) := entities[[this.ann]]]
                          
@@ -729,6 +729,7 @@ setMethod('initialize', 'Job', function(.Object,
 #                                     print(this.arg)
 
                                  cmd = paste(this.arg, ':= normalizePath(', this.arg, ')')
+
                                  .Object@inputs[!is.na(.Object@stamps[[this.arg]]), eval(parse(text = cmd))]
                                  
                                  if (!is.null(default(ann.args[[this.arg]])))
@@ -758,7 +759,7 @@ setMethod('initialize', 'Job', function(.Object,
              }
 
          if (length(lit.args)>0)
-             {
+         {
                  .Object@inputs = cbind(.Object@inputs, as.data.table(as.data.frame(lit.args)[rep(1, nrow(entities)), , drop = FALSE]))
 
                  for (this.arg in names(lit.args))
@@ -839,7 +840,7 @@ setMethod('initialize', 'Job', function(.Object,
 #        if (!mock)
         .Object@runinfo = .update_cmd(.Object) ## updates BCMD / CMD
 
-        
+
         ## populate output collection
         if (length(task@outputs)>0)
             if (sum(sapply(task@outputs, is, 'FlowOutput')>0))
@@ -875,7 +876,7 @@ setMethod('initialize', 'Job', function(.Object,
     {
         ## utility func for instantiation of Job and modifying memory
         .cmd2bcmd = function(cmd, outdir, name, ids, queue, mem, cores) bsub_cmd(paste('touch ', outdir, '/started; ', cmd, ';', sep = ''), queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = .jname(outdir, name, ids), jlabel = .jname(outdir, name, ids))
-        .cmd2qcmd = function(cmd, outdir, name, ids, queue, mem, cores, now) qsub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste(name, ids, sep = '.'), jlabel = paste(name, ids, sep = '.'), now = now)
+        .cmd2qcmd = function(cmd, outdir, name, ids, queue, mem, cores, now) qsub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now)
         
         .Object@runinfo[, bcmd := '']
         ix = which(status(.Object) != 'not ready')
@@ -2171,7 +2172,7 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
                                      ))
                         }
                     else ## interpret job as locally run with a /usr/bin/time -v output
-                        {
+                    {
                             y = tryCatch(readLines(fn.err[i]), error = function(e) NULL)
                             if (is.null(y))
                                 y = readLines(fn[i])

@@ -13,4 +13,3 @@
 \author{
 Marcin Imielinski
 }
-

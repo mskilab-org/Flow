@@ -13,4 +13,3 @@ getting module associated with Task object
 \author{
 Marcin Imielinski
 }
-

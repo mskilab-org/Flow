@@ -28,4 +28,4 @@ Depends:
     stringr
 License: GPL v3.0
 LazyData: true
-RoxygenNote: 5.0.1
+RoxygenNote: 6.0.1

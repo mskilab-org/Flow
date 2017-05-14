@@ -15,4 +15,3 @@ FlowAnnotation(...)
 
 \item{default}{can specify default value (ie what do to if annotation is missing from input table) (default is NULL)}
 }
-

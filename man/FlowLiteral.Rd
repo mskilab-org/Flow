@@ -16,4 +16,3 @@ FlowLiteral(...)
 \author{
 Marcin Imielinski
 }
-

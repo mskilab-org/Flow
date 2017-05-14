@@ -712,7 +712,7 @@ setMethod('initialize', 'Job', function(.Object,
                              warning(sprintf('Annotation column "%s" is a list and not a vector.  Flow currently only supports entities tables with vector columns.  Will default to taking first element of each list item.  Please check the %s column to ensure that the data is correct.', this.ann, this.ann))
                              entities[[this.ann]] = sapply(entities[[this.ann]], '[', 1)
                          }
-                             
+
                          .Object@inputs[[this.arg]] = entities[[this.ann]]
         #                 .Object@inputs[, eval(this.arg) := entities[[this.ann]]]
                          
@@ -729,6 +729,7 @@ setMethod('initialize', 'Job', function(.Object,
 #                                     print(this.arg)
 
                                  cmd = paste(this.arg, ':= normalizePath(', this.arg, ')')
+
                                  .Object@inputs[!is.na(.Object@stamps[[this.arg]]), eval(parse(text = cmd))]
                                  
                                  if (!is.null(default(ann.args[[this.arg]])))
@@ -758,7 +759,7 @@ setMethod('initialize', 'Job', function(.Object,
              }
 
          if (length(lit.args)>0)
-             {
+         {
                  .Object@inputs = cbind(.Object@inputs, as.data.table(as.data.frame(lit.args)[rep(1, nrow(entities)), , drop = FALSE]))
 
                  for (this.arg in names(lit.args))
@@ -839,7 +840,7 @@ setMethod('initialize', 'Job', function(.Object,
 #        if (!mock)
         .Object@runinfo = .update_cmd(.Object) ## updates BCMD / CMD
 
-        
+
         ## populate output collection
         if (length(task@outputs)>0)
             if (sum(sapply(task@outputs, is, 'FlowOutput')>0))
@@ -1009,6 +1010,7 @@ setMethod('purge', 'Job', function(object, check.inputs = TRUE)
         sapply(1:length(object), function(x) saveRDS(object[x], paste(outdir(object)[x], 'Job.rds', sep = '/')))
         cat('Done\n')
     })
+
 
 #' @name Job-class
 #' @rdname Job-class
@@ -2170,7 +2172,7 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
                                      ))
                         }
                     else ## interpret job as locally run with a /usr/bin/time -v output
-                        {
+                    {
                             y = tryCatch(readLines(fn.err[i]), error = function(e) NULL)
                             if (is.null(y))
                                 y = readLines(fn[i])
@@ -2432,7 +2434,7 @@ dedup = function(x, suffix = '.')
 #' @author Marcin Imielinski
 #' @export
 setGeneric('merge', function(x, y, ...) standardGeneric('merge'))
-setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix = NULL, prefix = NULL, force = FALSE, sep = '_') {        
+setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix = NULL, prefix = NULL, force = FALSE, sep = '_') {
         if (!is.data.table(y))
             stop('y must be keyed data.table')
 
@@ -2452,9 +2454,24 @@ setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix =
                 warning('entities data.table has duplicate columns, deduping, check table')
                 y = y[, unique(names(y)), with = FALSE]
             }
-            
+
+        if (any(duplicated(y[[key(x)]])))
+            stop('Input table has duplicate instances of table key')
         
+        ids = intersect(ids(x), y[[key(x)]])
+        oids = setdiff(y[[key(x)]], ids)
         out = merge(y[, col, with = FALSE], outputs(x), by = key(x), all.x = TRUE)
+
+        if (length(oids)>0) ## correct weird merge behavior in R
+        {
+            rn = dedup(out[[key(x)]])
+            out = as.data.frame(out)
+            rownames(out) = rn
+            out[oids, colnames(y)] = as.data.frame(y[oids, colnames(y), with = FALSE])
+            out = as.data.table(out)
+            setkeyv(out, key(x))
+        }
+        
 
         if (length(ov)>0)
             {
@@ -2464,19 +2481,24 @@ setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix =
                     {                        
                         ix = !is.na(new[[this.ov]]) | !is.na(old[[this.ov]])
                         ix[ix] = new[[this.ov]][ix] != old[[this.ov]][ix]
-                        old.mtime = file.info(old[[this.ov]][ix])$mtime
-                        new.mtime = file.info(new[[this.ov]][ix])$mtime
-                        if (!force & any(ix2 <- old.mtime>new.mtime, na.rm = TRUE))
+                        ix <- ifelse(is.na(ix), FALSE, ix)
+                        if (any(ix))
                             {
-                                warning('Newer annotations in external data.table are being over-written by new ones, keeping old annotations, call with force = TRUE to override')
-                                new[[this.ov]][ix][ix2] = old[[this.ov]][ix][ix2]
-                            }
+                                old.mtime = file.info(old[[this.ov]][ix])$mtime
+                                new.mtime = file.info(new[[this.ov]][ix])$mtime
+                                ix2 <- ifelse(is.na(old.mtime>new.mtime), FALSE, old.mtime>new.mtime)
+                                if (!force & any(ix2))
+                                {
+                                    warning('Newer annotations in external data.table are being over-written by new ones, keeping old annotations, call with force = TRUE to override')
+                                    new[[this.ov]][ix][ix2] = old[[this.ov]][ix][ix2]
+                                }
 
-                        if (!force &
-                            any(ix <- is.na(new[[this.ov]]) & !is.na(old[[this.ov]]), na.rm = TRUE))
-                            {
-                                warning('Existing annotations in external data.table are being over-written by NA annotations, keeping old annotations, call with force = TRUE to override')
-                                new[[this.ov]][ix2] = old[[this.ov]][ix2]
+                                if (!force &
+                                    any(ix <- is.na(new[[this.ov]]) & !is.na(old[[this.ov]]), na.rm = TRUE))
+                                {
+                                    warning('Existing annotations in external data.table are being over-written by NA annotations, keeping old annotations, call with force = TRUE to override')
+                                    new[[this.ov]][ix2] = old[[this.ov]][ix2]
+                                }
                             }
                         setkeyv(out, key(x))
                         out[ids(x),][[this.ov]] = new[[this.ov]]
@@ -2489,7 +2511,7 @@ setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix =
         
         if (!is.null(suffix))
             setnames(out, ix, paste(names(out)[ix], suffix, sep = sep))
-        
+
         setkeyv(out, key(y))
         return(out)
     })

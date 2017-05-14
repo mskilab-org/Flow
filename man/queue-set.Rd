@@ -13,4 +13,3 @@ Setting LSF / SGE queue associated with Job object
 \author{
 Marcin Imielinski
 }
-

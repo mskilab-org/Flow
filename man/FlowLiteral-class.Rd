@@ -16,7 +16,7 @@ used when initializing a task config.
   \item{arg}{scalar character argument that will be interpreted literally}
 }
 }
+
 \author{
 Marcin Imielinski
 }
-

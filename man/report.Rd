@@ -16,4 +16,3 @@ This is used by the Job update method, but can also be useful for debugging and 
 \author{
 Marcin Imielinski
 }
-

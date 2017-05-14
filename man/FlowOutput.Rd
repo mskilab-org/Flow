@@ -17,4 +17,3 @@ Constructs an object representing the wiring of a regexp on a job output directo
 \author{
 Marcin Imielinski
 }
-

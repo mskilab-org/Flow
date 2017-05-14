@@ -3,6 +3,7 @@
 \docType{methods}
 \name{purge}
 \alias{purge}
+\alias{purge}
 \title{purges all output / run directories associated with this Job object (be careful)}
 \usage{
 purge(object, ...)
@@ -12,4 +13,3 @@ purge(object, ...)
 \author{
 Marcin Imielinski
 }
-

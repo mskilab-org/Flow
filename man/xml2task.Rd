@@ -13,4 +13,3 @@ to a .task fil.e
 \author{
 Marcin Imielinski
 }
-

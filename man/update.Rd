@@ -14,4 +14,3 @@ other things to assess job status.  Once finished, it caches results to the .rds
 \author{
 Marcin Imielinski
 }
-
