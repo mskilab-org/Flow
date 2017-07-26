@@ -1,9 +1,7 @@
 ##############################################################################
 ## Marcin Imielinski
-## The Broad Institute of MIT and Harvard / Cancer program.
-## marcin@broadinstitute.org
 ##
-## Weill-Cornell Medical College
+## Weill Cornell Medici
 ## mai9037@med.cornell.edu
 ##
 ## New York Genome Center
@@ -826,6 +824,8 @@ setMethod('initialize', 'Job', function(.Object,
         if (!is.null(mem))
             mem = cbind(1:nrow(entities), mem)[,2]
 
+        setkeyv(.Object@stamps, key(entities))
+        
         .Object@runinfo[, queue := queue]
         .Object@runinfo[, mem := ifelse(is.na(mem), task@mem, mem)]
         .Object@runinfo[, nice := nice]
@@ -1186,6 +1186,30 @@ setMethod('cache', 'Job', function(object, verbose = TRUE)
             
         saveRDS(object, path)
     })
+
+
+#' @export
+setGeneric('chmod', function(object, ...) {standardGeneric('chmod')})
+
+
+#' @name chmod
+#' @title chmods Job output directories
+#'
+#' Chmods outputs of jobs (by default to 775)
+#' 
+#' @exportMethod chmod
+#' @export
+#' @author Marcin Imielinski
+setMethod('chmod', 'Job', function(object, mode = '775', verbose = FALSE, mc.cores = 1)
+{
+  if (verbose)
+    verbose = '-v'
+  else
+    verbose = ''
+
+  mclapply(outdir(object), function(x) system(paste('chmod -R ', verbose, mode, x)),
+                                              mc.cores = mc.cores)
+})
 
 
 #' @export
