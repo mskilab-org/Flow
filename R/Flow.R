@@ -934,10 +934,9 @@ Job = function(
     mem = NULL,
     nice = NULL,
     cores = 1,
-    
     mock = FALSE, ...) {
     new('Job', task = task, entities = entities, rootdir = rootdir,
-        queue = queue, mem = mem, mock = mock, nice = nice, ...)
+        queue = queue, nice = nice, mem = mem, cores = cores, mock = mock, ...)
 }
 
 
