@@ -577,9 +577,8 @@ and stderr files and polling the directory for relevant outputs).
            13 100
 
 
-   Finally, let's run 5 more of these jobs, but now on the cluster /
-   compute farm. On this system, I only have SGE / UGER, so I will use
-   `qrun()`. (If I had LSF installed, I would use brun() instead)
+   Finally, let's run 5 more of these jobs, but now on the cluster. On this system, I only have SGE / UGER, so I will use
+   `qrun()`. (If I had LSF installed, I would use `brun()` instead)
 
 
        > qrun(jobs[14:18])
