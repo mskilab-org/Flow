@@ -461,24 +461,6 @@ setMethod('initialize', 'FlowLiteral', function(.Object,
 
 
 
-#' @name FlowLiteral
-#' @title Creates object representing a literal argument to a task (ie a static path or value), used for wiring modules into tasks 
-#' @param name character name of argument
-#' @param arg value of argument
-#' @param path boolean specifyign whether this is a path or not
-#' @export
-#' @author Marcin Imielinski
-FlowLiteral = function(...) new('FlowLiteral', ...) 
-
-#' @name FlowAnnotation-class
-#' @title Class to represent an entity-specific annotation (ie a path or value), used for wiring modules into tasks 
-#' @description
-#' 
-#' Class \code{FlowAnnotation} is a simple container for storing arguments to Task that are to be interpreted as annotations
-#' used when initializing a task config.
-#' S4 class for \code{FlowAnnotation}
-#'
-
 #' @section Slots:
 #' \describe{
 #'   \item{arg}{scalar character argument that will be interpreted literally}
@@ -2651,22 +2633,3 @@ rrbind = function(..., union = T)
     
    return(out)
 }
-
-
-## #' @name merge
-## #' @title Merges the output annotations associated with this job with another keyed data.table of entities.
-## #' @description
-## #'
-## #' As jobs complete, one may want to update a "master" data.table with the outputs of Jobs.  This can 
-## #' be useful for manual running of larger workflows to which a given task contributes. 
-## #' 
-## #' #@exportMethod merge
-## #' @param x data.table or Job
-## #' @param y data.table or Job
-## #' @param force logical flag whether to force overwrite
-## #' @param prefix prefix to add to columns merged from the Job
-## #' @param suffix suffix to add to columns merged from the Job
-## #' @param sep  separator to add to columns merged from the Job
-## #' @author Marcin Imielinski
-## #' @export
-
