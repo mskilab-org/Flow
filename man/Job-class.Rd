@@ -3,14 +3,16 @@
 \docType{class}
 \name{Job-class}
 \alias{Job-class}
+\alias{merge}
+\alias{merge,Job-class}
 \alias{[<-}
 \alias{[,Job-class}
 \alias{runinfo}
-\alias{merge}
-\alias{merge,Job-class}
 \title{Class representing a set of jobs, each which is the combination of a Task and entity (i.e. a sample, pair, or set)}
 \usage{
 update(object, ...)
+
+merge(x, y, ...)
 
 \S4method{[}{Job}(x, i, id = FALSE) <- value
 
@@ -27,8 +29,6 @@ now(.Object)
 \S4method{runinfo}{Job}(.Object)
 
 report(.Object, ...)
-
-merge(x, y, ...)
 }
 \arguments{
 \item{x}{data.table or Job}
@@ -57,21 +57,21 @@ In this case the timestamp of each output will be updated and the relevant annot
 updated after querying the output directories.  The data.table associated with the Job can be accessed
 using the runinfo command i.e. runinfo(.Object)
 
+As jobs complete, one may want to update a "master" data.table with the outputs of Jobs.  This can 
+be useful for manual running of larger workflows to which a given task contributes. 
+
+#@exportMethod merge
+
 Replacing a subset of Job object with other compatibler Job items.  "compatible" job items
 will be from the identical task and will contain entities already contained in the Job
 object.
 
 getting output data.table associated with Job object
-
-As jobs complete, one may want to update a "master" data.table with the outputs of Jobs.  This can 
-be useful for manual running of larger workflows to which a given task contributes. 
-
-#@exportMethod merge
 }
 \details{
-Replacing a subset of Job object with another (compatible Job object)
-
 Merge Job output annotations with data.table
+
+Replacing a subset of Job object with another (compatible Job object)
 }
 \section{Slots}{
 

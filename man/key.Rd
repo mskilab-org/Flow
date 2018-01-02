@@ -5,7 +5,7 @@
 \alias{key}
 \title{Retrieves the entity key associated with this Job object}
 \usage{
-\S4method{key}{Job}(x)
+\S4method{key}{Job}(.Object)
 }
 \description{
 Retrieves the entity key associated with this Job object

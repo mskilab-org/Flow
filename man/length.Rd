@@ -5,7 +5,7 @@
 \alias{length}
 \title{returns length of this Job object}
 \usage{
-\S4method{length}{Job}(x)
+\S4method{len}{Job}(.Object)
 }
 \description{
 returns length of this Job object

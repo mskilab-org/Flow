@@ -29,8 +29,8 @@ the respective entity in an output table. See illustration below:
 
 Entities are stored in a keyed R `data.table` of annotations. This table
 can be pulled down from firehose or fiss and imported into R via the
-`data.table` function `fread()`. It can also be obtained via `fiss_get()` in
-db.R or obtained from a data.frame using `as.data.frame()`. The entities
+`data.table` function `fread()`. It can also be obtained via `fiss_get()` from [skidb](https://github.com/mskilab/skidb) 
+or obtained from a data.frame using `as.data.frame()`. The entities
 data.table must have a key (e.g. pair_id) and that key must have a unique
 value for each entity / row.
 
@@ -55,8 +55,8 @@ poll the outputs associated with a set of jobs. Instantiation of an Job
 object creates multiple subdirectories (by default under `./Flow/`)
 with the task name as sub-directory and entity names as sub-sub
 directories. One can use `cmd()` or `bcmd()` methods to extract shell
-commands for running the jobs locally or on LSF, or the jobs can be
-launched directly from R via the `run()` or `brun()` methods. As jobs are
+commands for running the jobs locally or on the cluster (LSF or SGE), or the jobs can be
+launched directly from R via the `run()` or `brun()`/`qrun()` methods. As jobs are
 executed locally or on the cluster, their outputs will be placed into their
 appropriate entity-specific subdirectories (as in firehose), and any
 output annotations that are attached after job completion will refer to

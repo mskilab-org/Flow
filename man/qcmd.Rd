@@ -3,7 +3,7 @@
 \docType{methods}
 \name{qcmd}
 \alias{qcmd}
-\title{Returns vector of qsub (ie SGE) commands associated with this Job object}
+\title{Returns vector of qsub (i.e. SGE) commands associated with this Job object}
 \usage{
 \S4method{qcmd}{Job}(.Object, all = FALSE)
 }
@@ -11,7 +11,7 @@
 \item{all}{logical flag whether to run all jobs (including completed)}
 }
 \description{
-Returns vector of qsub (ie SGE) commands associated with this Job object
+Returns vector of qsub (i.e. SGE) commands associated with this Job object
 }
 \author{
 Marcin Imielinski
