@@ -36,7 +36,7 @@ value for each entity / row.
 
 
 Tasks are configured via an `.task` file. This is a text file whose first
-(non #-commented) line is a path to a firehose module directory (i.e. a
+(non #-commented) line is a path to a Flow module directory (i.e. a
 directory containing a `hydrant.deploy` file). The subsequent rows are
 tab delimited with 3 or 4 columns, and specify the input and output
 bindings of a task. The first column of every row is 'input' or
@@ -52,12 +52,12 @@ from the module output directory. See the example below.
 An entity table is combined with an `.task` task configuration to create
 an Job, which is a vectorized R object used to run, manage, query, and
 poll the outputs associated with a set of jobs. Instantiation of an Job
-object creates a bunch of subdirectories (by default under `./Flow/`)
+object creates multiple subdirectories (by default under `./Flow/`)
 with the task name as sub-directory and entity names as sub-sub
 directories. One can use `cmd()` or `bcmd()` methods to extract shell
 commands for running the jobs locally or on LSF, or the jobs can be
 launched directly from R via the `run()` or `brun()` methods. As jobs are
-executed locally or on LSF, their outputs will be placed into their
+executed locally or on the cluster, their outputs will be placed into their
 appropriate entity-specific subdirectories (as in firehose), and any
 output annotations that are attached after job completion will refer to
 files residing under their respective task / entity subfolder.
@@ -67,7 +67,7 @@ files residing under their respective task / entity subfolder.
 
 
 Here's an example of building a dummy module, configuring it to a task,
-and applying that task to a bunch of entities representing tumor normal
+and applying that task to several entities representing tumor normal
 pairs.
 
 
@@ -272,12 +272,12 @@ task x entities combination.
        for normal_bam (113 paths)
        [1] "normal_bam"
        making output directories under
-       /nethome/mimielinski/FlowExample/Flow/dummy
+       /Users/home/FlowExample/Flow/dummy
        initializing output annotations
        Dumping out 113 Job.rds files to subdirectories of
-       /nethome/mimielinski/FlowExample/Flow
-       Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
-       Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
+       /Users/home/FlowExample/Flow
+       Caching object to /Users/home/FlowExample/Flow/dummy.rds
+       Caching object to /Users/home/FlowExample/Flow/dummy.rds
            
        not ready
        113
@@ -295,7 +295,7 @@ output 'jobs' is an `Job` object.
     > jobs
 
        Job on 113 entities (LUAD-CIP-LU-A08-43-T...) with rootdir
-       /nethome/mimielinski/FlowExample/Flow from task dummy using module
+       /Users/home/FlowExample/Flow from task dummy using module
        dummymodule version
        Job status: not ready (113)
 
@@ -353,7 +353,7 @@ readiness to run.
      for analysis_id (113 files)
      for panel_of_normals (1 files)
      for variant_mask (1 files)
-     Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
+     Caching object to/Users/home/FlowExample/Flow/dummy.rds
    
      ready
       113
@@ -436,7 +436,7 @@ and stderr files and polling the directory for relevant outputs).
               for analysis_id (113 files)
               for panel_of_normals (1 files)
               for variant_mask (1 files)
-              Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
+              Caching object to /Users/home/FlowExample/Flow/dummy.rds
 
               completed ready
               3 110
@@ -448,7 +448,7 @@ and stderr files and polling the directory for relevant outputs).
 
        > jobs['completed']
    
-            Job on 3 entities with rootdir /nethome/mimielinski/FlowExample/Flow from task dummy using module dummymodule version
+            Job on 3 entities with rootdir /Users/home/FlowExample/Flow from task dummy using module dummymodule version
             Job status: completed (3)
 
 
@@ -470,13 +470,13 @@ and stderr files and polling the directory for relevant outputs).
                2: LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
                3: LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
                vcf
-               1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.vcf
-               2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.vcf
-               3:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.vcf
+               1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.vcf
+               2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.vcf
+               3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.vcf
                quality_metrics
-               1:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.report.txt
-               2:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.report.txt
-               3:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.report.txt
+               1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.report.txt
+               2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.report.txt
+               3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.report.txt
 
 
    We can examine the error stream associated with the first of these
@@ -485,9 +485,9 @@ and stderr files and polling the directory for relevant outputs).
        > more(err(jobs['completed'][1]))
 
            Command being timed:
-           "/nethome/mimielinski/FlowExample/modules/dummymodule///dummyscript.sh LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
-            /nethome/mimielinski/FlowExample/testdata//A08-43-4.bam /nethome/mimielinski/FlowExample/testdata//A08-43-1.bam 0
-            /nethome/mimielinski/FlowExample/testdata/panel_of_normals.txt /nethome/mimielinski/FlowExample/testdata/mask.bed.gz"
+           "/Users/home/FlowExample/modules/dummymodule///dummyscript.sh LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
+            /Users/home/FlowExample/testdata//A08-43-4.bam /Users/home/FlowExample/testdata//A08-43-1.bam 0
+            /Users/home/FlowExample/testdata/panel_of_normals.txt /Users/home/FlowExample/testdata/mask.bed.gz"
             User time (seconds): 0.00
             System time (seconds): 0.00
             Percent of CPU this job got: 3%
@@ -527,13 +527,13 @@ and stderr files and polling the directory for relevant outputs).
            2: dummy.LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
            3: dummy.LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
            out.file
-           1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL//dummy.LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.bsub.out
-           2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6//dummy.LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.bsub.out
-           3: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE//dummy.LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.bsub.out
+           1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/dummy.LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.bsub.out
+           2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/dummy.LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.bsub.out
+           3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/dummy.LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.bsub.out
            err.file
-           1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL//dummy.LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.bsub.err
-           2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6//dummy.LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.bsub.err
-           3: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE//dummy.LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.bsub.err
+           1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/dummy.LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.bsub.err
+           2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/dummy.LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.bsub.err
+           3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/dummy.LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.bsub.err
            exit_flag term_flag started reported
            1: Successfully completed. NA 2016-03-08 18:15:36 2016-03-08 18:15:36
            2: Successfully completed. NA 2016-03-08 18:15:36 2016-03-08 18:15:36
@@ -571,7 +571,7 @@ and stderr files and polling the directory for relevant outputs).
            for analysis_id (113 files)
            for panel_of_normals (1 files)
            for variant_mask (1 files)
-           Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
+           Caching object to /Users/home/FlowExample/Flow/dummy.rds
 
            completed ready
            13 100
@@ -603,7 +603,7 @@ and stderr files and polling the directory for relevant outputs).
            for analysis_id (113 files)
            for panel_of_normals (1 files)
            for variant_mask (1 files)
-           Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
+           Caching object to /Users/home/FlowExample/Flow/dummy.rds
 
            completed ready
            13 100
@@ -621,11 +621,11 @@ and stderr files and polling the directory for relevant outputs).
            4: LUAD-CIP-LUAD-S01345-TP-NT-SM-18CXP-SM-18D1G 7524207 0.00000 dummy.LUAD
            5: LUAD-CIP-LUAD-S01346-TP-NT-SM-18CXJ-SM-18D1A 7524208 0.00000 dummy.LUAD
            user state start.sumit.at queue slots taskid
-           1: mimielinski qw 03/08/2016 20:49:06 1 NA
-           2: mimielinski qw 03/08/2016 20:49:06 1 NA
-           3: mimielinski qw 03/08/2016 20:49:06 1 NA
-           4: mimielinski qw 03/08/2016 20:49:06 1 NA
-           5: mimielinski qw 03/08/2016 20:49:06 1 NA
+           1: username1 qw 03/08/2016 20:49:06 1 NA
+           2: username1 qw 03/08/2016 20:49:06 1 NA
+           3: username1 qw 03/08/2016 20:49:06 1 NA
+           4: username1 qw 03/08/2016 20:49:06 1 NA
+           5: username1 qw 03/08/2016 20:49:06 1 NA
 
    Hmm, these are stuck in queue for longer than I expect (not running
    instantly), maybe I need to relaunch with lower memory requirements
@@ -636,11 +636,11 @@ and stderr files and polling the directory for relevant outputs).
 
        > qkill(jobs[14:18])
 
-           mimielinski has deleted job 7524204
-           mimielinski has deleted job 7524205
-           mimielinski has deleted job 7524206
-           mimielinski has deleted job 7524207
-           mimielinski has deleted job 7524208
+           username1 has deleted job 7524204
+           username1 has deleted job 7524205
+           username1 has deleted job 7524206
+           username1 has deleted job 7524207
+           username1 has deleted job 7524208
 
    I set the memory requirement to 1 and rerun
 
@@ -658,7 +658,7 @@ and stderr files and polling the directory for relevant outputs).
            for analysis_id (113 files)
            for panel_of_normals (1 files)
            for variant_mask (1 files)
-           Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
+           Caching object to /Users/home/FlowExample/Flow/dummy.rds
 
            completed ready
            18 95
@@ -681,7 +681,7 @@ and stderr files and polling the directory for relevant outputs).
            for analysis_id (113 files)
            for panel_of_normals (1 files)
            for variant_mask (1 files)
-           Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
+           Caching object to /Users/home/FlowExample/Flow/dummy.rds
 
            completed ready
            113 0
@@ -699,7 +699,7 @@ and stderr files and polling the directory for relevant outputs).
 
 
    Jobs are most easily launched directly from the R command line using
-   `run(jobs)` or `brun(jobs)`. Alternatively, you can dump the local or bsub
+   `run(jobs)` or  `qrun(jobs)`/`brun(jobs)`. Alternatively, you can dump the local or qsub/bsub
    shell commands to file and run from the shell eg.
 
        >writeLines(cmd(jobs), 'cmd.sh')
@@ -727,29 +727,29 @@ and stderr files and polling the directory for relevant outputs).
            113: LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4
 
            vcf
-           1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.vcf
-           2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.vcf
-           3: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.vcf
-           4: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8.vcf
-           5: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU.vcf
+           1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.vcf
+           2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.vcf
+           3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.vcf
+           4: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8.vcf
+           5: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU.vcf
            ---
-           109: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ.vcf
-           110: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI.vcf
-           111: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ.vcf
-           112: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO.vcf
-           113: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4.vcf
+           109: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ.vcf
+           110: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI.vcf
+           111: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ.vcf
+           112: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO.vcf
+           113: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4.vcf
            quality_metrics
-           1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.report.txt
-           2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-\SM-1D1N5-SM-1D1N6.report.txt
-           3: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.report.txt
-           4: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-\SM-1D1NM-SM-1D1K8.report.txt
-           5: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-\SM-1UVTT-SM-1UVTU.report.txt
+           1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.report.txt
+           2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-\SM-1D1N5-SM-1D1N6.report.txt
+           3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.report.txt
+           4: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-\SM-1D1NM-SM-1D1K8.report.txt
+           5: /Users/home/lowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-\SM-1UVTT-SM-1UVTU.report.txt
            ---
-           109: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ.report.txt
-           110: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI.report.txt
-           111: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ.report.txt
-           112: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO.report.txt
-           113: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4.report.txt
+           109: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ.report.txt
+           110: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI.report.txt
+           111: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ.report.txt
+           112: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO.report.txt
+           113: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4.report.txt
 
 
    Initially, the annotations will be mostly empty, because the jobs have
@@ -802,30 +802,30 @@ and stderr files and polling the directory for relevant outputs).
            113: ~/FlowExample/testdata//TCGA-98-8022-10A-01D-2244-08.bam
            \
            vcf
-           1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-\SM-13WXF-SM-13WWL.vcf
-           2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-\SM-1D1N5-SM-1D1N6.vcf
-           3: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-\SM-1D1ND-SM-1D1NE.vcf
-           4: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-\SM-1D1NM-SM-1D1K8.vcf
-           5: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-\SM-1UVTT-SM-1UVTU.vcf
+           1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-\SM-13WXF-SM-13WWL.vcf
+           2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-\SM-1D1N5-SM-1D1N6.vcf
+           3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-\SM-1D1ND-SM-1D1NE.vcf
+           4: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-\SM-1D1NM-SM-1D1K8.vcf
+           5: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-\SM-1UVTT-SM-1UVTU.vcf
            --- \
-           109: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-\SM-26XAG-SM-26XAJ.vcf
-           110: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-\SM-2XLBV-SM-2XLDI.vcf
-           111: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-\SM-35ASG-SM-35ASJ.vcf
-           112: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-\SM-2XLDD-SM-2XLCO.vcf
-           113: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-\SM-2XLCJ-SM-2XLE4.vcf
+           109: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-\SM-26XAG-SM-26XAJ.vcf
+           110: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-\SM-2XLBV-SM-2XLDI.vcf
+           111: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-\SM-35ASG-SM-35ASJ.vcf
+           112: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-\SM-2XLDD-SM-2XLCO.vcf
+           113: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-\SM-2XLCJ-SM-2XLE4.vcf
            \
            quality_metrics
-           1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.report.txt
-           2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.report.txt
-           3: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-\SM-1D1ND-SM-1D1NE.report.txt
-           4: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-\SM-1D1NM-SM-1D1K8.report.txt
-           5: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-\SM-1UVTT-SM-1UVTU.report.txt
+           1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.report.txt
+           2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.report.txt
+           3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-\SM-1D1ND-SM-1D1NE.report.txt
+           4: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-\SM-1D1NM-SM-1D1K8.report.txt
+           5: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-\SM-1UVTT-SM-1UVTU.report.txt
            --- \
-          109: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-\SM-26XAG-SM-26XAJ.report.txt
-          110: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-\SM-2XLBV-SM-2XLDI.report.txt
-          111: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-\SM-35ASG-SM-35ASJ.report.txt
-          112: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-\SM-2XLDD-SM-2XLCO.report.txt
-          113: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-\SM-2XLCJ-SM-2XLE4.report.txt
+          109: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-\SM-26XAG-SM-26XAJ.report.txt
+          110: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-\SM-2XLBV-SM-2XLDI.report.txt
+          111: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-\SM-35ASG-SM-35ASJ.report.txt
+          112: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-\SM-2XLDD-SM-2XLCO.report.txt
+          113: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-\SM-2XLCJ-SM-2XLE4.report.txt
 
 
    The resulting entities table has now been updated and may be "ready"

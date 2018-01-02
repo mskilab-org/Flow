@@ -1,7 +1,7 @@
 ##############################################################################
 ## Marcin Imielinski
 ##
-## Weill Cornell Medici
+## Weill Cornell Medicine
 ## mai9037@med.cornell.edu
 ##
 ## New York Genome Center
