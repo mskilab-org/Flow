@@ -5,7 +5,10 @@
 \alias{c}
 \title{Concatenates Job objects built from the same Task}
 \usage{
-\S4method{c}{Job}(x, ..., recursive = FALSE)
+\S4method{c}{Job}(x, ...)
+}
+\description{
+Concatenates Job objects built from the same Task
 }
 \author{
 Marcin Imielinski

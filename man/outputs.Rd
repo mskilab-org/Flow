@@ -7,6 +7,9 @@
 \usage{
 \S4method{outputs}{Job}(.Object)
 }
+\description{
+returns keyed data.table of output entity annotations generated from the jobs in this Job object.  Annotations will be NA for non-completed jobs.
+}
 \author{
 Marcin Imielinski
 }

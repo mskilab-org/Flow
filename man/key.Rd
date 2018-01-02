@@ -7,6 +7,9 @@
 \usage{
 \S4method{key}{Job}(x)
 }
+\description{
+Retrieves the entity key associated with this Job object
+}
 \author{
 Marcin Imielinski
 }

@@ -7,6 +7,9 @@
 \usage{
 \S4method{bkill}{Job}(.Object, jid = NULL)
 }
+\description{
+Kills any running LSF jobs associated with this Job object
+}
 \author{
 Marcin Imielinski
 }

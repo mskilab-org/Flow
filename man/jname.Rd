@@ -7,6 +7,9 @@
 \usage{
 \S4method{jname}{Job}(.Object)
 }
+\description{
+Returns character vector of job names associated with this Job object.
+}
 \author{
 Marcin Imielinski
 }
