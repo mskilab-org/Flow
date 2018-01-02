@@ -109,6 +109,8 @@ setMethod('initialize', 'Module', function(.Object,
         return(.Object)
     })
 
+
+
 #' @name Module
 #' @title Class to implement modules, which are standalone pieces of code that expect standard inputs and outputs
 #' @description
@@ -459,25 +461,6 @@ setMethod('initialize', 'FlowLiteral', function(.Object,
         return(.Object)
     })
 
-
-
-#' @name FlowLiteral
-#' @title Creates object representing a literal argument to a task (ie a static path or value), used for wiring modules into tasks 
-#' @param name character name of argument
-#' @param arg value of argument
-#' @param path boolean specifyign whether this is a path or not
-#' @export
-#' @author Marcin Imielinski
-FlowLiteral = function(...) new('FlowLiteral', ...) 
-
-#' @name FlowAnnotation-class
-#' @title Class to represent an entity-specific annotation (ie a path or value), used for wiring modules into tasks 
-#' @description
-#' 
-#' Class \code{FlowAnnotation} is a simple container for storing arguments to Task that are to be interpreted as annotations
-#' used when initializing a task config.
-#' S4 class for \code{FlowAnnotation}
-#'
 
 #' @section Slots:
 #' \describe{
