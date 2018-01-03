@@ -265,40 +265,37 @@ task x entities combination.
 
 
     > jobs = Job('~/FlowExample/tasks/dummy.task', entities) 
-    
-       Noting time stamps of inputs
-       for tumor_bam (113 paths)
-       [1] "tumor_bam"
-       for normal_bam (113 paths)
-       [1] "normal_bam"
-       making output directories under
-       /Users/home/FlowExample/Flow/dummy
-       initializing output annotations
-       Dumping out 113 Job.rds files to subdirectories of
-       /Users/home/FlowExample/Flow
-       Caching object to /Users/home/FlowExample/Flow/dummy.rds
-       Caching object to /Users/home/FlowExample/Flow/dummy.rds
-           
-       not ready
-       113
-       Warning message:
-       In .local(.Object, ...) :
-       missing annotations resulting causing 113 jobs to be not ready.
-       Breakdown of detailed statuses (with # entities with each specific
-       status):
-       tumor_bam,normal_bam,panel_of_normals,variant_mask not ready(113)
+        Noting time stamps of inputs
+        for tumor_bam (113 paths)
+        [1] "tumor_bam"
+        for normal_bam (113 paths)
+        [1] "normal_bam"
+        making output directories under
+        /Users/home/FlowExample/Flow/dummy
+        initializing output annotations
+        Dumping out 113 Job.rds files to subdirectories of
+        /Users/home/FlowExample/Flow
+        Caching object to /Users/home/FlowExample/Flow/dummy.rds
+        Caching object to /Users/home/FlowExample/Flow/dummy.rds
+            
+        not ready
+        113
+        Warning message:
+        In .local(.Object, ...) :
+        missing annotations resulting causing 113 jobs to be not ready.
+        Breakdown of detailed statuses (with # entities with each specific
+        status):
+        tumor_bam,normal_bam,panel_of_normals,variant_mask not ready(113)
 
 
 We've combined the `.task` config with the entities data.table. The
 output 'jobs' is an `Job` object.
 
     > jobs
-
-       Job on 113 entities (LUAD-CIP-LU-A08-43-T...) with rootdir
-       /Users/home/FlowExample/Flow from task dummy using module
-       dummymodule version
-       Job status: not ready (113)
-
+        Job on 113 entities (LUAD-CIP-LU-A08-43-T...) with rootdir
+        /Users/home/FlowExample/Flow from task dummy using module
+        dummymodule version
+        Job status: not ready (113)
 
 This vectorized object keeps track of entity specific inputs and
 outputs, stores local, LSF, and SGE / UGER commands for running the
@@ -344,19 +341,18 @@ pointed to as static paths in the task configuration above.
 Now we can update the jobs object will re-check paths and assess
 readiness to run.
 
-     > update(jobs)
+    > update(jobs)
+        Checking input date stamps
+        for tumor_bam (113 files)
+        for normal_bam (113 files)
+        for error_rate (1 files)
+        for analysis_id (113 files)
+        for panel_of_normals (1 files)
+        for variant_mask (1 files)
+        Caching object to/Users/home/FlowExample/Flow/dummy.rds
    
-     Checking input date stamps
-     for tumor_bam (113 files)
-     for normal_bam (113 files)
-     for error_rate (1 files)
-     for analysis_id (113 files)
-     for panel_of_normals (1 files)
-     for variant_mask (1 files)
-     Caching object to/Users/home/FlowExample/Flow/dummy.rds
-   
-     ready
-      113
+        ready
+        113
 
 
 Voilà! The jobs are ready so we can run them. Before we do, some basics
@@ -589,20 +585,19 @@ After a minute I update the jobs again, we'll see additional jobs completed.
 I notice that no additional jobs have completed. I wonder what's wrong...
 I can check job status on the farm for these by using `qjobs()`
 
-       > qjobs(jobs[14:18])
-   
-           pair_id jobid prior name
-           1: LUAD-CIP-LUAD-S01302-TP-NT-SM-18CXO-SM-18D1F 7524204 0.00000 dummy.LUAD
-           2: LUAD-CIP-LUAD-S01331-TP-NT-SM-18CY2-SM-18D1S 7524205 0.00000 dummy.LUAD
-           3: LUAD-CIP-LUAD-S01341-TP-NT-SM-18CYB-SM-18D22 7524206 0.00000 dummy.LUAD
-           4: LUAD-CIP-LUAD-S01345-TP-NT-SM-18CXP-SM-18D1G 7524207 0.00000 dummy.LUAD
-           5: LUAD-CIP-LUAD-S01346-TP-NT-SM-18CXJ-SM-18D1A 7524208 0.00000 dummy.LUAD
-           user state start.sumit.at queue slots taskid
-           1: username1 qw 03/08/2016 20:49:06 1 NA
-           2: username1 qw 03/08/2016 20:49:06 1 NA
-           3: username1 qw 03/08/2016 20:49:06 1 NA
-           4: username1 qw 03/08/2016 20:49:06 1 NA
-           5: username1 qw 03/08/2016 20:49:06 1 NA
+    > qjobs(jobs[14:18])
+        pair_id jobid prior name
+        1: LUAD-CIP-LUAD-S01302-TP-NT-SM-18CXO-SM-18D1F 7524204 0.00000 dummy.LUAD
+        2: LUAD-CIP-LUAD-S01331-TP-NT-SM-18CY2-SM-18D1S 7524205 0.00000 dummy.LUAD 
+        3: LUAD-CIP-LUAD-S01341-TP-NT-SM-18CYB-SM-18D22 7524206 0.00000 dummy.LUAD
+        4: LUAD-CIP-LUAD-S01345-TP-NT-SM-18CXP-SM-18D1G 7524207 0.00000 dummy.LUAD
+        5: LUAD-CIP-LUAD-S01346-TP-NT-SM-18CXJ-SM-18D1A 7524208 0.00000 dummy.LUAD
+        user state start.sumit.at queue slots taskid
+        1: username1 qw 03/08/2016 20:49:06 1 NA
+        2: username1 qw 03/08/2016 20:49:06 1 NA
+        3: username1 qw 03/08/2016 20:49:06 1 NA
+        4: username1 qw 03/08/2016 20:49:06 1 NA
+        5: username1 qw 03/08/2016 20:49:06 1 NA
 
 Hmm, these are stuck in queue for longer than I expected (i.e. they're not running instantly), 
 maybe I need to relaunch with lower memory requirements than standard (memory requirement 4)
