@@ -6,9 +6,16 @@
 \usage{
 xml2task(path, module = NULL, out.file = NULL)
 }
+\arguments{
+\item{path}{string of pathname to firehose xml task}
+
+\item{module}{string name of Module (default = NULL)}
+
+\item{out.file}{string pathname to *.task file (default = NULL)}
+}
 \description{
 Takes a path to an xml file of a FH task configuration, module path, and outputs a Task object or writes
-to a .task fil.e
+to a .task file
 }
 \author{
 Marcin Imielinski

@@ -2127,7 +2127,6 @@ setMethod('ids', 'Job', function(.Object)
 
 
 
-
 #' @export
 setGeneric('key', function(.Object) {standardGeneric('key')})
 
@@ -2153,12 +2152,14 @@ setMethod('show', 'Job', function(object)
     })
 
 
+
+
 #' @export
 setGeneric('len', function(.Object) {standardGeneric('len')})
 
-#' @name length
+#' @name len
 #' @title returns length of this Job object
-#' @exportMethod length
+#' @exportMethod len
 #' @export
 #' @author Marcin Imielinski
 setMethod('len', 'Job', function(.Object)
@@ -2166,7 +2167,6 @@ setMethod('len', 'Job', function(.Object)
         return(nrow(.Object@outputs))
     })
     
-
 
 
 
@@ -2194,4 +2194,65 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
         setkeyv(out, key(.Object))
         return(out[1:nrow(out), ])
     })
+
+
+
+
+#' @name concat
+#' @exportMethod concat
+#' @export 
+setGeneric('concat', function(x, ...)  standardGeneric('c'))
+
+#' @name concat
+#' @title concat
+#' @description 
+#' 
+#' Concatenates Job objects built from the same Task
+#' 
+#' @export
+#' @author Marcin Imielinski
+setMethod('concat', 'Job', function(x, ...)
+    {
+        if (!.hasSlot(x, 'entities')){
+          stop('older version of Flow object does not support concatenation')
+        }
+        
+        obj = c(list(x), list(...))
+        same.same = all(sapply(obj, function(x) identical(x@task, obj[[1]]@task)))
+        if (!all(same.same)){
+          stop('trying to conatenate incompatible Job objects: can only concatenate Jobs built from same Task')
+        }
+
+        ukey = unique(sapply(obj, function(x) key(x@inputs)))
+        if (length(ukey)>1){
+          stop('trying to concatenate incompatible Job objects built from different keys')
+        }
+
+        urootdir = unique(sapply(obj, function(x) x@rootdir))
+        if (length(urootdir)>1){
+          warning('concatenating Job objects with different rootdirs, choosing first for output')
+        }
+
+        icol = names(obj[[1]]@inputs)
+        ocol = names(obj[[1]]@outputs)
+        scol = names(obj[[1]]@stamps)
+        rcol = names(obj[[1]]@runinfo)
+        ecol = names(obj[[1]]@entities)
+                
+        inputs = rbindlist(lapply(obj, function(x) x@inputs[, icol, with = FALSE]))
+        outputs = rbindlist(lapply(obj, function(x) x@outputs[, ocol, with = FALSE]))
+        runinfo = rbindlist(lapply(obj, function(x) x@runinfo[, rcol, with = FALSE]))
+        stamps = rbindlist(lapply(obj, function(x) x@stamps[, scol, with = FALSE]))
+        entities = rbindlist(lapply(obj, function(x) x@entities[, ecol, with = FALSE]))
+
+        setkeyv(entities, ukey)
+        setkeyv(inputs, ukey)
+        setkeyv(outputs, ukey)
+        setkeyv(runinfo, ukey)
+        setkeyv(stamps, ukey)
+        
+        return(Job(obj[[1]]@task, entities = entities, rootdir = urootdir[1], queue = runinfo$queue, mem = runinfo$mem, nice = runinfo$nice, cores = runinfo$cores, now = runinfo$now, mock = TRUE)) 
+    })
+
+
 

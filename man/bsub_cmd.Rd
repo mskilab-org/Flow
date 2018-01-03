@@ -4,9 +4,30 @@
 \alias{bsub_cmd}
 \title{bsub_cmd}
 \usage{
-bsub_cmd(cmd, queue, jname = NULL, jlabel = NULL, jgroup = NULL,
-  mem = NULL, group = "cgafolk", cwd = NULL, mc.cores = NULL,
-  deadline = F)
+bsub_cmd(cmd, queue = NULL, jname = NULL, jlabel = NULL, jgroup = NULL,
+  mem = NULL, group = NULL, cwd = NULL, mc.cores = NULL,
+  deadline = FALSE)
+}
+\arguments{
+\item{cmd}{string shell command to be submitted via bsub}
+
+\item{queue}{string name of specified queue, '-q "queue_name" ' (default = NULL)}
+
+\item{jname}{string path prefix by 'jname' (default = NULL)}
+
+\item{jlabel}{string job name for '-J "job_name" ' (default = NULL)}
+
+\item{jgroup}{string job_group_name for '-g "job_group_name" ' (default = NULL)}
+
+\item{mem}{integer amount of virtual memory/RAM to use via resource requirement arg '-R "res_req"'' (default = NULL)}
+
+\item{group}{string project_name for '-P' (default = NULL)}
+
+\item{cwd}{string pathname to current working directory; -cwd "current_working_directory" (default = NULL)}
+
+\item{mc.cores}{integer number of cores to use (default = 1)}
+
+\item{deadline}{boolean specifies if deadline initiation time used (default = FALSE)}
 }
 \description{
 Makes bsub command that wraps shell command "cmd" to send to queue "queue"

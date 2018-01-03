@@ -6,6 +6,11 @@
 \usage{
 dedup(x, suffix = ".")
 }
+\arguments{
+\item{x}{vector of files}
+
+\item{suffix}{string suffix (default = '.')}
+}
 \description{
 relabels duplicates in a character vector with .1, .2, .3
 (where "." can be replaced by any user specified suffix)

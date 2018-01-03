@@ -4,12 +4,33 @@
 \alias{qsub_cmd}
 \title{qsub_cmd}
 \usage{
-qsub_cmd(script.fn, queue, jname = NULL, jlabel = NULL, jgroup = NULL,
-  mem = NULL, group = "cgafolk", cwd = NULL, mc.cores = NULL,
-  deadline = F, now = FALSE)
+qsub_cmd(script.fn, queue = NULL, jname = NULL, jlabel = NULL,
+  jgroup = NULL, mem = NULL, group = NULL, cwd = NULL,
+  mc.cores = NULL, deadline = F, now = FALSE)
+}
+\arguments{
+\item{script.fn}{string shell command to be submitted via bsub}
+
+\item{queue}{string queue destination, specifies destination of the job '-q "destination" ' (default = NULL)}
+
+\item{jname}{string path prefix by 'jname' (default = NULL)}
+
+\item{jlabel}{string job name for '-J "job_name" ' (default = NULL)}
+
+\item{jgroup}{string job_group_name for '-g "job_group_name" ' (default = NULL)}
+
+\item{mem}{integer amount of virtual memory/RAM to use via resource requirement arg '-R "res_req"'' (default = NULL)}
+
+\item{group}{string project_name for '-P' (default = NULL)}
+
+\item{cwd}{string pathname to current working directory; -cwd "current_working_directory" (default = NULL)}
+
+\item{mc.cores}{integer number of cores to use (default = 1)}
+
+\item{deadline}{boolean specifies if deadline initiation time used (default = FALSE)}
 }
 \description{
-Makes qsub command that wraps shell command "cmd" to send to queue "queue"
+Makes qsub command that wraps shell command "script.fn" to send to queue "queue"
 redirecting output / error etc streams to path prefixed by "jname",
 optional_args: maximum memory requirements "mem", "jlabel" job label
 }

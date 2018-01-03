@@ -4,7 +4,16 @@
 \alias{parse.info}
 \title{parse.info}
 \usage{
-parse.info(jname, detailed = F, force = FALSE, mc.cores = 1)
+parse.info(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
+}
+\arguments{
+\item{jname}{string 'jobname' pathanme to completed Job subdirectory}
+
+\item{detailed}{boolean "verbose", outputs 'max.swap', 'max.processes', and 'max.threads' (default = FALSE)}
+
+\item{force}{boolean force if *out/*err not found (default = FALSE)}
+
+\item{mc.cores}{integer number of cores to use (default = 1)}
 }
 \description{
 parses outputs of completed Job by subdirectory
