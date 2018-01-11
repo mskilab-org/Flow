@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/mskilab/Flow.svg?branch=master)](https://travis-ci.org/mskilab/Flow)
 
 # Flow
 
