@@ -145,21 +145,18 @@ setMethod('initialize', 'Module', function(.Object,
 #' @export
 Module = function(...) new('Module', ...)
 
-setMethod('show', 'Module', function(object)
-    {
+setMethod('show', 'Module', function(object){
         writeLines(as.character(object))
-    })
+})
 
-setMethod('as.character', 'Module', function(x, ...)
-    {
+setMethod('as.character', 'Module', function(x, ...){
         NCHAR = 100
         tmp.cmd = paste(str_sub(x@cmd, 1, pmin(nchar(x@cmd), NCHAR)), ifelse(nchar(x@cmd) > NCHAR, '...', ''), sep = '')
-#        cat(sprintf('module %s, with command:  %s\nand args:\n%s\n', x@name, tmp.cmd, paste(x@args, collapse = '\n')))
         out = sprintf('#Module %s ("%s")', x@name, tmp.cmd)
         out = c(out, x@sourcedir, paste('input', x@args, '<INPUT_BINDING>', '<(path)|(value)>', sep = '\t'))
         out = c(out, paste('output\t<OUTPUT_ANNOTATION>\t<OUTPUT_REGEXP>'))
         return(out)
-    })
+})
 
 
 
