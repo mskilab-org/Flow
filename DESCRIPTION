@@ -28,7 +28,8 @@ Depends:
     stringr, 
     parallel
 Suggests:
-    XML
+    XML, 
+    testthat
 License: GPL v3.0
 LazyData: true
 RoxygenNote: 6.0.1.9000
