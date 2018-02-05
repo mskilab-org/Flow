@@ -911,7 +911,9 @@ setMethod('initialize', 'Job', function(.Object,
         ## utility func for instantiation of Job and modifying memory
         .cmd2bcmd = function(cmd, outdir, name, ids, queue, mem, cores) bsub_cmd(paste('touch ', outdir, '/started; ', cmd, ';', sep = ''), queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = .jname(outdir, name, ids), jlabel = .jname(outdir, name, ids))
         .cmd2qcmd = function(cmd, outdir, name, ids, queue, mem, cores, now) qsub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now)
-        
+        ## SLURM function, Peter Waltman
+        .cmd2scmd = function(cmd, outdir, name, ids, queue, mem, cores) srun_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste(name, ids, sep = '.'), jlabel = paste(name, ids, sep = '.') )
+
         .Object@runinfo[, bcmd := '']
         ix = which(status(.Object) != 'not ready')
         .Object@runinfo[ix, bcmd := .cmd2bcmd(cmd.og, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores)]
@@ -928,7 +930,10 @@ setMethod('initialize', 'Job', function(.Object,
 
         .Object@runinfo[, mapply(function(text, path) writeLines(text, path), cmd, cmd.path)] ## writes cmd to path        
         .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now)]
-        
+        ## SLURM function, Peter Waltman
+        .Object@runinfo[ix, scmd := .cmd2scmd(cmd=cmd.og, outdir=outdir, name=.Object@task@name, ids=ids(.Object)[ix], queue=queue, mem=mem, cores=cores ) ]
+
+
         return(.Object@runinfo)
     }
 
@@ -1807,6 +1812,44 @@ setMethod('qrun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
     })
 
 
+#' @export
+setGeneric('scmd', function(.Object, ...) {standardGeneric('scmd')})
+
+#' @name scmd
+#' @title Returns vector of srun (ie slurm) commands associated with this Job object
+#' @exportMethod scmd
+#' @export
+#' @param all logical flag whether to run all jobs (including completed)
+#' @author Marcin Imielinski
+setMethod('scmd', 'Job', function(.Object, all = FALSE)
+    {
+        if (!all)
+            {
+                ix = runinfo(.Object)[, which(!(status %in% c('completed', 'not ready')))]
+                structure(.Object@runinfo[, scmd[ix]], names = ids(.Object)[ix])
+            }
+        else
+            structure(.Object@runinfo[, scmd], names = .Object@runinfo[[key(.Object@runinfo)]])
+    })
+
+#' @export
+setGeneric('srun', function(.Object, ...) {standardGeneric('srun')})
+#' @name srun
+#' @title Runs jobs on Slurm
+#' @exportMethod srun
+#' @export
+#' @param mc.cores Number of parallel cores to run jobs with (=1)
+#' @author Marcin Imielinski
+setMethod('srun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
+    {
+        scmds = scmd(.Object, all = all)
+        res = lapply(scmds, function(x) {p = pipe(x); out = readLines(p); close(p); return(out)})
+        jobids = sapply(res, function(x) gsub('Your job (\\d+) .*', '\\1', x))
+        mapply(function(d,j) writeLines(j, paste0(d,'/sge.jobid')), outdir(.Object)[names(scmds)], jobids) ## save last jobids
+        writeLines(paste('Deploying', jobids, 'for entity', ids(.Object)))
+    })
+
+
 
 
 #' @export
@@ -2050,6 +2093,46 @@ setMethod('qjobs', 'Job', function(.Object)
             })
 
 
+## this is a stub that is based on the qjobs function. It has not been tested, and will need to be modified to work with the output from squeue
+## #' @export
+## setGeneric('sjobs', function(.Object, ...) {standardGeneric('sjobs')})
+## #' @name sjobs
+## #' @title Tracks down any slurm jobs associated with this Job object using an sjobs query (warning can be slow)
+## #' @exportMethod sjobs
+## #' @export
+## #' @author Peter Waltman
+## setMethod('sjobs', 'Job', function(.Object) {
+    
+##     fn.jids = sapply(outdir(.Object), function(x) paste(x, 'sge.jobid', sep = '/'))
+##     ix = file.exists(fn.jids)
+##     out1 = out2 = NULL
+##     nms = c('jobid','prior','ntckt','name','user','project','department','state','cpu','mem','io','tckts','ovrts','otckt','ftckt','stckt','share','queue','slots')
+
+##     out = runinfo(.Object)[, key(.Object), with = FALSE]
+##     for (nm in nms)
+##         out[[nm]] = as.character(NA)
+    
+##     if (any(ix)) {
+##         jids = rep(NA, length(.Object))
+##         jids[ix] = sapply(fn.jids[ix], function(x) readLines(x)[1])
+##         p = pipe('squeue -ext')
+##         tab = strsplit(str_trim(readLines(p)), '\\s+')
+##         close(p)
+##         iix = sapply(tab, length)<=length(nms) & sapply(tab, length)>14
+        
+##         if (length(tab)>0) {
+##             tab = lapply(tab, function(x) x[1:length(nms)])
+##             tmp = as.data.table(matrix(unlist(tab[iix]), ncol = length(nms), byrow = TRUE))
+##             setnames(tmp, nms)
+##             setkey(tmp, jobid)
+##             out = cbind(runinfo(.Object)[, key(.Object), with = FALSE], tmp[jids, ])
+##             na = is.na(out$state)
+##             if (any(na))
+##                 out$jobid[na] = NA
+##         }
+##     }
+##     return(out)            
+## })
 
 
 #' @export
@@ -2088,6 +2171,26 @@ setMethod('bkill', 'Job', function(.Object, jid = NULL)
         cat('')
     })
 
+
+
+#' @export
+setGeneric('skill', function(.Object, ...) {standardGeneric('skill')})
+
+#' @name skill
+#' @title Kills any running SGE jobs associated with this Job object
+#' @exportMethod skill
+#' @export
+#' @author Peter Waltman
+setMethod('skill', 'Job', function(.Object, jid = NULL)
+    {
+        
+        qj = qjobs(.Object)
+        ix = !is.na(qj$jobid)
+        if (any(ix))
+            system(paste(c('scancel', qj$jobid[ix]), collapse = ' '))
+        else
+            cat('No queued or running SGE jobs to kill\n')
+    })
 
 
 
@@ -2164,6 +2267,58 @@ setMethod('len', 'Job', function(.Object)
         return(nrow(.Object@outputs))
     })
     
+
+
+##################
+# Makes srun (slurm) command that wraps shell command "cmd" to send to queue "queue"
+# redirebmccting output / error etc streams to path prefixed by "jname",
+# optional_args: maximum memory requirements "mem", "jlabel" job label
+##################
+srun_cmd = function( script.fn,
+                     queue,
+                     jname = NULL,
+                     jlabel = NULL,
+                     jgroup = NULL,
+                     mem=NULL,
+                     group = "cgafolk",
+                     cwd = NULL,
+                     ## .nnodes=NULL,
+                     ## .ntasks=NULL,
+                     mc.cores = NULL,
+                     deadline = F,
+                     now = FALSE ) {
+    #cat( "mc.cores:", mc.cores, "\n", file="dbg.txt" )
+
+    if (is.null(jname) & is.null(names(script.fn)))
+        jname = 'job'
+    
+    if (length(jname) != length(script.fn))
+        jname = rep(jname, length(script.fn))
+    
+    if (!is.null(jname))
+        names(script.fn) = dedup(jname)    
+    
+    qjname = paste( "\"", names(script.fn), "\"", sep="" )
+    qjout = paste( "", names(script.fn), ".bsub.out", " " , sep="" )
+    qjerr = paste( "", names(script.fn), ".bsub.err", "", sep="" )
+    qjrout = paste( "", names(script.fn), ".R.out", "", sep="" )
+                                        #        out_cmd = paste( "qsub -V -o ", qjout, " -e ",  qjerr)
+    out_cmd = paste("sbatch --export=ALL -o", qjout);
+    out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-e ", qjerr)))    
+    out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-p ", queue)))
+    #if (!is.null(mem)) out_cmd = paste(out_cmd, " --mem=", mem, "G", sep = "");
+    if (!is.null(jgroup)) out_cmd = paste(out_cmd, " --gid= ", sub('^\\/*', '/', jgroup), sep="" )
+    if (!is.null(cwd)) out_cmd = paste(out_cmd, " --workdir=", cwd, sep="" )
+    if (!is.null(qjname)) out_cmd = paste(out_cmd, " --job-name ", jlabel)
+    ## out_cmd = paste(out_cmd, '-now', ifelse(now, 'y', 'n')) ## not implemented for slurm
+    ## if (!is.null(.nnodes)) out_cmd = paste(out_cmd, ifelse(!is.na(.nnodes), ifelse(.nnodes>1,  paste(" -N",  .nnodes), ''), ''))
+    ## if (!is.null(.ntasks)) out_cmd = paste(out_cmd, ifelse(!is.na(.ntasks), ifelse(.ntasks>1,  paste(" -n",  .ntasks), ''), ''))
+    if (!is.null(mc.cores)) out_cmd = paste(out_cmd, ifelse(!is.na(mc.cores), ifelse(mc.cores>1,  paste(" --cpus-per-task=",  mc.cores, sep=""), ''), ''))
+
+    out_cmd = paste(out_cmd, script.fn)
+    names(out_cmd)= names(script.fn)
+    return(out_cmd)
+}
 
 
 
