@@ -13,9 +13,6 @@ FlowLiteral(...)
 
 \item{path}{boolean specifyign whether this is a path or not}
 }
-\description{
-Creates object representing a literal argument to a task (ie a static path or value), used for wiring modules into tasks
-}
 \author{
 Marcin Imielinski
 }

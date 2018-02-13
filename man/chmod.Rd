@@ -9,11 +9,6 @@ Chmods outputs of jobs (by default to 775)}
 \usage{
 \S4method{chmod}{Job}(object, mode = "775", verbose = FALSE, mc.cores = 1)
 }
-\description{
-chmods Job output directories
-
-Chmods outputs of jobs (by default to 775)
-}
 \author{
 Marcin Imielinski
 }

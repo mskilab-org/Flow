@@ -3,15 +3,12 @@
 \docType{methods}
 \name{bcmd}
 \alias{bcmd}
-\title{Returns vector of bsub (i.e. LSF) commands associated with this Job object}
+\title{Returns vector of bsub (ie LSF) commands associated with this Job object}
 \usage{
 \S4method{bcmd}{Job}(.Object, all = FALSE)
 }
 \arguments{
 \item{all}{logical flag whether to run all jobs (including completed)}
-}
-\description{
-Returns vector of bsub (i.e. LSF) commands associated with this Job object
 }
 \author{
 Marcin Imielinski

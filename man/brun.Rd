@@ -10,9 +10,6 @@
 \arguments{
 \item{mc.cores}{Number of parallel cores to run jobs with (=1)}
 }
-\description{
-Runs jobs on LSF
-}
 \author{
 Marcin Imielinski
 }

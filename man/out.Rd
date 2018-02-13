@@ -7,9 +7,6 @@
 \usage{
 \S4method{out}{Job}(.Object)
 }
-\description{
-returns vector of paths to stdout files associated with this job object
-}
 \author{
 Marcin Imielinski
 }

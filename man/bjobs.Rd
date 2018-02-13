@@ -7,9 +7,6 @@
 \usage{
 \S4method{bjobs}{Job}(.Object, mc.cores = 1)
 }
-\description{
-Tracks down any LSF jobs associated with this Job object using a bjobs query (warning can be slow)
-}
 \author{
 Marcin Imielinski
 }
