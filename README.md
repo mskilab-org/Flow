@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/mskilab/Flow.svg?branch=master)](https://travis-ci.org/mskilab/Flow)
 
 # Flow
 
@@ -29,14 +30,14 @@ the respective entity in an output table. See illustration below:
 
 Entities are stored in a keyed R `data.table` of annotations. This table
 can be pulled down from firehose or fiss and imported into R via the
-`data.table` function `fread()`. It can also be obtained via `fiss_get()` in
-db.R or obtained from a data.frame using `as.data.frame()`. The entities
+`data.table` function `fread()`. It can also be obtained via `fiss_get()` from [skidb](https://github.com/mskilab/skidb) 
+or obtained from a data.frame using `as.data.frame()`. The entities
 data.table must have a key (e.g. pair_id) and that key must have a unique
 value for each entity / row.
 
 
 Tasks are configured via an `.task` file. This is a text file whose first
-(non #-commented) line is a path to a firehose module directory (i.e. a
+(non #-commented) line is a path to a Flow module directory (i.e. a
 directory containing a `hydrant.deploy` file). The subsequent rows are
 tab delimited with 3 or 4 columns, and specify the input and output
 bindings of a task. The first column of every row is 'input' or
@@ -52,12 +53,12 @@ from the module output directory. See the example below.
 An entity table is combined with an `.task` task configuration to create
 an Job, which is a vectorized R object used to run, manage, query, and
 poll the outputs associated with a set of jobs. Instantiation of an Job
-object creates a bunch of subdirectories (by default under `./Flow/`)
+object creates multiple subdirectories (by default under `./Flow/`)
 with the task name as sub-directory and entity names as sub-sub
 directories. One can use `cmd()` or `bcmd()` methods to extract shell
-commands for running the jobs locally or on LSF, or the jobs can be
-launched directly from R via the `run()` or `brun()` methods. As jobs are
-executed locally or on LSF, their outputs will be placed into their
+commands for running the jobs locally or on the cluster (LSF or SGE), or the jobs can be
+launched directly from R via the `run()` or `brun()`/`qrun()` methods. As jobs are
+executed locally or on the cluster, their outputs will be placed into their
 appropriate entity-specific subdirectories (as in firehose), and any
 output annotations that are attached after job completion will refer to
 files residing under their respective task / entity subfolder.
@@ -67,7 +68,7 @@ files residing under their respective task / entity subfolder.
 
 
 Here's an example of building a dummy module, configuring it to a task,
-and applying that task to a bunch of entities representing tumor normal
+and applying that task to several entities representing tumor normal
 pairs.
 
 
@@ -265,40 +266,37 @@ task x entities combination.
 
 
     > jobs = Job('~/FlowExample/tasks/dummy.task', entities) 
-    
-       Noting time stamps of inputs
-       for tumor_bam (113 paths)
-       [1] "tumor_bam"
-       for normal_bam (113 paths)
-       [1] "normal_bam"
-       making output directories under
-       /nethome/mimielinski/FlowExample/Flow/dummy
-       initializing output annotations
-       Dumping out 113 Job.rds files to subdirectories of
-       /nethome/mimielinski/FlowExample/Flow
-       Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
-       Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
-           
-       not ready
-       113
-       Warning message:
-       In .local(.Object, ...) :
-       missing annotations resulting causing 113 jobs to be not ready.
-       Breakdown of detailed statuses (with # entities with each specific
-       status):
-       tumor_bam,normal_bam,panel_of_normals,variant_mask not ready(113)
+        Noting time stamps of inputs
+        for tumor_bam (113 paths)
+        [1] "tumor_bam"
+        for normal_bam (113 paths)
+        [1] "normal_bam"
+        making output directories under
+        /Users/home/FlowExample/Flow/dummy
+        initializing output annotations
+        Dumping out 113 Job.rds files to subdirectories of
+        /Users/home/FlowExample/Flow
+        Caching object to /Users/home/FlowExample/Flow/dummy.rds
+        Caching object to /Users/home/FlowExample/Flow/dummy.rds
+            
+        not ready
+        113
+        Warning message:
+        In .local(.Object, ...) :
+        missing annotations resulting causing 113 jobs to be not ready.
+        Breakdown of detailed statuses (with # entities with each specific
+        status):
+        tumor_bam,normal_bam,panel_of_normals,variant_mask not ready(113)
 
 
 We've combined the `.task` config with the entities data.table. The
 output 'jobs' is an `Job` object.
 
     > jobs
-
-       Job on 113 entities (LUAD-CIP-LU-A08-43-T...) with rootdir
-       /nethome/mimielinski/FlowExample/Flow from task dummy using module
-       dummymodule version
-       Job status: not ready (113)
-
+        Job on 113 entities (LUAD-CIP-LU-A08-43-T...) with rootdir
+        /Users/home/FlowExample/Flow from task dummy using module
+        dummymodule version
+        Job status: not ready (113)
 
 This vectorized object keeps track of entity specific inputs and
 outputs, stores local, LSF, and SGE / UGER commands for running the
@@ -344,19 +342,18 @@ pointed to as static paths in the task configuration above.
 Now we can update the jobs object will re-check paths and assess
 readiness to run.
 
-     > update(jobs)
+    > update(jobs)
+        Checking input date stamps
+        for tumor_bam (113 files)
+        for normal_bam (113 files)
+        for error_rate (1 files)
+        for analysis_id (113 files)
+        for panel_of_normals (1 files)
+        for variant_mask (1 files)
+        Caching object to/Users/home/FlowExample/Flow/dummy.rds
    
-     Checking input date stamps
-     for tumor_bam (113 files)
-     for normal_bam (113 files)
-     for error_rate (1 files)
-     for analysis_id (113 files)
-     for panel_of_normals (1 files)
-     for variant_mask (1 files)
-     Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
-   
-     ready
-      113
+        ready
+        113
 
 
 Voilà! The jobs are ready so we can run them. Before we do, some basics
@@ -402,7 +399,6 @@ Each job has a status (a la firehose) e.g. 'ready', 'complete',
 
 
     > status(jobs)[1:3]
-
         LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
         'ready'
         LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
@@ -414,11 +410,10 @@ OK let's run some jobs. How about we run the first three entities
 locally (i.e. on the current machine where R is running).
 
 
-      > run(jobs[1:3])
-
-         Starting dummy on entity LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
-         Starting dummy on entity LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
-         Starting dummy on entity LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
+    > run(jobs[1:3])
+        Starting dummy on entity LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
+        Starting dummy on entity LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
+        Starting dummy on entity LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
 
 
 After launching jobs let's run `update()` to update the object with the
@@ -427,413 +422,377 @@ job status, whether a job successfully completed (by analyzing stdout
 and stderr files and polling the directory for relevant outputs).
 
 
-          > update(jobs)
+    > update(jobs)
+        Checking input date stamps
+        for tumor_bam (113 files)
+        for normal_bam (113 files)
+        for error_rate (1 files)
+        for analysis_id (113 files)
+        for panel_of_normals (1 files)
+        for variant_mask (1 files)
+        Caching object to /Users/home/FlowExample/Flow/dummy.rds
+             
+        completed ready
+        3 110
 
-              Checking input date stamps
-              for tumor_bam (113 files)
-              for normal_bam (113 files)
-              for error_rate (1 files)
-              for analysis_id (113 files)
-              for panel_of_normals (1 files)
-              for variant_mask (1 files)
-              Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
-
-              completed ready
-              3 110
-
-   Great! Three jobs are finished. We can quickly subset the jobs object using
-   a character syntax which searches jobs statuses by regexp. Here we
-   subset only the "completed" jobs.
+Great! Three jobs are finished. We can quickly subset the jobs object using
+a character syntax which searches jobs statuses by regexp. Here we subset 
+only the "completed" jobs.
 
 
-       > jobs['completed']
+    > jobs['completed']
+        Job on 3 entities with rootdir /Users/home/FlowExample/Flow from task dummy using module dummymodule version
+        Job status: completed (3)
+
+This subsetting syntax is especially useful if jobs fail. We can use this 
+syntax to debug job failures, restart on a different queue, or other 
+change other job specific parameters.
+
+In this case we have no failed jobs, but we can examine the outputs
+associated with these "completed" jobs. This returns a data.table with
+output annotations as columns. These are file paths attached from the
+respective output directory of each job.
+
+    > outputs(jobs['completed'])
+        pair_id
+        1: LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
+        2: LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
+        3: LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
+        vcf
+        1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.vcf
+        2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.vcf
+        3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.vcf
+        quality_metrics
+        1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.report.txt
+        2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.report.txt
+        3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.report.txt
+
+
+We can examine the error stream associated with the first of these completed jobs
    
-            Job on 3 entities with rootdir /nethome/mimielinski/FlowExample/Flow from task dummy using module dummymodule version
-            Job status: completed (3)
-
-
-   This subsetting syntax is especially useful if jobs fail. We can use
-   this syntax to debug job failures, restart on a different queue, or
-   other change other job specific parameters.
-
-
-   In this case we have no failed jobs, but we can examine the outputs
-   associated with these "completed" jobs. This returns a data.table with
-   output annotations as columns. These are file paths attached from the
-   respective output directory of each job.
-
-
-       > outputs(jobs['completed'])
-
-               pair_id
-               1: LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
-               2: LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
-               3: LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
-               vcf
-               1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.vcf
-               2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.vcf
-               3:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.vcf
-               quality_metrics
-               1:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.report.txt
-               2:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.report.txt
-               3:/nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.report.txt
-
-
-   We can examine the error stream associated with the first of these
-   completed jobs
-   
-       > more(err(jobs['completed'][1]))
-
-           Command being timed:
-           "/nethome/mimielinski/FlowExample/modules/dummymodule///dummyscript.sh LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
-            /nethome/mimielinski/FlowExample/testdata//A08-43-4.bam /nethome/mimielinski/FlowExample/testdata//A08-43-1.bam 0
-            /nethome/mimielinski/FlowExample/testdata/panel_of_normals.txt /nethome/mimielinski/FlowExample/testdata/mask.bed.gz"
-            User time (seconds): 0.00
-            System time (seconds): 0.00
-            Percent of CPU this job got: 3%
-            Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.02
-            Average shared text size (kbytes): 0
-            Average unshared data size (kbytes): 0
-            Average stack size (kbytes): 0
-            Average total size (kbytes): 0
-            Maximum resident set size (kbytes): 4944
-            Average resident set size (kbytes): 0
-            Major (requiring I/O) page faults: 0
-            Minor (reclaiming a frame) page faults: 345
-            Voluntary context switches: 15
-            Involuntary context switches: 4
-            Swaps: 0
-            File system inputs: 8
-            File system outputs: 16
-            Socket messages sent: 0
-            Socket messages received: 0
-            Signals delivered: 0
-            Page size (bytes): 4096
-            Exit status: 0
-
-   We can also query the runtime report to see memory usage and how long
-   each completed job took. This outputs another data.table, now with
-   runtime information.
-
-
-       > report(jobs['completed'])
-
-           pair_id
-           1: LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
-           2: LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
-           3: LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
-           jname
-           1: dummy.LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
-           2: dummy.LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
-           3: dummy.LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
-           out.file
-           1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL//dummy.LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.bsub.out
-           2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6//dummy.LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.bsub.out
-           3: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE//dummy.LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.bsub.out
-           err.file
-           1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL//dummy.LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.bsub.err
-           2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6//dummy.LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.bsub.err
-           3: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE//dummy.LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.bsub.err
-           exit_flag term_flag started reported
-           1: Successfully completed. NA 2016-03-08 18:15:36 2016-03-08 18:15:36
-           2: Successfully completed. NA 2016-03-08 18:15:36 2016-03-08 18:15:36
-           3: Successfully completed. NA 2016-03-08 18:15:36 2016-03-08 18:15:36
-           hours_elapsed max_mem cpu_time success job_type
-           1: 0 0.001236 0 TRUE local
-           2: 0 0.001240 0 TRUE local
-           3: 0 0.001236 0 TRUE local
-
-
-   Let's run 10 more jobs, this time parallelizing them locally across 5
-   cores.
-
-       > run(jobs['ready'][1:10], mc.cores = 5)
-
-           Starting dummy on entity LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8
-           Starting dummy on entity LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU
-           Starting dummy on entity LUAD-CIP-LUAD-E00934-TP-NT-SM-1UXCW-SM-1UXCX
-           Starting dummy on entity LUAD-CIP-LUAD-E01014-TP-NT-SM-1UXD1-SM-1UXD2
-           Starting dummy on entity LUAD-CIP-LUAD-E01217-TP-NT-SM-1UXDZ-SM-1UXE1
-           Starting dummy on entity LUAD-CIP-LUAD-S00488-TP-NT-SM-18CX6-SM-18CZW
-           Starting dummy on entity LUAD-CIP-LUAD-FH5PJ-TP-NT-SM-1D1NY-SM-1D1NZ
-           Starting dummy on entity LUAD-CIP-LUAD-E01317-TP-NT-SM-1UXE4-SM-1UXE5
-           Starting dummy on entity LUAD-CIP-LUAD-E01278-TP-NT-SM-1UXE2-SM-1UXE3
-           Starting dummy on entity LUAD-CIP-LUAD-QY22Z-TP-NT-SM-1DTY7-SM-1DTY8
-
-   Updating the jobs object again, we'll see additional jobs completed.
-
-       > update(jobs)
-
-           Checking input date stamps
-           for tumor_bam (113 files)
-           for normal_bam (113 files)
-           for error_rate (1 files)
-           for analysis_id (113 files)
-           for panel_of_normals (1 files)
-           for variant_mask (1 files)
-           Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
-
-           completed ready
-           13 100
-
-
-   Finally, let's run 5 more of these jobs, but now on the cluster /
-   compute farm. On this system, I only have SGE / UGER, so I will use
-   `qrun()`. (If I had LSF installed, I would use brun() instead)
-
-
-       > qrun(jobs[14:18])
-
-           Deploying 7524204 for entity LUAD-CIP-LUAD-S01302-TP-NT-SM-18CXO-SM-18D1F
-           Deploying 7524205 for entity LUAD-CIP-LUAD-S01331-TP-NT-SM-18CY2-SM-18D1S
-           Deploying 7524206 for entity LUAD-CIP-LUAD-S01341-TP-NT-SM-18CYB-SM-18D22
-           Deploying 7524207 for entity LUAD-CIP-LUAD-S01345-TP-NT-SM-18CXP-SM-18D1G
-           Deploying 7524208 for entity LUAD-CIP-LUAD-S01346-TP-NT-SM-18CXJ-SM-18D1A
-
-
-   After a minute I update the jobs again, we'll see additional jobs
-   completed.
-
-
-       > update(jobs)
-
-           Checking input date stamps
-           for tumor_bam (113 files)
-           for normal_bam (113 files)
-           for error_rate (1 files)
-           for analysis_id (113 files)
-           for panel_of_normals (1 files)
-           for variant_mask (1 files)
-           Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
-
-           completed ready
-           13 100
-
-
-   I notice that no additional jobs have completed. I wonder what's wrong
-   I can check job status on the farm for these by using `qjobs()`
-
-       > qjobs(jobs[14:18])
-   
-           pair_id jobid prior name
-           1: LUAD-CIP-LUAD-S01302-TP-NT-SM-18CXO-SM-18D1F 7524204 0.00000 dummy.LUAD
-           2: LUAD-CIP-LUAD-S01331-TP-NT-SM-18CY2-SM-18D1S 7524205 0.00000 dummy.LUAD
-           3: LUAD-CIP-LUAD-S01341-TP-NT-SM-18CYB-SM-18D22 7524206 0.00000 dummy.LUAD
-           4: LUAD-CIP-LUAD-S01345-TP-NT-SM-18CXP-SM-18D1G 7524207 0.00000 dummy.LUAD
-           5: LUAD-CIP-LUAD-S01346-TP-NT-SM-18CXJ-SM-18D1A 7524208 0.00000 dummy.LUAD
-           user state start.sumit.at queue slots taskid
-           1: mimielinski qw 03/08/2016 20:49:06 1 NA
-           2: mimielinski qw 03/08/2016 20:49:06 1 NA
-           3: mimielinski qw 03/08/2016 20:49:06 1 NA
-           4: mimielinski qw 03/08/2016 20:49:06 1 NA
-           5: mimielinski qw 03/08/2016 20:49:06 1 NA
-
-   Hmm, these are stuck in queue for longer than I expect (not running
-   instantly), maybe I need to relaunch with lower memory requirements
-   than standard (memory requirement 4)
-
-
-   First I kill / delete the jobs I just launched.
-
-       > qkill(jobs[14:18])
-
-           mimielinski has deleted job 7524204
-           mimielinski has deleted job 7524205
-           mimielinski has deleted job 7524206
-           mimielinski has deleted job 7524207
-           mimielinski has deleted job 7524208
-
-   I set the memory requirement to 1 and rerun
-
-       > mem(jobs) = 1
-       > qrun(jobs[14:18])
-
-   Updating the jobs object, I see that 5 more have completed.
-
-       > update(jobs)
-
-           Checking input date stamps
-           for tumor_bam (113 files)
-           for normal_bam (113 files)
-           for error_rate (1 files)
-           for analysis_id (113 files)
-           for panel_of_normals (1 files)
-           for variant_mask (1 files)
-           Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
-
-           completed ready
-           18 95
-
-
-   Now, feeling confident, I push the button to launch all the remaining
-   jobs via SGE.   (Note, I don't need to specify indices here, because
-   anything that has already completely will not be re-launched)
-
-       > qrun(jobs)
-
-   Updating again, I see everything has completed
-
-       > update(jobs)
-
-          Checking input date stamps
-           for tumor_bam (113 files)
-           for normal_bam (113 files)
-           for error_rate (1 files)
-           for analysis_id (113 files)
-           for panel_of_normals (1 files)
-           for variant_mask (1 files)
-           Caching object to /nethome/mimielinski/FlowExample/Flow/dummy.rds
-
-           completed ready
-           113 0
-
-
-   If you want to look under the hood, you'll see that each job is
-   associated with a `cmd` (local command), `bcmd` (LSF command), and `qcmd`
-   (UGER / SGE command) which can be accessed using `cmd()`, `bcmd()`, and
-   `qcmd()` respectively.   These each return a named vector of shell
-   commands. These commands are the result of populating the arguments of
-   the module with entity-specific annotation values and static values
-   according to the bindings in the task config, as well as adding
-   additional shell commands for job tracking. If you want, you can dump
-   these commands out into a text file and source it from the shell.
-
-
-   Jobs are most easily launched directly from the R command line using
-   `run(jobs)` or `brun(jobs)`. Alternatively, you can dump the local or bsub
-   shell commands to file and run from the shell eg.
-
-       >writeLines(cmd(jobs), 'cmd.sh')
-       >writeLines(bcmd(jobs), 'bcmd.sh')
-       >writeLines(qcmd(jobs), 'qcmd.sh')
-
-   Once jobs complete, then they will populate their output annotations
-   with values after an update() call to the jobs object. You can access a
-   data.table of output annotations using the outputs() method eg
-
-
-       > outputs(jobs)
-   
-           pair_id
-           1: LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
-           2: LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
-           3: LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
-           4: LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8
-           5: LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU
-           ---
-           109: LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ
-           110: LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI
-           111: LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ
-           112: LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO
-           113: LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4
-
-           vcf
-           1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.vcf
-           2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.vcf
-           3: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.vcf
-           4: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8.vcf
-           5: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU.vcf
-           ---
-           109: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ.vcf
-           110: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI.vcf
-           111: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ.vcf
-           112: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO.vcf
-           113: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4.vcf
-           quality_metrics
-           1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.report.txt
-           2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-\SM-1D1N5-SM-1D1N6.report.txt
-           3: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.report.txt
-           4: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-\SM-1D1NM-SM-1D1K8.report.txt
-           5: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-\SM-1UVTT-SM-1UVTU.report.txt
-           ---
-           109: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ.report.txt
-           110: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI.report.txt
-           111: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ.report.txt
-           112: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO.report.txt
-           113: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4.report.txt
-
-
-   Initially, the annotations will be mostly empty, because the jobs have
-   not completed. However as jobs complete (as seen above), the values of
-   annotation columns will be populated with file paths after running
-   `update()` on the jobs object.
-
-
-   Once jobs complete, the job output can be easily merged with the
-   "master table" of entities and updated using a merge() command. This
-   merges the tables on their shared key.
-
-       > merge(entities, jobs)
-
-           pair_id
-           1: LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
-           2: LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
-           3: LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
-           4: LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8
-           5: LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU
-           ---
-           109: LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ
-           110: LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI
-           111: LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ
-           112: LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO
-           113: LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4
-           Tumor_clean_bam_file_wgs
-           1: ~/FlowExample/testdata//A08-43-4.bam
-           2: ~/FlowExample/testdata//2GUGKAEN.bam
-           3: ~/FlowExample/testdata//5V8LTAZB.bam
-           4: ~/FlowExample/testdata//AEIUFAVJ.bam
-           5: ~/FlowExample/testdata//D02326109.bam
-           ---
-           109: ~/FlowExample/testdata//TCGA-77-6843-01A-11D-1945-08.bam
-           110: ~/FlowExample/testdata//TCGA-85-8052-01A-11D-2244-08.bam
-           111: ~/FlowExample/testdata//TCGA-85-8277-01A-11D-2293-08.bam
-           112: ~/FlowExample/testdata//TCGA-92-8064-01A-11D-2244-08.bam
-           113: ~/FlowExample/testdata//TCGA-98-8022-01A-11D-2244-08.bam
-           Normal_clean_bam_file_wgs
-           1: ~/FlowExample/testdata//A08-43-1.bam
-           2: ~/FlowExample/testdata//2GUGKN18.bam
-           3: ~/FlowExample/testdata//5V8LTN9Y.bam
-           4: ~/FlowExample/testdata//AEIUFDXJ.bam
-           5: ~/FlowExample/testdata//D02326111.bam
-           ---
-           109: ~/FlowExample/testdata//TCGA-77-6843-10A-01D-1945-08.bam
-           110: ~/FlowExample/testdata//TCGA-85-8052-10A-01D-2244-08.bam
-           111: ~/FlowExample/testdata//TCGA-85-8277-10A-01D-2293-08.bam
-           112: ~/FlowExample/testdata//TCGA-92-8064-10A-01D-2244-08.bam
-           113: ~/FlowExample/testdata//TCGA-98-8022-10A-01D-2244-08.bam
-           \
-           vcf
-           1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-\SM-13WXF-SM-13WWL.vcf
-           2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-\SM-1D1N5-SM-1D1N6.vcf
-           3: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-\SM-1D1ND-SM-1D1NE.vcf
-           4: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-\SM-1D1NM-SM-1D1K8.vcf
-           5: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-\SM-1UVTT-SM-1UVTU.vcf
-           --- \
-           109: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-\SM-26XAG-SM-26XAJ.vcf
-           110: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-\SM-2XLBV-SM-2XLDI.vcf
-           111: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-\SM-35ASG-SM-35ASJ.vcf
-           112: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-\SM-2XLDD-SM-2XLCO.vcf
-           113: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-\SM-2XLCJ-SM-2XLE4.vcf
-           \
-           quality_metrics
-           1: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.report.txt
-           2: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.report.txt
-           3: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-\SM-1D1ND-SM-1D1NE.report.txt
-           4: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-\SM-1D1NM-SM-1D1K8.report.txt
-           5: /nethome/mimielinski/FlowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-\SM-1UVTT-SM-1UVTU.report.txt
-           --- \
-          109: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-\SM-26XAG-SM-26XAJ.report.txt
-          110: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-\SM-2XLBV-SM-2XLDI.report.txt
-          111: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-\SM-35ASG-SM-35ASJ.report.txt
-          112: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-\SM-2XLDD-SM-2XLCO.report.txt
-          113: /nethome/mimielinski/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-\SM-2XLCJ-SM-2XLE4.report.txt
-
-
-   The resulting entities table has now been updated and may be "ready"
-   for downstream pipelines to add additional columns. This table can be
-   used to update a central database or saved as a flat file record of
-   analytic progress.
-
+    > more(err(jobs['completed'][1]))
+        Command being timed:
+        "/Users/home/FlowExample/modules/dummymodule///dummyscript.sh LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
+        /Users/home/FlowExample/testdata//A08-43-4.bam /Users/home/FlowExample/testdata//A08-43-1.bam 0
+        /Users/home/FlowExample/testdata/panel_of_normals.txt /Users/home/FlowExample/testdata/mask.bed.gz"
+        User time (seconds): 0.00
+        System time (seconds): 0.00
+        Percent of CPU this job got: 3%
+        Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.02
+        Average shared text size (kbytes): 0
+        Average unshared data size (kbytes): 0
+        Average stack size (kbytes): 0
+        Average total size (kbytes): 0
+        Maximum resident set size (kbytes): 4944
+        Average resident set size (kbytes): 0
+        Major (requiring I/O) page faults: 0
+        Minor (reclaiming a frame) page faults: 345
+        Voluntary context switches: 15
+        Involuntary context switches: 4
+        Swaps: 0
+        File system inputs: 8
+        File system outputs: 16
+        Socket messages sent: 0
+        Socket messages received: 0
+        Signals delivered: 0
+        Page size (bytes): 4096
+        Exit status: 0
+
+We can also query the runtime report to see memory usage and how long each 
+completed job took. This outputs another data.table, now with runtime information.
+
+    > report(jobs['completed'])
+        pair_id
+        1: LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
+        2: LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
+        3: LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
+        jname
+        1: dummy.LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
+        2: dummy.LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
+        3: dummy.LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
+        out.file
+        1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/dummy.LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.bsub.out
+        2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/dummy.LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.bsub.out
+        3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/dummy.LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.bsub.out
+        err.file
+        1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/dummy.LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.bsub.err
+        2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/dummy.LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.bsub.err
+        3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/dummy.LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.bsub.err
+        exit_flag term_flag started reported
+        1: Successfully completed. NA 2016-03-08 18:15:36 2016-03-08 18:15:36
+        2: Successfully completed. NA 2016-03-08 18:15:36 2016-03-08 18:15:36
+        3: Successfully completed. NA 2016-03-08 18:15:36 2016-03-08 18:15:36
+        hours_elapsed max_mem cpu_time success job_type
+        1: 0 0.001236 0 TRUE local
+        2: 0 0.001240 0 TRUE local
+        3: 0 0.001236 0 TRUE local
+
+Let's run 10 more jobs, this time parallelizing them locally across 5 cores.
+
+    > run(jobs['ready'][1:10], mc.cores = 5)
+        Starting dummy on entity LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8
+        Starting dummy on entity LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU
+        Starting dummy on entity LUAD-CIP-LUAD-E00934-TP-NT-SM-1UXCW-SM-1UXCX
+        Starting dummy on entity LUAD-CIP-LUAD-E01014-TP-NT-SM-1UXD1-SM-1UXD2
+        Starting dummy on entity LUAD-CIP-LUAD-E01217-TP-NT-SM-1UXDZ-SM-1UXE1
+        Starting dummy on entity LUAD-CIP-LUAD-S00488-TP-NT-SM-18CX6-SM-18CZW
+        Starting dummy on entity LUAD-CIP-LUAD-FH5PJ-TP-NT-SM-1D1NY-SM-1D1NZ
+        Starting dummy on entity LUAD-CIP-LUAD-E01317-TP-NT-SM-1UXE4-SM-1UXE5
+        Starting dummy on entity LUAD-CIP-LUAD-E01278-TP-NT-SM-1UXE2-SM-1UXE3
+        Starting dummy on entity LUAD-CIP-LUAD-QY22Z-TP-NT-SM-1DTY7-SM-1DTY8
+
+Updating the jobs object again, we'll see additional jobs completed.
+
+    > update(jobs)
+        Checking input date stamps
+        for tumor_bam (113 files)
+        for normal_bam (113 files)
+        for error_rate (1 files)
+        for analysis_id (113 files)
+        for panel_of_normals (1 files)
+        for variant_mask (1 files)
+        Caching object to /Users/home/FlowExample/Flow/dummy.rds
+
+        completed ready
+        13 100
+
+Finally, let's run 5 more of these jobs, but now on the cluster. On this system, 
+I only have SGE / UGER installed, so I will use `qrun()`. (If I had LSF installed, I would use `brun()` instead)
+
+
+    > qrun(jobs[14:18])
+       Deploying 7524204 for entity LUAD-CIP-LUAD-S01302-TP-NT-SM-18CXO-SM-18D1F
+       Deploying 7524205 for entity LUAD-CIP-LUAD-S01331-TP-NT-SM-18CY2-SM-18D1S
+       Deploying 7524206 for entity LUAD-CIP-LUAD-S01341-TP-NT-SM-18CYB-SM-18D22
+       Deploying 7524207 for entity LUAD-CIP-LUAD-S01345-TP-NT-SM-18CXP-SM-18D1G
+       Deploying 7524208 for entity LUAD-CIP-LUAD-S01346-TP-NT-SM-18CXJ-SM-18D1A
+
+After a minute I update the jobs again, we'll see additional jobs completed.
+
+    > update(jobs)
+        Checking input date stamps
+        for tumor_bam (113 files)
+        for normal_bam (113 files)
+        for error_rate (1 files)
+        for analysis_id (113 files)
+        for panel_of_normals (1 files)
+        for variant_mask (1 files)
+        Caching object to /Users/home/FlowExample/Flow/dummy.rds
+
+        completed ready
+        13 100
+
+
+I notice that no additional jobs have completed. I wonder what's wrong...
+I can check job status on the farm for these by using `qjobs()`
+
+    > qjobs(jobs[14:18])
+        pair_id jobid prior name
+        1: LUAD-CIP-LUAD-S01302-TP-NT-SM-18CXO-SM-18D1F 7524204 0.00000 dummy.LUAD
+        2: LUAD-CIP-LUAD-S01331-TP-NT-SM-18CY2-SM-18D1S 7524205 0.00000 dummy.LUAD 
+        3: LUAD-CIP-LUAD-S01341-TP-NT-SM-18CYB-SM-18D22 7524206 0.00000 dummy.LUAD
+        4: LUAD-CIP-LUAD-S01345-TP-NT-SM-18CXP-SM-18D1G 7524207 0.00000 dummy.LUAD
+        5: LUAD-CIP-LUAD-S01346-TP-NT-SM-18CXJ-SM-18D1A 7524208 0.00000 dummy.LUAD
+        user state start.sumit.at queue slots taskid
+        1: username1 qw 03/08/2016 20:49:06 1 NA
+        2: username1 qw 03/08/2016 20:49:06 1 NA
+        3: username1 qw 03/08/2016 20:49:06 1 NA
+        4: username1 qw 03/08/2016 20:49:06 1 NA
+        5: username1 qw 03/08/2016 20:49:06 1 NA
+
+Hmm, these are stuck in queue for longer than I expected (i.e. they're not running instantly), 
+maybe I need to relaunch with lower memory requirements than standard (memory requirement 4)
+
+First I kill / delete the jobs I just launched.
+
+    > qkill(jobs[14:18])
+        username1 has deleted job 7524204
+        username1 has deleted job 7524205
+        username1 has deleted job 7524206
+        username1 has deleted job 7524207
+        username1 has deleted job 7524208
+
+I set the memory requirement to 1 and rerun
+
+    > mem(jobs) = 1
+    > qrun(jobs[14:18])
+
+Updating the jobs object, I see that 5 more have completed.
+
+    > update(jobs)
+        Checking input date stamps
+        for tumor_bam (113 files)
+        for normal_bam (113 files)
+        for error_rate (1 files)
+        for analysis_id (113 files)
+        for panel_of_normals (1 files)
+        for variant_mask (1 files)
+        Caching object to /Users/home/FlowExample/Flow/dummy.rds
+        
+        completed ready
+        18 95
+
+Now, feeling confident, I push the button to launch all the remaining
+jobs via SGE (using `qsub`).   (Note, I don't need to specify indices here, because
+anything that has already completely will not be re-launched)
+
+    > qrun(jobs)
+
+Updating again, I see everything has completed
+
+    > update(jobs)
+        Checking input date stamps
+        for tumor_bam (113 files)
+        for normal_bam (113 files)
+        for error_rate (1 files)
+        for analysis_id (113 files)
+        for panel_of_normals (1 files)
+        for variant_mask (1 files)
+        Caching object to /Users/home/FlowExample/Flow/dummy.rds
+
+        completed ready
+        113 0
+
+
+If you want to look under the hood, you'll see that each job is
+associated with a `cmd` (local command), `bcmd` (LSF command), and `qcmd`
+(UGER / SGE command) which can be accessed using `cmd()`, `bcmd()`, and
+`qcmd()` respectively.   These each return a named vector of shell
+commands. These commands are the result of populating the arguments of
+the module with entity-specific annotation values and static values
+according to the bindings in the task config, as well as adding
+additional shell commands for job tracking. If you want, you can dump
+these commands out into a text file and source it from the shell.
+
+
+Jobs are most easily launched directly from the R command line using
+`run(jobs)` or  `qrun(jobs)`/`brun(jobs)`. Alternatively, you can dump the local or qsub/bsub
+shell commands to file and run from the shell eg.
+
+    > writeLines(cmd(jobs), 'cmd.sh')
+    > writeLines(bcmd(jobs), 'bcmd.sh')
+    > writeLines(qcmd(jobs), 'qcmd.sh')
+
+Once jobs complete, then they will populate their output annotations
+with values after an update() call to the jobs object. You can access a
+data.table of output annotations using the outputs() method eg
+
+    > outputs(jobs)
+        pair_id
+        1: LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
+        2: LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
+        3: LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
+        4: LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8
+        5: LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU
+        ---
+        109: LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ
+        110: LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI
+        111: LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ
+        112: LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO
+        113: LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4
+        vcf
+        1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.vcf
+        2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.vcf
+        3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.vcf
+        4: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8.vcf
+        5: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU.vcf
+        ---
+        109: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ.vcf
+        110: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI.vcf
+        111: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ.vcf
+        112: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO.vcf
+        113: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4.vcf
+        quality_metrics
+        1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.report.txt
+        2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-\SM-1D1N5-SM-1D1N6.report.txt
+        3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE.report.txt
+        4: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-\SM-1D1NM-SM-1D1K8.report.txt
+        5: /Users/home/lowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-\SM-1UVTT-SM-1UVTU.report.txt
+        ---
+        109: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ.report.txt
+        110: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI.report.txt
+        111: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ.report.txt
+        112: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO.report.txt
+        113: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4.report.txt
+
+
+Initially, the annotations will be mostly empty, because the jobs have
+not completed. However as jobs complete (as seen above), the values of
+annotation columns will be populated with file paths after running
+`update()` on the jobs object.
+
+Once jobs complete, the job output can be easily merged with the
+"master table" of entities and updated using a merge() command. This
+merges the tables on their shared key.
+
+    > merge(entities, jobs)
+        pair_id
+        1: LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL
+        2: LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6
+        3: LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE
+        4: LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8
+        5: LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU
+        ---
+        109: LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ
+        110: LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI
+        111: LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ
+        112: LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO
+        113: LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4
+        Tumor_clean_bam_file_wgs
+        1: ~/FlowExample/testdata//A08-43-4.bam
+        2: ~/FlowExample/testdata//2GUGKAEN.bam
+        3: ~/FlowExample/testdata//5V8LTAZB.bam
+        4: ~/FlowExample/testdata//AEIUFAVJ.bam
+        5: ~/FlowExample/testdata//D02326109.bam
+        ---
+        109: ~/FlowExample/testdata//TCGA-77-6843-01A-11D-1945-08.bam
+        110: ~/FlowExample/testdata//TCGA-85-8052-01A-11D-2244-08.bam
+        111: ~/FlowExample/testdata//TCGA-85-8277-01A-11D-2293-08.bam
+        112: ~/FlowExample/testdata//TCGA-92-8064-01A-11D-2244-08.bam
+        113: ~/FlowExample/testdata//TCGA-98-8022-01A-11D-2244-08.bam
+        Normal_clean_bam_file_wgs
+        1: ~/FlowExample/testdata//A08-43-1.bam
+        2: ~/FlowExample/testdata//2GUGKN18.bam
+        3: ~/FlowExample/testdata//5V8LTN9Y.bam
+        4: ~/FlowExample/testdata//AEIUFDXJ.bam
+        5: ~/FlowExample/testdata//D02326111.bam
+        ---
+        109: ~/FlowExample/testdata//TCGA-77-6843-10A-01D-1945-08.bam
+        110: ~/FlowExample/testdata//TCGA-85-8052-10A-01D-2244-08.bam
+        111: ~/FlowExample/testdata//TCGA-85-8277-10A-01D-2293-08.bam
+        112: ~/FlowExample/testdata//TCGA-92-8064-10A-01D-2244-08.bam
+        113: ~/FlowExample/testdata//TCGA-98-8022-10A-01D-2244-08.bam
+        \
+        vcf
+        1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-\SM-13WXF-SM-13WWL.vcf
+        2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-\SM-1D1N5-SM-1D1N6.vcf
+        3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-\SM-1D1ND-SM-1D1NE.vcf
+        4: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-\SM-1D1NM-SM-1D1K8.vcf
+        5: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-\SM-1UVTT-SM-1UVTU.vcf
+        --- \
+        109: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-\SM-26XAG-SM-26XAJ.vcf
+        110: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-\SM-2XLBV-SM-2XLDI.vcf
+        111: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-\SM-35ASG-SM-35ASJ.vcf
+        112: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-\SM-2XLDD-SM-2XLCO.vcf
+        113: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-\SM-2XLCJ-SM-2XLE4.vcf
+        \
+        quality_metrics
+        1: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL/LUAD-CIP-LU-A08-43-TP-NT-SM-13WXF-SM-13WWL.report.txt
+        2: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6/LUAD-CIP-LUAD-2GUGK-TP-NT-SM-1D1N5-SM-1D1N6.report.txt
+        3: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-5V8LT-TP-NT-SM-1D1ND-SM-1D1NE/LUAD-CIP-LUAD-5V8LT-TP-NT-\SM-1D1ND-SM-1D1NE.report.txt
+        4: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-AEIUF-TP-NT-SM-1D1NM-SM-1D1K8/LUAD-CIP-LUAD-AEIUF-TP-NT-\SM-1D1NM-SM-1D1K8.report.txt
+        5: /Users/home/FlowExample/Flow/dummy/LUAD-CIP-LUAD-D02326-TP-NT-SM-1UVTT-SM-1UVTU/LUAD-CIP-LUAD-D02326-TP-NT-\SM-1UVTT-SM-1UVTU.report.txt
+        --- \
+        109: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-77-6843-TP-NB-SM-26XAG-SM-26XAJ/LUSC-TCGA-77-6843-TP-NB-\SM-26XAG-SM-26XAJ.report.txt
+        110: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8052-TP-NB-SM-2XLBV-SM-2XLDI/LUSC-TCGA-85-8052-TP-NB-\SM-2XLBV-SM-2XLDI.report.txt
+        111: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-85-8277-TP-NB-SM-35ASG-SM-35ASJ/LUSC-TCGA-85-8277-TP-NB-\SM-35ASG-SM-35ASJ.report.txt
+        112: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-92-8064-TP-NB-SM-2XLDD-SM-2XLCO/LUSC-TCGA-92-8064-TP-NB-\SM-2XLDD-SM-2XLCO.report.txt
+        113: /Users/home/FlowExample/Flow/dummy/LUSC-TCGA-98-8022-TP-NB-SM-2XLCJ-SM-2XLE4/LUSC-TCGA-98-8022-TP-NB-\SM-2XLCJ-SM-2XLE4.report.txt
+
+The resulting entities table has now been updated and may be "ready"
+for downstream pipelines to add additional columns. This table can be
+used to update a central database or saved as a flat file record of
+analytic progress.
 
 # Quick reference / cheat sheet of methods associated with an Job object 'jobs':
 

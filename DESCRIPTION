@@ -22,11 +22,14 @@ Description: Flow is an R package that enables local configuration and execution
     annotation. Coming soon: A Flow object, which will represent a workflow, or
     a collection of Tasks run on entities, but will have very similar properties
     (vectorization, run control, status updating).
-Imports:
-    data.table, 
 Depends:
     R (>= 3.1.0),
-    stringr
+    data.table,
+    stringr, 
+    parallel
+Suggests:
+    XML, 
+    testthat
 License: GPL v3.0
 LazyData: true
-RoxygenNote: 6.0.1
+RoxygenNote: 6.0.1.9000
