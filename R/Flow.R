@@ -717,29 +717,34 @@ setMethod('initialize', 'Job', function(.Object,
         #                 .Object@inputs[, eval(this.arg) := entities[[this.ann]]]
                          
                          if (.Object@task@args[[this.arg]]@path)
+                         {
+                           if (!mock)
+                           {
+                             fn = .Object@inputs[[this.arg]]
+                             fn[nchar(fn)==0] = NA ## NA out blank paths
+                             nfiles = sum(!is.na(fn))
+                             cat('\tfor', this.arg, sprintf('(%s files)', nfiles), '\n')
+                           }
+                           
+                           if (is.numeric(entities[[this.ann]]))
+                             stop(sprintf('Numeric annotation %s provided as path argument %s to task - check task configuration or entities table', this.ann, this.arg)) 
+                           
+                           .Object@stamps[, eval(this.arg) := as.character(file.info(ifelse(is.na(entities[[this.ann]]), '', entities[[this.ann]]))$mtime)]
+                                        #                                 if (!mock)
+                                        #                                     print(this.arg)
+                           
+                           cmd = paste(this.arg, ':= normalizePath(', this.arg, ')')
+                           
+                           .Object@inputs[!is.na(.Object@stamps[[this.arg]]), eval(parse(text = cmd))]
+                           
+                           if (!is.null(default(ann.args[[this.arg]])))
+                             if (any(fenix <- !file.exists(ifelse(is.na(.Object@inputs[[this.arg]]), '', entities[[this.ann]]))))                                    
+                                        #                                     if (any(fenix <- !file.exists(.Object@inputs[[this.arg]])))
                              {
-                                 if (!mock)
-                                     cat('\tfor', this.arg, sprintf('(%s paths)', nfiles), '\n')
-
-                                 if (is.numeric(entities[[this.ann]]))
-                                     stop(sprintf('Numeric annotation %s provided as path argument %s to task - check task configuration or entities table', this.ann, this.arg)) 
-                                 
-                                 .Object@stamps[, eval(this.arg) := as.character(file.info(ifelse(is.na(entities[[this.ann]]), '', entities[[this.ann]]))$mtime)]
-#                                 if (!mock)
-#                                     print(this.arg)
-
-                                 cmd = paste(this.arg, ':= normalizePath(', this.arg, ')')
-
-                                 .Object@inputs[!is.na(.Object@stamps[[this.arg]]), eval(parse(text = cmd))]
-                                 
-                                 if (!is.null(default(ann.args[[this.arg]])))
-                                     if (any(fenix <- !file.exists(ifelse(is.na(.Object@inputs[[this.arg]]), '', entities[[this.ann]]))))                                    
-#                                     if (any(fenix <- !file.exists(.Object@inputs[[this.arg]])))
-                                         {
-                                             .Object@inputs[fenix, eval(this.arg) := default(ann.args[[this.arg]])]
-                                             .Object@stamps[fenix, eval(this.arg) := as.character(Sys.time())]
-                                         }
+                               .Object@inputs[fenix, eval(this.arg) := default(ann.args[[this.arg]])]
+                               .Object@stamps[fenix, eval(this.arg) := as.character(Sys.time())]
                              }
+                         }
                          else
                          {
 
@@ -779,7 +784,6 @@ setMethod('initialize', 'Job', function(.Object,
                 ready.mat = is.na(as.matrix(.Object@stamps[, cols, with = FALSE]))
                 .Object@runinfo$status = ifelse(rowSums(ready.mat)>0, 'not ready', 'ready')                
                 .Object@runinfo$status.info = ''
-                
                 if (any(ix <- .Object@runinfo$status != 'ready'))                    
                     .Object@runinfo$status.info[ix] = apply(ready.mat[ix, , drop = FALSE], 1,
                                                    function(x) paste(paste(colnames(ready.mat)[x], collapse = ','), 'not ready'))
@@ -809,7 +813,7 @@ setMethod('initialize', 'Job', function(.Object,
             {
                 this.cmd = str_replace_all(module@cmd, stringr::fixed('<libdir>'), task@libdir)                
                 for (k in 1:length(task@args))
-                    {
+                {
                         this.arg = names(task@args)[[k]]
                         this.val = .Object@inputs[this.entity, ][[gsub('\\-', '.', names(task@args)[k])]]
                         if (is.na(this.val))
@@ -1073,36 +1077,46 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
         if (length(args)>0)
             if (check.inputs)
             {
-                output.date = as.Date(file.info(new.object@runinfo$stdout)$mtime)
-                        
-                    outdated = matrix(FALSE, nrow = length(new.object), ncol = length(args), dimnames = list(ids, names(args)))
-                    cat('Checking input date stamps\n')
-                    for (this.arg in names(args))
-                        {
-                            nfiles = length(setdiff(new.object@inputs[[this.arg]], NA))
-                            cat('\tfor', this.arg, sprintf('(%s files)', nfiles), '\n')
-                            if (args[[this.arg]]@path)
-                                {
-                                    old.date = as.Date(new.object@stamps[[this.arg]])
-                                    if (any(ix<-is.na(old.date))) ## if for some reason blank, set to some time in the far future
-                                        old.date[ix] = Sys.Date()+5e9
-                                    if (is(args[[this.arg]], 'FlowLiteral') & args[[this.arg]]@path)
-                                        outdated[, this.arg] =
-#                                          as.Date(as.character(file.info(args[[this.arg]]@arg)$mtime))>old.date &
-                                          ifelse(is.na(output.date), FALSE, as.Date(as.character(file.info(new.object@inputs[[this.arg]])$mtime))>output.date)
-                                    else if (is(args[[this.arg]], 'FlowAnnotation') & args[[this.arg]]@path)
-                                        outdated[, this.arg] =
- #                                         as.Date(as.character(file.info(new.object@inputs[[this.arg]])$mtime))>old.date &
-                                          ifelse(is.na(output.date), FALSE, as.Date(as.character(file.info(new.object@inputs[[this.arg]])$mtime))>output.date)
-                                    else
-                                        outdated[, this.arg] = FALSE
-                                }
-                        }
-                    
-                    status = ifelse(rowSums(outdated, na.rm = TRUE)>0, 'outdated', status)
-                    status.info = paste(status.info, apply(outdated, 1,
-                        function(x) if (length(which(x))>0) paste('Updates in', paste(colnames(outdated)[which(x)], collapse = ', '))
-                                    else ''))
+              output.date = as.POSIXct(file.info(new.object@runinfo$stdout)$mtime)
+              
+              outdated = matrix(FALSE, nrow = length(new.object), ncol = length(args), dimnames = list(ids, names(args)))
+              cat('Checking input date stamps\n')
+              for (this.arg in names(args))
+              {
+                if (args[[this.arg]]@path)
+                {
+                  fn = new.object@inputs[[this.arg]]
+                  fn[nchar(fn)==0] = NA ## NA out blank paths
+                  nfiles = sum(!is.na(fn))
+                  cat('\tfor', this.arg, sprintf('(%s files)', nfiles), '\n')
+                  fe = file.exists(fn)
+                  old.date = as.POSIXct(new.object@stamps[[this.arg]])
+                  if (any(fe))
+                    {
+                      if (any(ix<-is.na(old.date))) ## if for some reason blank, set to some time in the far future
+                        old.date[ix] = Sys.time()+5e9
+                      if (is(args[[this.arg]], 'FlowLiteral') & args[[this.arg]]@path)
+                        outdated[, this.arg] =
+                                        #                                          as.POSIXct(as.character(file.info(args[[this.arg]]@arg)$mtime))>old.date &
+                          ifelse(is.na(output.date), FALSE, as.POSIXct(as.character(file.info(new.object@inputs[[this.arg]])$mtime))>output.date)
+                      else if (is(args[[this.arg]], 'FlowAnnotation') & args[[this.arg]]@path)
+                        outdated[, this.arg] =
+                                        #                                         as.POSIXct(as.character(file.info(new.object@inputs[[this.arg]])$mtime))>old.date &
+                          ifelse(is.na(output.date), FALSE, as.POSIXct(as.character(file.info(new.object@inputs[[this.arg]])$mtime))>output.date)
+                      else
+                        outdated[, this.arg] = FALSE
+                    }
+
+                  if (any(!fe))
+                    outdated[!fe, this.arg] = NA
+                }
+              }
+
+
+              status = ifelse(rowSums(outdated, na.rm = TRUE)>0, 'outdated', status)
+              status.info = paste(status.info, apply(outdated, 1,
+                                                     function(x) if (length(which(x))>0) paste('Updates in', paste(colnames(outdated)[which(x)], collapse = ', '))
+                                                                 else ''))
 
                 notready = rowSums(is.na(outdated))>0
                 if (any(notready))
@@ -1129,7 +1143,7 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
                                    expression(object <<- new.object)
                                 ,env=parent.frame(1) )
                     )
-            )
+        )
         cat('')
     })
 
