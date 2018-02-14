@@ -874,34 +874,6 @@ setMethod('initialize', 'Job', function(.Object,
         return(.Object)
     })
 
-.jname = function(outdir, name, ids) paste(outdir, '/', name, '.', ids, sep = '')
-
-.update_cmd = function(.Object)
-    {
-        ## utility func for instantiation of Job and modifying memory
-        .cmd2bcmd = function(cmd, outdir, name, ids, queue, mem, cores) bsub_cmd(paste('touch ', outdir, '/started; ', cmd, ';', sep = ''), queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = .jname(outdir, name, ids), jlabel = .jname(outdir, name, ids))
-        .cmd2qcmd = function(cmd, outdir, name, ids, queue, mem, cores, now) qsub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now)
-        
-        .Object@runinfo[, bcmd := '']
-        ix = which(status(.Object) != 'not ready')
-        .Object@runinfo[ix, bcmd := .cmd2bcmd(cmd.og, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores)]
-        .Object@runinfo[, cmd := '']
-        .Object@runinfo[, cmd.quiet := '']
-        .Object@runinfo[ix, cmd := paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, '(ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
-        .Object@runinfo[ix, cmd.quiet := paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, 'ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
-
-        .Object@runinfo$cmd.path = paste(outdir(.Object), '/', names(outdir(.Object)), '.cmd.sh', sep = '')
-
-        ## write cmd.og to file for qsub command
-#        .Object@runinfo[, mapply(function(text, path) writeLines(text, path), paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; /usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = ''), cmd.path)] ## writes cmd to path        
-                                        #        .Object@runinfo[, mapply(function(text, path) writeLines(text, path), paste('echo "FLOW.SGE.JOBID=$JOB_ID"; cd ', outdir, ';touch ', outdir, '/started; ~/Software/time/time -v ', cmd.og, '; cp ', stdout, ' ', stderr, sep = ''), cmd.path)] ## writes cmd to path
-
-        .Object@runinfo[, mapply(function(text, path) writeLines(text, path), cmd, cmd.path)] ## writes cmd to path        
-        .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now)]
-        
-        return(.Object@runinfo)
-    }
-
 
 #' @name Job
 #' @title Constructs a job object from a Task and keyed data.table of one or more entities. 
@@ -1411,9 +1383,9 @@ setGeneric('mem', function(.Object) {standardGeneric('mem')})
 #' @export
 #' @author Marcin Imielinski
 setMethod('mem', 'Job', function(.Object)
-    {
-        structure(.Object@runinfo[, mem], names = .Object@runinfo[[key(.Object@runinfo)]])
-    })
+{
+  structure(.Object@runinfo[, mem], names = .Object@runinfo[[key(.Object@runinfo)]])
+})
 
 
 
@@ -1431,7 +1403,7 @@ setGeneric('mem<-', function(.Object, value) {standardGeneric('mem<-')})
 #' @export
 #' @author Marcin Imielinski
 setReplaceMethod('mem', 'Job', function(.Object, value)
-                 {
+{
                      .Object@runinfo[, mem := value]                     
                      .Object@runinfo = .update_cmd(.Object)
                      return(.Object)
@@ -2050,34 +2022,34 @@ setMethod('show', 'Job', function(object)
 # Makes bsub command that wraps shell command "cmd" to send to queue "queue"
 # redirebmccting output / error etc streams to path prefixed by "jname",
 # optional_args: maximum memory requirements "mem", "jlabel" job label
-##################
-bsub_cmd = function(cmd, queue, jname = NULL, jlabel=NULL, jgroup = NULL, mem=NULL, group = "cgafolk", cwd = NULL, mc.cores = NULL, deadline = F)
-  {
-    if (is.null(jname) & is.null(names(cmd)))
-      jname = 'job'
+## ##################
+## bsub_cmd = function(cmd, queue, jname = NULL, jlabel=NULL, jgroup = NULL, mem=NULL, group = "cgafolk", cwd = NULL, mc.cores = NULL, deadline = F)
+##   {
+##     if (is.null(jname) & is.null(names(cmd)))
+##       jname = 'job'
 
-    if (length(jname) != length(cmd))
-      jname = rep(jname, length(cmd))
+##     if (length(jname) != length(cmd))
+##       jname = rep(jname, length(cmd))
     
-    if (!is.null(jname))
-      names(cmd) = dedup(jname)    
+##     if (!is.null(jname))
+##       names(cmd) = dedup(jname)    
                             
-    qjname = paste( "\"", names(cmd), "\"", sep="" )
-    qjout = paste( "\"", names(cmd), ".bsub.out", "\" ", sep="" )
-    qjerr = paste( "\"", names(cmd), ".bsub.err", "\" ", sep="" )
-    qjrout = paste( "\"", names(cmd), ".R.out", "\" ", sep="" )
-    out_cmd = paste( "bsub -o ", qjout, " -e ",  qjerr, " -P ", group);
-    out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-q ", queue)))
-    if (!is.null(mem)) out_cmd = paste(out_cmd, " -R \"rusage[mem=", mem, "]\" ", sep = "");
-    if (!is.null(jlabel)) out_cmd = paste(out_cmd, " -J ", jlabel )
-    if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
-    if (!is.null(cwd)) out_cmd = paste(out_cmd, " -cwd ", cwd )
-    if (!is.null(mc.cores)) out_cmd = paste(out_cmd, sprintf(" -n %d,%d -R 'span[hosts=1]'", mc.cores, mc.cores))
-    if (deadline) out_cmd = paste(out_cmd, '-sla DEADLINEsla')
-    out_cmd = paste(out_cmd," \"",  cmd, "\"", sep = "")
-    names(out_cmd)= names(cmd)
-    return(out_cmd)
-  }
+##     qjname = paste( "\"", names(cmd), "\"", sep="" )
+##     qjout = paste( "\"", names(cmd), ".bsub.out", "\" ", sep="" )
+##     qjerr = paste( "\"", names(cmd), ".bsub.err", "\" ", sep="" )
+##     qjrout = paste( "\"", names(cmd), ".R.out", "\" ", sep="" )
+##     out_cmd = paste( "bsub -o ", qjout, " -e ",  qjerr, " -P ", group);
+##     out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-q ", queue)))
+##     if (!is.null(mem)) out_cmd = paste(out_cmd, " -R \"rusage[mem=", mem, "]\" ", sep = "");
+##     if (!is.null(jlabel)) out_cmd = paste(out_cmd, " -J ", jlabel )
+##     if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
+##     if (!is.null(cwd)) out_cmd = paste(out_cmd, " -cwd ", cwd )
+##     if (!is.null(mc.cores)) out_cmd = paste(out_cmd, sprintf(" -n %d,%d -R 'span[hosts=1]'", mc.cores, mc.cores))
+##     if (deadline) out_cmd = paste(out_cmd, '-sla DEADLINEsla')
+##     out_cmd = paste(out_cmd," \"",  cmd, "\"", sep = "")
+##     names(out_cmd)= names(cmd)
+##     return(out_cmd)
+##   }
 
 
 ##################
@@ -2085,35 +2057,65 @@ bsub_cmd = function(cmd, queue, jname = NULL, jlabel=NULL, jgroup = NULL, mem=NU
 # redirebmccting output / error etc streams to path prefixed by "jname",
 # optional_args: maximum memory requirements "mem", "jlabel" job label
 ##################
-qsub_cmd = function(script.fn, queue, jname = NULL, jlabel = NULL, jgroup = NULL, mem=NULL, group = "cgafolk", cwd = NULL, mc.cores = NULL, deadline = F, now = FALSE)
-    {
-        if (is.null(jname) & is.null(names(script.fn)))
-            jname = 'job'
+## qsub_cmd = function(script.fn, queue, jname = NULL, jlabel = NULL, jgroup = NULL, mem=NULL, group = "cgafolk", cwd = NULL, mc.cores = NULL, deadline = F, now = FALSE)
+## {
+##         if (is.null(jname) & is.null(names(script.fn)))
+##             jname = 'job'
         
-        if (length(jname) != length(script.fn))
-            jname = rep(jname, length(script.fn))
+##         if (length(jname) != length(script.fn))
+##             jname = rep(jname, length(script.fn))
         
-        if (!is.null(jname))
-            names(script.fn) = dedup(jname)    
+##         if (!is.null(jname))
+##             names(script.fn) = dedup(jname)    
+##         qjname = paste( "\"", names(script.fn), "\"", sep="" )
+##         qjout = paste( "", names(script.fn), ".bsub.out", " " , sep="" )
+##         qjerr = paste( "", names(script.fn), ".bsub.err", "", sep="" )
+##         qjrout = paste( "", names(script.fn), ".R.out", "", sep="" )
+##                                         #        out_cmd = paste( "qsub -V -o ", qjout, " -e ",  qjerr)
+##         out_cmd = paste("qsub -V -j y -o ", qjout);
+##         out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-q ", queue)))
+##         ##        if (!is.null(mem)) out_cmd = paste(out_cmd, " -l mem=", mem, "gb", sep = "");
+##         if (!is.null(mem)) out_cmd = paste(out_cmd, " -l h_vmem=", mem, "g", sep = "");
+##         if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
+##         if (!is.null(cwd)) out_cmd = paste(out_cmd, " -wd ", cwd )
+##         if (!is.null(qjname)) out_cmd = paste(out_cmd, " -N ", jlabel)
+##         out_cmd = paste(out_cmd, '-now', ifelse(now, 'y', 'n'))
+##         if (!is.null(mc.cores)) out_cmd = paste(out_cmd, ifelse(!is.na(mc.cores), ifelse(mc.cores>1,  paste(" -pe smp",  mc.cores), ''), ''))
+##         out_cmd = paste(out_cmd, script.fn)
+##         names(out_cmd)= names(script.fn)
+##         return(out_cmd)
+##     }
+
+
+.jname = function(outdir, name, ids) paste(outdir, '/', name, '.', ids, sep = '')
+
+.update_cmd = function(.Object)
+{
+
+        ## utility func for instantiation of Job and modifying memory
+        .cmd2bcmd = function(cmd, outdir, name, ids, queue, mem, cores) bsub_cmd(paste('touch ', outdir, '/started; ', cmd, ';', sep = ''), queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = .jname(outdir, name, ids), jlabel = .jname(outdir, name, ids))
+        .cmd2qcmd = function(cmd, outdir, name, ids, queue, mem, cores, now) qsub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now)
+
+        .Object@runinfo[, bcmd := '']
+        ix = which(status(.Object) != 'not ready')
+        .Object@runinfo[ix, bcmd := .cmd2bcmd(cmd.og, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores)]
+        .Object@runinfo[, cmd := '']
+        .Object@runinfo[, cmd.quiet := '']
+        .Object@runinfo[ix, cmd := paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, '(ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
+        .Object@runinfo[ix, cmd.quiet := paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, 'ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
+
+        .Object@runinfo$cmd.path = paste(outdir(.Object), '/', names(outdir(.Object)), '.cmd.sh', sep = '')
+
+        ## write cmd.og to file for qsub command
+#        .Object@runinfo[, mapply(function(text, path) writeLines(text, path), paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; /usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = ''), cmd.path)] ## writes cmd to path        
+                                        #        .Object@runinfo[, mapply(function(text, path) writeLines(text, path), paste('echo "FLOW.SGE.JOBID=$JOB_ID"; cd ', outdir, ';touch ', outdir, '/started; ~/Software/time/time -v ', cmd.og, '; cp ', stdout, ' ', stderr, sep = ''), cmd.path)] ## writes cmd to path
+
+  .Object@runinfo[, mapply(function(text, path) writeLines(text, path), cmd, cmd.path)] ## writes cmd to path
+        .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now)]
         
-        qjname = paste( "\"", names(script.fn), "\"", sep="" )
-        qjout = paste( "", names(script.fn), ".bsub.out", " " , sep="" )
-        qjerr = paste( "", names(script.fn), ".bsub.err", "", sep="" )
-        qjrout = paste( "", names(script.fn), ".R.out", "", sep="" )
-                                        #        out_cmd = paste( "qsub -V -o ", qjout, " -e ",  qjerr)
-        out_cmd = paste("qsub -V -j y -o ", qjout);
-        out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-q ", queue)))
-        ##        if (!is.null(mem)) out_cmd = paste(out_cmd, " -l mem=", mem, "gb", sep = "");
-        if (!is.null(mem)) out_cmd = paste(out_cmd, " -l h_vmem=", mem, "g", sep = "");
-        if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
-        if (!is.null(cwd)) out_cmd = paste(out_cmd, " -wd ", cwd )
-        if (!is.null(qjname)) out_cmd = paste(out_cmd, " -N ", jlabel)
-        out_cmd = paste(out_cmd, '-now', ifelse(now, 'y', 'n'))
-        if (!is.null(mc.cores)) out_cmd = paste(out_cmd, ifelse(!is.na(mc.cores), ifelse(mc.cores>1,  paste(" -pe smp",  mc.cores), ''), ''))
-        out_cmd = paste(out_cmd, script.fn)
-        names(out_cmd)= names(script.fn)
-        return(out_cmd)
+        return(.Object@runinfo)
     }
+
 
 
 #' @name Job-class

@@ -61,7 +61,8 @@ bsub_cmd = function(cmd, queue = NULL, jname = NULL, jlabel = NULL, jgroup = NUL
     qjerr = paste( "\"", names(cmd), ".bsub.err", "\" ", sep="" )
     qjrout = paste( "\"", names(cmd), ".R.out", "\" ", sep="" )
     out_cmd = paste( "bsub -o ", qjout, " -e ",  qjerr);
-    if (!is.null(queue)) out_cmd = ifelse(is.na(queue), '', paste("-q ", queue)) 
+    out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-q ", queue)))
+#    if (!is.null(queue)) out_cmd = ifelse(is.na(queue), '', paste("-q ", queue)) 
     if (!is.null(group)) out_cmd = paste(out_cmd, " -P ", group) 
     if (!is.null(mem)) out_cmd = paste(out_cmd, " -R \"rusage[mem=", mem, "]\" ", sep = "")
     if (!is.null(jlabel)) out_cmd = paste(out_cmd, " -J ", jlabel ) 
@@ -110,13 +111,14 @@ qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup
     if (!is.null(jname)){
         names(script.fn) = dedup(jname)   
     }  
-        
+
     qjname = paste( "\"", names(script.fn), "\"", sep="" )
     qjout = paste( "", names(script.fn), ".bsub.out", " " , sep="" )
     qjerr = paste( "", names(script.fn), ".bsub.err", "", sep="" )
     qjrout = paste( "", names(script.fn), ".R.out", "", sep="" )
     out_cmd = paste("qsub -V -j y -o ", qjout);
-    if (!is.null(queue)) out_cmd = ifelse(is.na(queue), '', paste("-q ", queue))
+    out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-q ", queue)))
+    #if (!is.null(queue)) out_cmd = ifelse(is.na(queue), '', paste("-q ", queue))
     if (!is.null(group)) out_cmd = paste(out_cmd, " -P ", group)
     if (!is.null(mem)) out_cmd = paste(out_cmd, " -l h_vmem=", mem, "g", sep = "")
     if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
