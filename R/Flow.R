@@ -1013,6 +1013,7 @@ setMethod('purge', 'Job', function(object, check.inputs = TRUE)
 #' @export
 setGeneric('update', function(object, ...) {standardGeneric('update')})
 
+
 #' @name update
 #' @title updates Job status
 #'
@@ -1040,8 +1041,7 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
                    ifelse(!is.na(st$mtime), 'running', 'ready')), 'ready')
 
         
-        if (length(new.object@task@outputs)>0) ## check output args if they exist   
-        {   
+        if (length(new.object@task@outputs)>0) ## check output args if they exist       
             if (sum(sapply(new.object@task@outputs, is, 'FlowOutput')))
                 {
                     outkeys = sapply(new.object@task@outputs, function(x) x@name)
@@ -1061,13 +1061,12 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
                         ifelse(missing.out, 'completed; some outputs missing', 'completed'),
                         ifelse(has.out, paste(status, 'and some outputs present'), status))
                 }
-        }
-
+        
         ## determine ready / not ready / outdated status based on the existence of
         ## of file names
         args = new.object@task@args
 
-        if (length(args)>0){
+        if (length(args)>0)
             if (check.inputs)
                 {
                     outdated = matrix(FALSE, nrow = length(new.object), ncol = length(args), dimnames = list(ids, names(args)))
@@ -1090,6 +1089,7 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
                                     else
                                         outdated[, this.arg] = FALSE
                                 }
+#                            browser()
                         }
                     
                     status = ifelse(rowSums(outdated, na.rm = TRUE)>0, 'outdated', status)
@@ -1105,17 +1105,15 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
                                            function(x) paste(paste(colnames(outdated)[which(x)], collapse = ', '), 'not ready')))
                         }
                 }
-        }
         
         new.object@runinfo$status = status
         new.object@runinfo$status.info = str_trim(status.info)
         new.object@runinfo = .update_cmd(new.object)
 
-        if (cache.object){
+        if (cache.object)
             cache(new.object)
-        }
 
-        if (print.status){
+        if (print.status)
             print(table(status(new.object)))
         ## weird R voodoo to modify object in place
         eval(
@@ -1126,11 +1124,7 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
                     )
             )
         cat('')
-    }
     })
-
-
-
 
 setGeneric('default', function(.Object) standardGeneric('default'))
 
