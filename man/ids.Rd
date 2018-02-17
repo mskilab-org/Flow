@@ -3,13 +3,15 @@
 \docType{methods}
 \name{ids}
 \alias{ids}
+\alias{ids}
 \title{returns vector of entity ids associated with this Job objedct}
 \usage{
 \S4method{ids}{Job}(.Object)
-}
-\description{
-returns vector of entity ids associated with this Job objedct
+
+\S4method{ids}{Job}(.Object)
 }
 \author{
-Marcin Imielinski
+Marcin Imielinskix
+
+Marcin Imielinskix
 }

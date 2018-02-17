@@ -11,12 +11,6 @@ other things to assess job status.  Once finished, it caches results to the .rds
 \S4method{update}{Job}(object, check.inputs = TRUE, mc.cores = 1,
   cache.object = TRUE, print.status = TRUE)
 }
-\description{
-updates Job status
-
-This method checks inputs for updates to input files, polls output directories for the presence output files, checks stdout output logs, among
-other things to assess job status.  Once finished, it caches results to the .rds object associated with this Job.
-}
 \author{
 Marcin Imielinski
 }

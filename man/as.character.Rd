@@ -7,9 +7,6 @@
 \usage{
 \S4method{as.character}{Task}(x, ...)
 }
-\description{
-Convert task object to character, can be dumped to file and used to instantiate future Task objects
-}
 \author{
 Marcin Imielinski
 }

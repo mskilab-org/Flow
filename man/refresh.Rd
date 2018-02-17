@@ -7,9 +7,6 @@
 \usage{
 \S4method{refresh}{Job}(object, verbose = TRUE)
 }
-\description{
-refreshes .rds copy of job object from standard location (TASK.NAME.rds in Job output root directory)
-}
 \author{
 Marcin Imielinski
 }

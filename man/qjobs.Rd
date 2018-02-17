@@ -7,9 +7,6 @@
 \usage{
 \S4method{qjobs}{Job}(.Object)
 }
-\description{
-Tracks down any sGE jobs associated with this Job object using a bjobs query (warning can be slow)
-}
 \author{
 Marcin Imielinski
 }

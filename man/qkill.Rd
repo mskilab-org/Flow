@@ -7,9 +7,6 @@
 \usage{
 \S4method{qkill}{Job}(.Object, jid = NULL)
 }
-\description{
-Kills any running SGE jobs associated with this Job object
-}
 \author{
 Marcin Imielinski
 }

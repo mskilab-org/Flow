@@ -7,9 +7,6 @@
 \usage{
 \S4method{outdir}{Job}(.Object)
 }
-\description{
-Gets vector of output directories associated with the jobs in this Job object
-}
 \author{
 Marcin Imielinski
 }
