@@ -987,6 +987,9 @@ setMethod('purge', 'Job', function(object, check.inputs = TRUE)
     })
 
 
+
+
+
 #' @name Job-class
 #' @rdname Job-class
 #' @exportMethod update
@@ -1004,13 +1007,13 @@ setGeneric('update', function(object, ...) {standardGeneric('update')})
 #' @export
 #' @author Marcin Imielinski
 setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, cache.object = TRUE, print.status = TRUE)
-{
+    {
         ## for every output, apply regexp in files of outdir to search for files
         status.info = rep('', length(object))
         status = rep('ready', length(object))
 
         new.object = object
-        ids = new.object@outputs[[data.table::key(new.object@outputs)]]
+        ids = new.object@outputs[[key(new.object@outputs)]]
         
         st = file.info(paste(outdir(new.object), 'started', sep = '/'))
         en = file.info(paste(outdir(new.object), 'failed', sep = '/'))
@@ -1089,16 +1092,15 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
               status.info = paste(status.info, apply(outdated, 1,
                                                      function(x) if (length(which(x))>0) paste('Updates in', paste(colnames(outdated)[which(x)], collapse = ', '))
                                                                  else ''))
-
-                notready = rowSums(is.na(outdated))>0
-                if (any(notready))
-                {
-                    status[notready] = 'not ready'
-                    status.info[notready] = paste(status.info[notready], apply(is.na(outdated[notready, , drop = FALSE]), 1,
-                                           function(x) paste(paste(colnames(outdated)[which(x)], collapse = ', '), 'not ready')))
-                }
+              notready = rowSums(is.na(outdated))>0
+              if (any(notready))
+              {
+                status[notready] = 'not ready'
+                status.info[notready] = paste(status.info[notready], apply(is.na(outdated[notready, , drop = FALSE]), 1,
+                                                                           function(x) paste(paste(colnames(outdated)[which(x)], collapse = ', '), 'not ready')))
+              }
             }
-    
+        
         new.object@runinfo$status = status
         new.object@runinfo$status.info = str_trim(status.info)
         new.object@runinfo = .update_cmd(new.object)
@@ -1115,9 +1117,15 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
                                    expression(object <<- new.object)
                                 ,env=parent.frame(1) )
                     )
-        )
+            )
         cat('')
     })
+
+
+
+
+
+
 
 
 setGeneric('default', function(.Object) standardGeneric('default'))
