@@ -713,7 +713,7 @@ setMethod('initialize', 'Job', function(.Object,
                              entities[[this.ann]] = sapply(entities[[this.ann]], '[', 1)
                          }
 
-                         .Object@inputs[[this.arg]] = entities[[this.ann]]
+                         .Object@inputs[[this.arg]] = as.character(entities[[this.ann]])
         #                 .Object@inputs[, eval(this.arg) := entities[[this.ann]]]
                          
                          if (.Object@task@args[[this.arg]]@path)
@@ -1049,7 +1049,7 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
         if (length(args)>0)
             if (check.inputs)
             {
-              output.date = as.POSIXct(file.info(new.object@runinfo$stdout)$mtime)
+              output.date = as.POSIXct(file.info(as.character(new.object@runinfo$stdout))$mtime)
               
               outdated = matrix(FALSE, nrow = length(new.object), ncol = length(args), dimnames = list(ids, names(args)))
               cat('Checking input date stamps\n')
@@ -1057,7 +1057,7 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
               {
                 if (args[[this.arg]]@path)
                 {
-                  fn = new.object@inputs[[this.arg]]
+                  fn = as.character(new.object@inputs[[this.arg]])
                   fn[nchar(fn)==0] = NA ## NA out blank paths
                   nfiles = sum(!is.na(fn))
                   cat('\tfor', this.arg, sprintf('(%s files)', nfiles), '\n')
@@ -1070,11 +1070,11 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
                       if (is(args[[this.arg]], 'FlowLiteral') & args[[this.arg]]@path)
                         outdated[, this.arg] =
                                         #                                          as.POSIXct(as.character(file.info(args[[this.arg]]@arg)$mtime))>old.date &
-                          ifelse(is.na(output.date), FALSE, as.POSIXct(as.character(file.info(new.object@inputs[[this.arg]])$mtime))>output.date)
+                          ifelse(is.na(output.date), FALSE, as.POSIXct(as.character(file.info(as.character(new.object@inputs[[this.arg]]))$mtime))>output.date)
                       else if (is(args[[this.arg]], 'FlowAnnotation') & args[[this.arg]]@path)
                         outdated[, this.arg] =
                                         #                                         as.POSIXct(as.character(file.info(new.object@inputs[[this.arg]])$mtime))>old.date &
-                          ifelse(is.na(output.date), FALSE, as.POSIXct(as.character(file.info(new.object@inputs[[this.arg]])$mtime))>output.date)
+                          ifelse(is.na(output.date), FALSE, as.POSIXct(as.character(file.info(as.character(new.object@inputs[[this.arg]]))$mtime))>output.date)
                       else
                         outdated[, this.arg] = FALSE
                     }
@@ -2561,9 +2561,14 @@ setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix =
                 old = y[list(ids(x)), ov, with = FALSE]
                 new = outputs(x)[, ov, with = FALSE]
                 for (this.ov in ov)
-                    {                        
+                {
+                  na.old = is.na(old[[this.ov]])
+                  na.new = is.na(new[[this.ov]])
+                  nna.both = !na.old & !na.new
+                  ix = na.old | na.new
+                  
                         ix = !is.na(new[[this.ov]]) | !is.na(old[[this.ov]])
-                        ix[ix] = new[[this.ov]][ix] != old[[this.ov]][ix]
+                        #ix[ix] = new[[this.ov]][ix] != old[[this.ov]][ix]
                         ix <- ifelse(is.na(ix), FALSE, ix)
                         if (any(ix))
                             {
@@ -2572,20 +2577,21 @@ setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix =
                                 ix2 <- ifelse(is.na(old.mtime>new.mtime), FALSE, old.mtime>new.mtime)
                                 if (!force & any(ix2))
                                 {
-                                    warning('Newer annotations in external data.table are being over-written by new ones, keeping old annotations, call with force = TRUE to override')
+                                    warning('Merge attempting to overwrite newer paths in data.table with older paths in Job, keeping existing data.table path annotations, but you can call with force = TRUE to override')
                                     new[[this.ov]][ix][ix2] = old[[this.ov]][ix][ix2]
                                 }
 
                                 if (!force &
-                                    any(ix <- is.na(new[[this.ov]]) & !is.na(old[[this.ov]]), na.rm = TRUE))
+                                    any(ix2 <- is.na(new[[this.ov]]) & !is.na(old[[this.ov]]), na.rm = TRUE))
                                 {
-                                    warning('Existing annotations in external data.table are being over-written by NA annotations, keeping old annotations, call with force = TRUE to override')
+                                    warning('Merge attempting to overwrite newer paths in data.table with NA paths in Job, keeping existing data.table path annotations, call with force = TRUE to override')
                                     new[[this.ov]][ix2] = old[[this.ov]][ix2]
                                 }
                             }
                         setkeyv(out, key(x))
                         out[ids(x),][[this.ov]] = new[[this.ov]]
                     }
+                
             }
 
         ix = match(setdiff(names(outputs(x)), key(x)), names(out))
@@ -2729,4 +2735,3 @@ rrbind = function(..., union = T)
 ## #' @param sep  separator to add to columns merged from the Job
 ## #' @author Marcin Imielinski
 ## #' @export
-
