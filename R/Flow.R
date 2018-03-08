@@ -1244,13 +1244,25 @@ setMethod('refresh', 'Job', function(object, verbose = TRUE)
 #' @export
 #' @author Marcin Imielinski
 setMethod('[', 'Job', function(x, i, id = FALSE)
-    {
-        if (!id & is.character(i))
-            i = grep(i, status(x), ignore.case = TRUE)        
-        else
-            if (is.logical(i))
-                i = which(i)
+{
+  if (is.character(id))
+  {
+    i = id
+    id = TRUE
+  }
 
+  if (!id & is.character(i))
+  {
+    i = grep(i, status(x), ignore.case = TRUE)
+  }
+  else
+  {
+    if (is.logical(i))
+    {
+      i = which(i)
+    }
+  }
+  
         if (length(i) ==0)
           i = 0 ## data.table-ese for empty data.table, otherwise NULL
 
