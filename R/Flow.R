@@ -1251,63 +1251,54 @@ setMethod('[', 'Job', function(x, i, id = FALSE){
 })
 
 
-
-#' Replacing a subset of Job object with another (compatible Job object) 
-#'
-#' @name [<-
-#' @aliases [,Job-class
-#' @rdname Job-class
-#' @docType methods
-#' @exportMethod [<-
-#' @export
-
-#' @name [<-
-#' @title Replaces one or more Job items
+#' @name [
+#' @title caches .rds copy of job object to standard location (TASK.NAME.rds in Job output root directory)
 #' @description
 #' 
-#' Replacing a subset of Job object with other compatibler Job items.  "compatible" job items
-#' will be from the identical task and will contain entities already contained in the Job
-#' object. 
+#' Subsetting Job object, can use index or character.  If character will act as a grep
+#' of status, or status.info if status.info = TRUE
 #' 
-#' @exportMethod [<-
+#' @exportMethod [
 #' @export
 #' @author Marcin Imielinski
-setMethod('[<-', 'Job', function(x, i, value, id = FALSE){ 
+setMethod('[', 'Job', function(x, i, id = FALSE){
 
-    if (!is(value, 'Job')){
-        stop('Error: Must replace with Job object')
-    }
-
-    if (!(identical(x@task, value@task))){
-        stop('Error: Can only sub in Job having identical task')
-    }
-
-    if (!(identical(names(x@inputs), names(value@inputs)))){
-        stop('Error: Can only sub in Job having identical task')
+    if (is.character(id)){
+         i = id
+        id = TRUE
     }
 
     if (!id & is.character(i)){
-        i = grep(i, status(x), ignore.case = TRUE)        
-    } else{
+        i = grep(i, status(x), ignore.case = TRUE)
+    } else {
         if (is.logical(i)){
             i = which(i)
         }
     }
-
-    if (ncol(value@runinfo) != ncol(x@runinfo)){
-        stop('Error: Either object or replacement value are corrupt: please try regenerating Job object')
-    }
-    x@runinfo[i,] = value@runinfo
-    x@inputs[i,] = value@inputs
-    x@outputs[i, ] = value@outputs
-    x@stamps[i, ] = value@stamps
-    if (.hasSlot(x, 'entities') & .hasSlot(value, 'entities')){
-        x@entities[i, ] = value@entities
+  
+    if (length(i) ==0){
+        i = 0 ## data.table-ese for empty data.table, otherwise NULL
     }
 
+    id = key(x)
+    x@runinfo = x@runinfo[i, ]
+    x@inputs = x@inputs[i, ]
+    x@outputs = x@outputs[i, ]
+    x@stamps = x@stamps[i, ]
+    if (.hasSlot(x, 'entities')){
+        setkeyv(x@entities, id)
+        x@entities = x@entities[i, ]
+        setkeyv(x@entities, id)
+    }
+        
+    ## some kind of data.table bug where key gets lost every w subsetting once in a while ... #CHECK
+    setkeyv(x@runinfo, id)
+    setkeyv(x@inputs, id)
+    setkeyv(x@outputs, id)
+    setkeyv(x@stamps, id)
     return(x)
-
 })
+
 
 
 

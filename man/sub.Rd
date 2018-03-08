@@ -3,14 +3,22 @@
 \docType{methods}
 \name{[}
 \alias{[}
+\alias{[}
 \title{caches .rds copy of job object to standard location (TASK.NAME.rds in Job output root directory)}
 \usage{
+\S4method{[}{Job}(x, i, id = FALSE)
+
 \S4method{[}{Job}(x, i, id = FALSE)
 }
 \description{
 Subsetting Job object, can use index or character.  If character will act as a grep
 of status, or status.info if status.info = TRUE
+
+Subsetting Job object, can use index or character.  If character will act as a grep
+of status, or status.info if status.info = TRUE
 }
 \author{
+Marcin Imielinski
+
 Marcin Imielinski
 }
