@@ -62,7 +62,7 @@ bsub_cmd = function(cmd, queue = NULL, jname = NULL, jlabel = NULL, jgroup = NUL
     qjrout = paste( "\"", names(cmd), ".R.out", "\" ", sep="" )
     out_cmd = paste( "bsub -o ", qjout, " -e ",  qjerr);
     out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-q ", queue)))
-##    if (!is.null(queue)) out_cmd = ifelse(is.na(queue), '', paste("-q ", queue)) 
+
     if (!is.null(group)) out_cmd = paste(out_cmd, " -P ", group) 
     if (!is.null(mem)) out_cmd = paste(out_cmd, " -R \"rusage[mem=", mem, "]\" ", sep = "")
     if (!is.null(jlabel)) out_cmd = paste(out_cmd, " -J ", jlabel ) 
@@ -161,16 +161,15 @@ parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
             err.file = NA,
             exit_flag = NA, term_flag = NA, started = NA, reported = NA, hours_elapsed = NA, max_mem = NA, cpu_time = NA,
             success = NA,
-            stringsAsFactors = F)
-    }    
-    else{          
+            stringsAsFactors = FALSE)
+    } else{          
         outs = data.frame(jname = gsub('\\.R$', '', jname),
             out.file = paste(dir,'/', jname, '.bsub.out', sep = ''),
             err.file = paste(dir, '/', jname, '.bsub.err', sep = ''),
             exit_flag = NA, term_flag = NA, started = NA, reported = NA, hours_elapsed = NA, max_mem = NA, cpu_time = NA,
             success = NA,
             job_type = NA, 
-            stringsAsFactors = F);
+            stringsAsFactors = FALSE);
     }
 
     fn = paste(dir, jname, '.bsub.out', sep = '')
@@ -218,8 +217,7 @@ parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
                     c(gsub('[ ]+Max Processes[ ]+\\:[ ]+(.*)\\S*', '\\1', grep('^[ ]+Max Processes', y, value = T)), '')[1],
                     c(gsub('[ ]+Max Threads[ ]+\\:[ ]+(.*)\\S*', '\\1', grep('^[ ]+Max Threads', y, value = T)), '')[1]
                 ))
-            }
-            else if (length(sge)>0){
+            } else if (length(sge)>0){
                 fn.report.sge = paste(fn.report[i], '.sge', sep = '')
                 jobnum = gsub('^FLOW.SGE.JOBID=(.*)', '\\1',  sge[1])
                 p = pipe(paste('qacct -j', jobnum[length(jobnum)]))
@@ -249,9 +247,8 @@ parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
                     vals['slots'],
                     vals['slots']
                     ))
-            }
-            ## interpret job as locally run with a /usr/bin/time -v output
-            else{
+            } else{
+                ## interpret job as locally run with a /usr/bin/time -v output
                 y = tryCatch(readLines(fn.err[i]), error = function(e) NULL)
                 if (is.null(y)){
                     y = readLines(fn[i])
@@ -273,7 +270,7 @@ parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
                     keyval['User time (seconds)'], keyval['Maximum resident set size (kbytes)'], NA,
                     as.numeric(gsub('\\%', '', keyval['Percent of CPU this job got']))/100, NA))
             }
-    }, mc.cores = mc.cores)), ncol = 10, byrow = T)
+    }, mc.cores = mc.cores)), ncol = 10, byrow = TRUE)
  
     colnames(tmp) = c('job.type', 'exit.flag', 'term.flag', 'started', 'reported', 'cpu.time', 'max.memory', 'max.swap', 'max.cpu', 'max.thr')
         
@@ -329,8 +326,7 @@ parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
   
     if (!is.null(input.jname)){
       outs = outs[, key := input.jname[jname]]
-    }
-    else{
+    } else{
       outs = outs[, key := jname]
     }
 
@@ -397,8 +393,7 @@ xml2task = function(path, module = NULL, out.file = NULL)
                 
                 arg = params[, {if (mode == 'FlowLiteral'){
                                     list(list(FlowLiteral(name = name, arg = expression, path = file.exists(expression))))
-                                }
-                                else{
+                                } else{
                                     list(list(FlowAnnotation(name = name, arg = expression, path = file.exists(expression), default = default_value)))
                                 }
                             }, keyby = name]
@@ -409,21 +404,17 @@ xml2task = function(path, module = NULL, out.file = NULL)
             if (!is.null(arg)){
                 if (!is.null(outs)){
                     return(do.call(Task, c(structure(arg[[2]], names = arg[[1]]), list(outputs = structure(outs[[2]], names = outs[[1]]), module = module))))
-                }
-                else{
+                } else{
                     return(do.call(Task, c(structure(arg[[2]], names = arg[[1]]), list(module = module))))
                 }
-            }
-            else{
+            } else{
                 if (!is.null(outs)){
                     return(do.call(Task, list(outputs = structure(outs[[2]]), names = outs[[1]], module = module)))
-                }
-                else{
+                } else{
                     stop('No inputs or outputs in this task config, malformed task.config file?')
                 }
             }
-        }
-        else{
+        } else{
             warning('Warning: No module provided as input so just dumping mock task .task file to stdout')
             out = paste('#', task.config$"name", task.config$"task-id")
             out = c(out, '/path/to/module/directory')
@@ -448,8 +439,7 @@ xml2task = function(path, module = NULL, out.file = NULL)
             out = c(out, '')
             if (is.null(out.file)){
                 writeLines(out)
-            }
-            else{
+            } else{
                 writeLines(out, out.file)
             }
             
@@ -459,8 +449,7 @@ xml2task = function(path, module = NULL, out.file = NULL)
 
     if (all(sapply(out, is.null))){
         cat('')
-    }
-    else{
+    } else{
         if (length(out)==1){
             out = out[[1]] 
         }  
@@ -546,8 +535,7 @@ more = function(x, grep = NULL, pipe = FALSE)
 {
     if (is.null(grep)){
         x = paste('more', paste(x, collapse = ' '))
-    }
-    else{
+    } else{
         x = paste('grep -H', grep, paste(x, collapse = ' '), ' | more')
     }
     if (pipe){
@@ -555,8 +543,7 @@ more = function(x, grep = NULL, pipe = FALSE)
         out = readLines(p)
         close(p)
         return(out)
-    }
-    else{
+    } else{
         system(x)
     }
 }
@@ -581,12 +568,10 @@ tailf = function(x, n = NULL, grep = NULL)
     if (is.null(grep)){
         if (is.null(n)){
             x = paste('tail -f', paste(x, collapse = ' '))
-        }
-        else{
+        } else{
             x = paste('tail -n', n, paste(x, collapse = ' '))
         }
-    }
-    else{
+    } else{
       x = paste('grep -H', grep, paste(x, collapse = ' '), ' | more')
     }
 
