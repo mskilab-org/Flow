@@ -48,67 +48,75 @@
 setClass('Module', representation(sourcedir = 'character', name = "character", cmd = 'character', args = 'vector', stamp = 'character'))
 
 setMethod('initialize', 'Module', function(.Object,
-                                             path, # path to module
-                                             name = NULL ## default is 
-                                             )
-    {
-        if (!file.exists(path)) 
-            stop(sprintf('%s not found, check path', path))
+                                            path, # path to module
+                                            name = NULL ## default is 
+                                            )
+{
+    if (!file.exists(path)){
+        stop(sprintf('%s not found, check path', path))
+    } 
 
-        if (file.info(path)$isdir)
-            path = paste(path, 'hydrant.deploy', sep = '/')
-        else
-            path = paste(file.dir(path), 'hydrant.deploy', sep = '/')
+    if (file.info(path)$isdir){
+        path = paste(path, 'hydrant.deploy', sep = '/')
+    } else{
+        path = paste(file.dir(path), 'hydrant.deploy', sep = '/')
+    }
 
-        if (!file.exists(path))
-            path = paste(file.dir(path), 'flow.deploy', sep = '/')
+    if (!file.exists(path)){
+        path = paste(file.dir(path), 'flow.deploy', sep = '/')
+    }
         
-        if (!file.exists(path)) 
-            stop(sprintf('%s not found, check path', path))
+    if (!file.exists(path)){
+        stop(sprintf('%s not found, check path', path))
+    } 
 
-        cmd.re = '^command\\s*[\\:\\=]\\s+'
-        cmd = gsub(cmd.re, '', grep(cmd.re, readLines(path), value = TRUE))
+    cmd.re = '^command\\s*[\\:\\=]\\s+'
+    cmd = gsub(cmd.re, '', grep(cmd.re, readLines(path), value = TRUE))
 
-        if (length(cmd)==0)
-            stop('Problem parsing .deploy file, maybe it is an old version or a scatter gather task, which is not currently supported')
+    if (length(cmd)==0){
+        stop('Problem parsing .deploy file, maybe it is an old version or a scatter gather task, which is not currently supported')
+    }
 
-        if (!grepl('sh', cmd))
-            warning('Module command does not begin with "sh" - make sure that this is not a scatter gather command, which is not currently supported')
-
+    if (!grepl('sh', cmd)){
+        warning('Module command does not begin with "sh" - make sure that this is not a scatter gather command, which is not currently supported')
+    }
         
-        ## need to replace $(\\w+ .* FEATURE_NAME) with just the internal and extract the FEATURE_NAME
-        pattern = '\\$\\{[a-z\\,]*( [^\\}]*)? (\\S+)\\s*\\}';              
-        args = stringi::stri_match_all_regex(cmd, pattern, omit_no_match = TRUE, cg_missing = "")[[1]]
+    ## need to replace $(\\w+ .* FEATURE_NAME) with just the internal and extract the FEATURE_NAME
+    pattern = '\\$\\{[a-z\\,]*( [^\\}]*)? (\\S+)\\s*\\}';              
+    args = stringi::stri_match_all_regex(cmd, pattern, omit_no_match = TRUE, cg_missing = "")[[1]]
 
-        args[,3] = gsub('\\=.*', '', args[,3])
+    args[,3] = gsub('\\=.*', '', args[,3])
         
-        ## create new string with clear "formats" we can sub into
-        cmd.new = cmd
-        for (i in 1:nrow(args))
-            cmd.new = str_replace_all(cmd.new, stringr::fixed(args[,1][i]), paste(gsub('\\"', '', args[,2]), '<', args[,3], '>', sep = '')[i])
+    ## create new string with clear "formats" we can sub into
+    cmd.new = cmd
+    for (i in 1:nrow(args)){
+        cmd.new = str_replace_all(cmd.new, stringr::fixed(args[,1][i]), paste(gsub('\\"', '', args[,2]), '<', args[,3], '>', sep = '')[i])
+    }
         
-        .Object@cmd = cmd.new
+    .Object@cmd = cmd.new
 
-        .Object@args = args[,3]
+    .Object@args = args[,3]
 
-        .Object@stamp = ''
-        if (length(f <- dir(file.dir(path), '^version.txt$'))>0)
-            .Object@stamp = readLines(f[1])
-        ## else ## extract from svn 
-        ##     tryCatch(
-        ##         {
-        ##             p = pipe(sprintf('svn info %s | grep "Last Changed Date"', normalizePath(file.dir(path))))
-        ##             .Object@stamp = str_match(readLines(p)[1], 'Last Changed Date\\: (\\S+\\s+\\S+)')[,2]
-        ##             close(p)
-        ##         }, error = function(e) warning('Could not get stamp'))        
-        .Object@sourcedir = file.dir(path)
-        if (is.null(name))
-            .Object@name = file.name(gsub('\\/+$', '', file.dir(path)))
-        else
-            .Object@name = name
+    .Object@stamp = ''
+    if (length(f <- dir(file.dir(path), '^version.txt$'))>0){
+        .Object@stamp = readLines(f[1])
+    }
+    ## else ## extract from svn 
+    ##     tryCatch(
+    ##         {
+    ##             p = pipe(sprintf('svn info %s | grep "Last Changed Date"', normalizePath(file.dir(path))))
+    ##             .Object@stamp = str_match(readLines(p)[1], 'Last Changed Date\\: (\\S+\\s+\\S+)')[,2]
+    ##             close(p)
+    ##         }, error = function(e) warning('Could not get stamp'))        
+    .Object@sourcedir = file.dir(path)
+    if (is.null(name)){
+        .Object@name = file.name(gsub('\\/+$', '', file.dir(path)))
+    } else{
+        .Object@name = name
+    }
             
-        return(.Object)
-    })
+    return(.Object)
+})
 
 #' @name Module
 #' @title Class to implement modules, which are standalone pieces of code that expect standard inputs and outputs
@@ -144,20 +152,20 @@ setMethod('initialize', 'Module', function(.Object,
 Module = function(...) new('Module', ...)
 
 setMethod('show', 'Module', function(object)
-    {
-        writeLines(as.character(object))
-    })
+{
+    writeLines(as.character(object))
+})
 
 setMethod('as.character', 'Module', function(x, ...)
-    {
-        NCHAR = 100
-        tmp.cmd = paste(str_sub(x@cmd, 1, pmin(nchar(x@cmd), NCHAR)), ifelse(nchar(x@cmd) > NCHAR, '...', ''), sep = '')
-#        cat(sprintf('module %s, with command:  %s\nand args:\n%s\n', x@name, tmp.cmd, paste(x@args, collapse = '\n')))
-        out = sprintf('#Module %s ("%s")', x@name, tmp.cmd)
-        out = c(out, x@sourcedir, paste('input', x@args, '<INPUT_BINDING>', '<(path)|(value)>', sep = '\t'))
-        out = c(out, paste('output\t<OUTPUT_ANNOTATION>\t<OUTPUT_REGEXP>'))
-        return(out)
-    })
+{
+    NCHAR = 100
+    tmp.cmd = paste(str_sub(x@cmd, 1, pmin(nchar(x@cmd), NCHAR)), ifelse(nchar(x@cmd) > NCHAR, '...', ''), sep = '')
+    ###        cat(sprintf('module %s, with command:  %s\nand args:\n%s\n', x@name, tmp.cmd, paste(x@args, collapse = '\n')))
+    out = sprintf('#Module %s ("%s")', x@name, tmp.cmd)
+    out = c(out, x@sourcedir, paste('input', x@args, '<INPUT_BINDING>', '<(path)|(value)>', sep = '\t'))
+    out = c(out, paste('output\t<OUTPUT_ANNOTATION>\t<OUTPUT_REGEXP>'))
+    return(out)
+})
 
 
 #' S4 class for \code{Task}
@@ -394,9 +402,9 @@ setMethod('initialize', 'Task', function(.Object,
 Task = function(...) new('Task', ...)
 
 setMethod('show', 'Task', function(object)
-    {
-        writeLines(as.character(object))
-    })
+{
+    writeLines(as.character(object))
+})
 
 #' @name as.character
 #' @title Convert task object to character, can be dumped to file and used to instantiate future Task objects
@@ -449,16 +457,16 @@ setMethod('as.character', 'Task', function(x, ...)
 #' @author Marcin Imielinski
 setClass('FlowLiteral', representation(name = 'character', arg = 'character', path = 'logical'))
 setMethod('initialize', 'FlowLiteral', function(.Object,
-                                              name, # argument name
-                                              arg,  # argument value
-                                              path = FALSE # is it a path or not
-                                              )
-    {
-        .Object@name =  name
-        .Object@arg =  arg
-        .Object@path =  path
-        return(.Object)
-    })
+                                            name, # argument name
+                                            arg,  # argument value
+                                            path = FALSE # is it a path or not
+                                            )
+{
+    .Object@name =  name
+    .Object@arg =  arg
+    .Object@path =  path
+    return(.Object)
+})
 
 
 
@@ -489,22 +497,23 @@ FlowLiteral = function(...) new('FlowLiteral', ...)
 setClass('FlowAnnotation', representation(name = 'character', arg = 'character', path = 'logical', default = 'character'))
 
 setMethod('initialize', 'FlowAnnotation', function(.Object,
-                                                 name, # argument name 
-                                                 arg, # argument value,
-                                                 path = TRUE, # flag whether it is path
-                                                 default = NULL ## specify default value
-                                             )
-    {
-        .Object@name =  name
-        .Object@arg =  arg
-        .Object@path =  path
+                                                name, # argument name 
+                                                arg, # argument value,
+                                                path = TRUE, # flag whether it is path
+                                                default = NULL ## specify default value
+                                            )
+{
+    .Object@name =  name
+    .Object@arg =  arg
+    .Object@path =  path
         
-        if (is.na(default))
-            default = as.character(NULL)
+    if (is.na(default)){
+        default = as.character(NULL)
+    }
         
-        .Object@default = default
-        return(.Object)
-    })
+    .Object@default = default
+    return(.Object)
+})
 
 
 #' @name FlowAnnotation
@@ -537,14 +546,14 @@ FlowAnnotation = function(...) new('FlowAnnotation', ...)
 #' @export
 setClass('FlowOutput', representation(name = 'character', pattern = 'character'))
 setMethod('initialize', 'FlowOutput', function(.Object,
-                                             name,
-                                             pattern
-                                             )
-    {
-        .Object@name =  name
-        .Object@pattern = pattern
-        return(.Object)
-    })
+                                            name,
+                                            pattern
+                                            )
+{
+    .Object@name =  name
+    .Object@pattern = pattern
+    return(.Object)
+})
 
 #' @name FlowOutput
 #' @title  Constructs an object representing the wiring of a regexp on a job output directory to an output annotation
@@ -602,17 +611,17 @@ FlowOutput = function(...) new('FlowOutput', ...)
 setClass('Job', representation(task = 'Task', rootdir = 'character', entities = 'data.table', runinfo = 'data.table', inputs = "data.table", stamps = "data.table", outputs = "data.table"))
 
 setMethod('initialize', 'Job', function(.Object,
-                                          task, ##Task wrapping around an Module expecting literal and annotation arguments
+                                        task, ##Task wrapping around an Module expecting literal and annotation arguments
                                                 ##this can also just be an .task config file
-                                          entities = NULL, ## keyed data.table, key will determine id of outgoing jobs, columns of table used to populate task
-                                          rootdir = './Flow/',
-                                          queue = as.character(NA),
-                                          nice = NULL,
-                                          mem = NULL,                                          
+                                        entities = NULL, ## keyed data.table, key will determine id of outgoing jobs, columns of table used to populate task
+                                        rootdir = './Flow/',
+                                        queue = as.character(NA),
+                                        nice = NULL,
+                                        mem = NULL,                                          
                                         cores = 1,
                                         now = FALSE,
                                         mock = FALSE
-                                          )
+                                        )
     {
         require(stringr)
         if (is.null(nice))
@@ -924,43 +933,50 @@ Job = function(
 #' @export
 #' @author Marcin Imielinski
 setMethod('c', 'Job', function(x, ...)
-    {
-        if (!.hasSlot(x, 'entities'))
-            stop('older version of Flow object does not support concatenation')
+{
+    if (!.hasSlot(x, 'entities')){
+        stop('older version of Flow object does not support concatenation')
+    }
         
-        obj = c(list(x), list(...))
-        same.same = all(sapply(obj, function(x) identical(x@task, obj[[1]]@task)))
-        if (!all(same.same))
-            stop('trying to conatenate incompatible Job objects: can only concatenate Jobs built from same Task')
+    obj = c(list(x), list(...))
+    same.same = all(sapply(obj, function(x) identical(x@task, obj[[1]]@task)))
+    if (!all(same.same)){
+        stop('trying to conatenate incompatible Job objects: can only concatenate Jobs built from same Task')
+    }
 
-        ukey = unique(sapply(obj, function(x) data.table::key(x@inputs)))
-        if (length(ukey)>1)
-            stop('trying to concatenate incompatible Job objects built from different keys')
+    ukey = unique(sapply(obj, function(x) data.table::key(x@inputs)))
+    if (length(ukey)>1){
+        stop('trying to concatenate incompatible Job objects built from different keys')
+    }
         
-        urootdir = unique(sapply(obj, function(x) x@rootdir))
-        if (length(urootdir)>1)
-            warning('concatenating  Job objects with different rootdirs, choosing first for output')
+    urootdir = unique(sapply(obj, function(x) x@rootdir))
+    if (length(urootdir)>1){
+        warning('concatenating  Job objects with different rootdirs, choosing first for output')
+    }
         
-        icol = names(obj[[1]]@inputs)
-        ocol = names(obj[[1]]@outputs)
-        scol = names(obj[[1]]@stamps)
-        rcol = names(obj[[1]]@runinfo)
-        ecol = names(obj[[1]]@entities)
+    icol = names(obj[[1]]@inputs)
+    ocol = names(obj[[1]]@outputs)
+    scol = names(obj[[1]]@stamps)
+    rcol = names(obj[[1]]@runinfo)
+    ecol = names(obj[[1]]@entities)
                 
-        inputs = rbindlist(lapply(obj, function(x) x@inputs[, icol, with = FALSE]))
-        outputs = rbindlist(lapply(obj, function(x) x@outputs[, ocol, with = FALSE]))
-        runinfo = rbindlist(lapply(obj, function(x) x@runinfo[, rcol, with = FALSE]))
-        stamps = rbindlist(lapply(obj, function(x) x@stamps[, scol, with = FALSE]))
-        entities = rbindlist(lapply(obj, function(x) x@entities[, ecol, with = FALSE]))
+    inputs = rbindlist(lapply(obj, function(x) x@inputs[, icol, with = FALSE]))
+    outputs = rbindlist(lapply(obj, function(x) x@outputs[, ocol, with = FALSE]))
+    runinfo = rbindlist(lapply(obj, function(x) x@runinfo[, rcol, with = FALSE]))
+    stamps = rbindlist(lapply(obj, function(x) x@stamps[, scol, with = FALSE]))
+    entities = rbindlist(lapply(obj, function(x) x@entities[, ecol, with = FALSE]))
 
-        setkeyv(entities, ukey)
-        setkeyv(inputs, ukey)
-        setkeyv(outputs, ukey)
-        setkeyv(runinfo, ukey)
-        setkeyv(stamps, ukey)
+    setkeyv(entities, ukey)
+    setkeyv(inputs, ukey)
+    setkeyv(outputs, ukey)
+    setkeyv(runinfo, ukey)
+    setkeyv(stamps, ukey)
         
-        return(Job(obj[[1]]@task, entities = entities, rootdir = urootdir[1], queue = runinfo$queue, mem = runinfo$mem, nice = runinfo$nice, cores = runinfo$cores, now = runinfo$now, mock = TRUE)) 
-    })
+    return(Job(obj[[1]]@task, entities = entities, rootdir = urootdir[1], queue = runinfo$queue, mem = runinfo$mem, nice = runinfo$nice, cores = runinfo$cores, now = runinfo$now, mock = TRUE)) 
+    
+})
+
+
 
 #' @name purge
 #' @exportMethod purge
@@ -975,16 +991,16 @@ setGeneric('purge', function(object, ...) {standardGeneric('purge')})
 #' @export
 #' @author Marcin Imielinski
 setMethod('purge', 'Job', function(object, check.inputs = TRUE)
-    {
-        cat('About to remove all files and directories associated with this Job object in', paste(object@rootdir, task(object)@name, sep = '/'), '\nGiving you a moment to think ... ')
-        Sys.sleep(5)
+{
+    cat('About to remove all files and directories associated with this Job object in', paste(object@rootdir, task(object)@name, sep = '/'), '\nGiving you a moment to think ... ')
+    Sys.sleep(5)
         cat('OK here we go .. \n')
         sapply(outdir(object), function(x) system(paste('rm -r', x)))
         cat('Regenerating fresh output directories\n')
         sapply(outdir(object), function(x) system(paste('mkdir -p', x)))
         sapply(1:length(object), function(x) saveRDS(object[x], paste(outdir(object)[x], 'Job.rds', sep = '/')))
         cat('Done\n')
-    })
+})
 
 
 
@@ -2133,14 +2149,14 @@ setGeneric('report', function(.Object, ...)  standardGeneric('report'))
 #' @export
 #' @author Marcin Imielinski
 setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
-    {
-        out = cbind(data.table(runinfo(.Object)[, key(.Object), with = FALSE]), .parse.info(.Object@runinfo$stderr, mc.cores = mc.cores, force = force))
-        suppressWarnings(out[ , key := NULL])
-        setkeyv(out, key(.Object))
-        return(out[1:nrow(out), ])
-    })
+{
+    out = cbind(data.table(runinfo(.Object)[, key(.Object), with = FALSE]), .parse.info(.Object@runinfo$stderr, mc.cores = mc.cores, force = force))
+    suppressWarnings(out[ , key := NULL])
+    setkeyv(out, key(.Object))
+    return(out[1:nrow(out), ])
+})
 
-.parse.info = function(jname, detailed = F, force = FALSE, mc.cores = 1)
+.parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
 {      
 
     
@@ -2148,8 +2164,8 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
     jname = file.name(jname)
 
   
-  input.jname = jname
-  jname = gsub('\\.bsub\\.out$', '', gsub('\\.bsub\\.err$', '', jname))
+    input.jname = jname
+    jname = gsub('\\.bsub\\.out$', '', gsub('\\.bsub\\.err$', '', jname))
     names(input.jname) = jname
         
   if (length(jname)==0)    
@@ -2465,28 +2481,26 @@ xml2task = function(path, module = NULL, out.file = NULL)
 ## UTILITY FUNCTIONS
 ####################
 # grabs filenames from list of paths
-file.name = function(paths)
-  {
+file.name = function(paths){
     return(gsub('(^|(.*\\/))?([^\\/]*)', '\\3', paths))
-  }
+}
 
 # grabs file.dirs from liOAst of paths
-file.dir = function(paths)
-  {
+file.dir = function(paths){
     return(gsub('(^|(.*\\/))?([^\\/]*)$', '\\2', paths))
-  }
+}
 
 # relabels duplicates in a character vector with .1, .2, .3
 # (where "." can be replaced by any user specified suffix)
 dedup = function(x, suffix = '.')
 {
-  dup = duplicated(x);
-  udup = setdiff(unique(x[dup]), NA)
-  udup.ix = lapply(udup, function(y) which(x==y))
-  udup.suffices = lapply(udup.ix, function(y) c('', paste(suffix, 2:length(y), sep = '')))
-  out = x;
-  out[unlist(udup.ix)] = paste(out[unlist(udup.ix)], unlist(udup.suffices), sep = '');
-  return(out)  
+    dup = duplicated(x);
+    udup = setdiff(unique(x[dup]), NA)
+    udup.ix = lapply(udup, function(y) which(x==y))
+    udup.suffices = lapply(udup.ix, function(y) c('', paste(suffix, 2:length(y), sep = '')))
+    out = x;
+    out[unlist(udup.ix)] = paste(out[unlist(udup.ix)], unlist(udup.suffices), sep = '');
+    return(out)  
 }
 
 
@@ -2514,90 +2528,90 @@ dedup = function(x, suffix = '.')
 #' @export
 setGeneric('merge', function(x, y, ...) standardGeneric('merge'))
 setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix = NULL, prefix = NULL, force = FALSE, sep = '_') {
-        if (!is.data.table(y))
-            stop('y must be keyed data.table')
-
-        if (is.null(data.table::key(y)))
-            stop('y must be keyed data.table')
         
-        if (data.table::key(y) != key(x))
-            stop('y must be keyed data.table with same key as Job object')
-        
-        if (length(ov <- setdiff(intersect(names(outputs(x)), names(y)), key(x)))>0)
-            col = unique(c(key(x), setdiff(names(y), ov)))
-        else
-            col = names(y)
+    if (!is.data.table(y)){
+        stop('y must be keyed data.table')
+    }
 
-        if (any(duplicated(names(y))))
-            {
-                warning('entities data.table has duplicate columns, deduping, check table')
-                y = y[, unique(names(y)), with = FALSE]
+    if (is.null(data.table::key(y))){
+        stop('y must be keyed data.table')
+    }
+        
+    if (data.table::key(y) != key(x)){
+        stop('y must be keyed data.table with same key as Job object')
+    }
+        
+    if (length(ov <- setdiff(intersect(names(outputs(x)), names(y)), key(x)))>0){
+        col = unique(c(key(x), setdiff(names(y), ov)))
+    } else{
+        col = names(y)
+    }
+
+    if (any(duplicated(names(y)))){
+        warning('entities data.table has duplicate columns, deduping, check table')
+        y = y[, unique(names(y)), with = FALSE]
+    }
+
+    if (any(duplicated(y[[key(x)]]))){
+        stop('Input table has duplicate instances of table key')
+    }
+        
+    ids = intersect(ids(x), y[[key(x)]])
+    oids = setdiff(y[[key(x)]], ids)
+    out = merge(y[, col, with = FALSE], outputs(x), by = key(x), all.x = TRUE)
+
+    ## correct weird merge behavior in R
+    if (length(oids)>0) {
+        rn = dedup(out[[key(x)]])
+        out = as.data.frame(out)
+        rownames(out) = rn
+        out[oids, colnames(y)] = as.data.frame(y[oids, colnames(y), with = FALSE])
+        out = as.data.table(out)
+        setkeyv(out, key(x))
+    }
+        
+    if (length(ov)>0){
+        old = y[list(ids(x)), ov, with = FALSE]
+        new = outputs(x)[, ov, with = FALSE]
+        for (this.ov in ov){                        
+            ix = !is.na(new[[this.ov]]) | !is.na(old[[this.ov]])
+            ix[ix] = new[[this.ov]][ix] != old[[this.ov]][ix]
+            ix <- ifelse(is.na(ix), FALSE, ix)
+            if (any(ix)){
+                old.mtime = file.info(old[[this.ov]][ix])$mtime
+                new.mtime = file.info(new[[this.ov]][ix])$mtime
+                ix2 <- ifelse(is.na(old.mtime>new.mtime), FALSE, old.mtime>new.mtime)
+                if (!force & any(ix2)){
+                    warning('Newer annotations in external data.table are being over-written by new ones, keeping old annotations, call with force = TRUE to override')
+                    new[[this.ov]][ix][ix2] = old[[this.ov]][ix][ix2]
+                }
+
+                if (!force & any(ix <- is.na(new[[this.ov]]) & !is.na(old[[this.ov]]), na.rm = TRUE)){
+                    warning('Existing annotations in external data.table are being over-written by NA annotations, keeping old annotations, call with force = TRUE to override')
+                    new[[this.ov]][ix2] = old[[this.ov]][ix2]
+                }
             }
-
-        if (any(duplicated(y[[key(x)]])))
-            stop('Input table has duplicate instances of table key')
-        
-        ids = intersect(ids(x), y[[key(x)]])
-        oids = setdiff(y[[key(x)]], ids)
-        out = merge(y[, col, with = FALSE], outputs(x), by = key(x), all.x = TRUE)
-
-        if (length(oids)>0) ## correct weird merge behavior in R
-        {
-            rn = dedup(out[[key(x)]])
-            out = as.data.frame(out)
-            rownames(out) = rn
-            out[oids, colnames(y)] = as.data.frame(y[oids, colnames(y), with = FALSE])
-            out = as.data.table(out)
             setkeyv(out, key(x))
+            out[ids(x),][[this.ov]] = new[[this.ov]]
         }
+    }
+
+    ix = match(setdiff(names(outputs(x)), key(x)), names(out))
+    if (!is.null(prefix)){
+        setnames(out, ix, paste(prefix, names(out)[ix], sep = sep))
+    }
         
+    if (!is.null(suffix)){
+        setnames(out, ix, paste(names(out)[ix], suffix, sep = sep))
+    }
 
-        if (length(ov)>0)
-            {
-                old = y[list(ids(x)), ov, with = FALSE]
-                new = outputs(x)[, ov, with = FALSE]
-                for (this.ov in ov)
-                    {                        
-                        ix = !is.na(new[[this.ov]]) | !is.na(old[[this.ov]])
-                        ix[ix] = new[[this.ov]][ix] != old[[this.ov]][ix]
-                        ix <- ifelse(is.na(ix), FALSE, ix)
-                        if (any(ix))
-                            {
-                                old.mtime = file.info(old[[this.ov]][ix])$mtime
-                                new.mtime = file.info(new[[this.ov]][ix])$mtime
-                                ix2 <- ifelse(is.na(old.mtime>new.mtime), FALSE, old.mtime>new.mtime)
-                                if (!force & any(ix2))
-                                {
-                                    warning('Newer annotations in external data.table are being over-written by new ones, keeping old annotations, call with force = TRUE to override')
-                                    new[[this.ov]][ix][ix2] = old[[this.ov]][ix][ix2]
-                                }
-
-                                if (!force &
-                                    any(ix <- is.na(new[[this.ov]]) & !is.na(old[[this.ov]]), na.rm = TRUE))
-                                {
-                                    warning('Existing annotations in external data.table are being over-written by NA annotations, keeping old annotations, call with force = TRUE to override')
-                                    new[[this.ov]][ix2] = old[[this.ov]][ix2]
-                                }
-                            }
-                        setkeyv(out, key(x))
-                        out[ids(x),][[this.ov]] = new[[this.ov]]
-                    }
-            }
-
-        ix = match(setdiff(names(outputs(x)), key(x)), names(out))
-        if (!is.null(prefix))
-            setnames(out, ix, paste(prefix, names(out)[ix], sep = sep))
-        
-        if (!is.null(suffix))
-            setnames(out, ix, paste(names(out)[ix], suffix, sep = sep))
-
-        setkeyv(out, data.table::key(y))
-        return(out)
-    })
+    setkeyv(out, data.table::key(y))
+    return(out)
+})
 
 setMethod('merge', signature(x='data.table', y="Job"), function(x, y, ...) {
-        merge(y, x, ...)
-    })
+    merge(y, x, ...)
+})
     
 
 
@@ -2613,20 +2627,20 @@ setMethod('merge', signature(x='data.table', y="Job"), function(x, y, ...) {
 #' @export
 more = function(x, grep = NULL, pipe = FALSE)
 {
-    if (is.null(grep))
+    if (is.null(grep)){
         x = paste('more', paste(x, collapse = ' '))
-    else
+    } else{
         x = paste('grep -H', grep, paste(x, collapse = ' '), ' | more')
+    }
 
-    if (pipe)
-        {
-            p = pipe(x)
-            out = readLines(p)
-            close(p)
-            return(out)
-        }
-    else
+    if (pipe){
+        p = pipe(x)
+        out = readLines(p)
+        close(p)
+        return(out)
+    } else{
         system(x)
+    }
 }
 
 #' @name tailf
@@ -2641,13 +2655,15 @@ more = function(x, grep = NULL, pipe = FALSE)
 #' @export
 tailf = function(x, n = NULL, grep = NULL)
 {
-    if (is.null(grep))
-        if (is.null(n))
+    if (is.null(grep)){
+        if (is.null(n)){
             x = paste('tail -f', paste(x, collapse = ' '))
-        else
+        } else{
             x = paste('tail -n', n, paste(x, collapse = ' '))
-    else
+        }
+    } else{
         x = paste('grep -H', grep, paste(x, collapse = ' '), ' | more')
+    }
     system(x)
 }
 
@@ -2666,11 +2682,12 @@ tailf = function(x, n = NULL, grep = NULL)
 #' @param ... 
 #' @author Marcin Imielinski
 ############################
-rrbind = function(..., union = T)
-  {     
+rrbind = function(..., union = TRUE){ 
+
     dfs = list(...);  # gets list of data frames
-    if (any(ix <- sapply(dfs, function(x) class(x)[1])!='data.frame'))
+    if (any(ix <- sapply(dfs, function(x) class(x)[1])!='data.frame')){
         dfs[ix] = lapply(dfs[ix], as.data.frame)
+    }
 
     dfs = dfs[!sapply(dfs, is.null)]    
     dfs = dfs[sapply(dfs, ncol)>0]
@@ -2684,26 +2701,25 @@ rrbind = function(..., union = T)
     unshared = lapply(names.list, function(x) setdiff(cols, x));
     unshared.u = unique(unlist(unshared))
     ix = which(sapply(dfs, nrow)>0)
-    expanded.dfs = lapply(ix, function(x)
-      {
+    expanded.dfs = lapply(ix, function(x){
         dfs[[x]][, unshared[[x]]] = as.character(NA);
         return(dfs[[x]][, cols, drop = F])
-      })
+    })
     
     out = do.call('rbind', expanded.dfs);
     
-    if (any(uix <<- which(classes[unshared.u] != 'character')))
-      {
-          ix = match(unshared.u, names(out))
-          for (j in uix) ### HACK to prevent stupid class mismatches leading to NA BS
-              out[, ix[j]] = as(out[, ix[j]], classes[unshared.u[j]])
-      }
+    if (any(uix <<- which(classes[unshared.u] != 'character'))){
+        ix = match(unshared.u, names(out))
+        ### HACK to prevent stupid class mismatches leading to NA BS
+        for (j in uix){
+            out[, ix[j]] = as(out[, ix[j]], classes[unshared.u[j]])
+        }
+    }
     
-    if (!union)
-      {
+    if (!union){
         shared = setdiff(cols, unique(unlist(unshared)))
         out = out[, shared];
-      }    
+    }    
     
    return(out)
 }
