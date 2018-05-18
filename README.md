@@ -119,7 +119,7 @@ In this file, put one line:
     normal_bam } ${ error_rate } ${ panel_of_normals } ${ variant_mask }
 
 All this file needs is a single line prefaced by "command:" (everything
-else is ignored). In this example, that lin contains a call to
+else is ignored). In this example, that line contains a call to
 dummyscript.sh and some placeholder variables that are the module
 inputs. The module inputs are specified using the syntax: `${ INPUTNAME
 }` (spaces included).
