@@ -21,9 +21,10 @@ set of entities, which correspond to keyed table of entity-specific
 annotations (e.g. bam_file_wgs, seg_file, etc). Once a job completes, one
 or more output annotations (i.e. paths to output files) are attached to
 the respective entity in an output table. See illustration below:
-   
-![Flow Schema](Flow_schema.png)
 
+<p align="center">
+  <img src="Flow_schema.png">
+</p>
 
 #   Setting up entities and tasks
 
