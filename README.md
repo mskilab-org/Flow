@@ -23,6 +23,9 @@ or more output annotations (i.e. paths to output files) are attached to
 the respective entity in an output table. See illustration below:
 
 <p align="center">
+  <big><strong>Flow Schema</strong></big>
+</p>
+<p align="center">
   <img src="Flow_schema.png">
 </p>
 
