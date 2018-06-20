@@ -611,7 +611,8 @@ setMethod('initialize', 'Job', function(.Object,
                                           mem = NULL,                                          
                                         cores = 1,
                                         now = FALSE,
-                                        mock = FALSE
+                                        mock = FALSE,
+                                        update_cores = 1
                                           )
     {
         require(stringr)
@@ -667,7 +668,7 @@ setMethod('initialize', 'Job', function(.Object,
          if (!all(ix <- sapply(ann.args, function(x) x@arg) %in% names(entities)))
              stop(sprintf('These annotations / columns required for task %s are missing from entities data.table: %s', task@name, paste(sapply(ann.args, function(x) x@arg)[!ix], collapse = ', ')))
 
-         if (any(duplicated(entities[, data.table::key(entities), with = FALSE][,1])))
+        if (any(duplicated(entities[, data.table::key(entities), with = FALSE][[1]])))
              stop('Duplicate entities present with respect to current key.  Each entity should have a unique key.  Check entities table and/or key settings')
          
          module = task@module        
@@ -866,7 +867,7 @@ setMethod('initialize', 'Job', function(.Object,
 
                 cache(.Object)
                 ids = ids(.Object)
-                update(.Object, check.inputs = TRUE)
+                update(.Object, check.inputs = TRUE, mc.cores = update_cores)
                 path = paste(.Object@rootdir, '/', task(.Object)@name, '.rds', sep = '')
 #                cat('Refreshing object from', path, '\n')
                 .Object = readRDS(path)[ids, id = TRUE]
@@ -1031,7 +1032,7 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
                     outre = sapply(new.object@task@outputs, function(x) x@pattern)
                     for (id in ids)
                         {
-                            files = dir(new.object@runinfo[id, outdir])
+                            files = dir(new.object@runinfo[id, outdir], recursive = TRUE)
                             names(files) = paste(new.object@runinfo[id, outdir], files, sep = '/')                           
                             for (k in 1:length(outkeys))
                                 new.object@outputs[id, eval(outkeys[k]) := names(files)[grep(outre[k], files)][1]]
