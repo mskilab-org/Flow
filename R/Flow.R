@@ -715,7 +715,7 @@ setMethod('initialize', 'Job', function(.Object,
                          }
 
                          .Object@inputs[[this.arg]] = as.character(entities[[this.ann]])
-        #                 .Object@inputs[, eval(this.arg) := entities[[this.ann]]]
+                                        #                 .Object@inputs[, eval(this.arg) := entities[[this.ann]]]
 
                          if (.Object@task@args[[this.arg]]@path)
                          {
@@ -1019,127 +1019,127 @@ setGeneric('update', function(object, ...) {standardGeneric('update')})
 #' @export
 #' @author Marcin Imielinski
 setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, cache.object = TRUE, print.status = TRUE) {
-        ## for every output, apply regexp in files of outdir to search for files
-        status.info = rep('', length(object))
-        status = rep('ready', length(object))
+    ## for every output, apply regexp in files of outdir to search for files
+    status.info = rep('', length(object))
+    status = rep('ready', length(object))
 
-        new.object = object
-        ids = new.object@outputs[[key(new.object@outputs)]]
+    new.object = object
+    ids = new.object@outputs[[key(new.object@outputs)]]
 
-        st = file.info(paste(outdir(new.object), 'started', sep = '/'))
-        en = file.info(paste(outdir(new.object), 'failed', sep = '/'))
-        rep = report(new.object, mc.cores = mc.cores)
-        status = ifelse(!is.na(st$mtime),
-            ifelse(!is.na(rep$success),
-                   ifelse(rep$success, 'completed', 'failed'),
-                   ifelse(!is.na(st$mtime), 'running', 'ready')), 'ready')
+    st = file.info(paste(outdir(new.object), 'started', sep = '/'))
+    en = file.info(paste(outdir(new.object), 'failed', sep = '/'))
+    rep = report(new.object, mc.cores = mc.cores)
+    status = ifelse(!is.na(st$mtime),
+             ifelse(!is.na(rep$success),
+             ifelse(rep$success, 'completed', 'failed'),
+             ifelse(!is.na(st$mtime), 'running', 'ready')), 'ready')
 
 
-        if (length(new.object@task@outputs)>0) ## check output args if they exist
-            if (sum(unlist(lapply(new.object@task@outputs, is, 'FlowOutput'))))
-                {
-                    ## outkeys = sapply(new.object@task@outputs, function(x) x@name)
-                    outkeys = unlist(lapply(new.object@task@outputs, function(x) x@name))
-                    ## outre = sapply(new.object@task@outputs, function(x) x@pattern)
-                    outre = unlist(lapply(new.object@task@outputs, function(x) x@pattern))
-                    for (id in ids)
-                        {
-                            ## files = dir(new.object@runinfo[id, outdir], recursive = TRUE)
-                            files = dir(new.object@runinfo[id, outdir], recursive = FALSE)
-                            rec_files = dir(new.object@runinfo[id, outdir], recursive = TRUE)
-                            names(files) = paste(new.object@runinfo[id, outdir], files, sep = '/')
-                            names(rec_files) = paste(new.object@runinfo[id, outdir], rec_files, sep = '/')
-                            for (k in 1:length(outkeys)) {
-                                if (length(new.object@outputs[id, names(files)[grep(outre[k], files)][1]]) == 0) {
-                                    new.object@outputs[id, eval(outkeys[k]) := names(rec_files)[grep(outre[k], rec_files)][1]]
-                                } else {
-                                    new.object@outputs[id, eval(outkeys[k]) := names(files)[grep(outre[k], rec_files)][1]]
-                                }
-                            }
-                        }
-
-                    out.status = !is.na(new.object@outputs[, outkeys, with = FALSE])
-                    has.out = rowSums(out.status)>0
-                    missing.out = rowSums(!out.status)>0
-                    status = ifelse(status=='completed',
-                        ifelse(missing.out, 'completed; some outputs missing', 'completed'),
-                        ifelse(has.out, paste(status, 'and some outputs present'), status))
-                }
-
-        ## determine ready / not ready / outdated status based on the existence of
-        ## of file names
-        args = new.object@task@args
-
-        if (length(args)>0)
-            if (check.inputs)
+    if (length(new.object@task@outputs)>0) ## check output args if they exist
+        if (sum(unlist(lapply(new.object@task@outputs, is, 'FlowOutput'))))
+        {
+            ## outkeys = sapply(new.object@task@outputs, function(x) x@name)
+            outkeys = unlist(lapply(new.object@task@outputs, function(x) x@name))
+            ## outre = sapply(new.object@task@outputs, function(x) x@pattern)
+            outre = unlist(lapply(new.object@task@outputs, function(x) x@pattern))
+            for (id in ids)
             {
-              output.date = as.POSIXct(file.info(as.character(new.object@runinfo$stdout))$mtime)
+                ## files = dir(new.object@runinfo[id, outdir], recursive = TRUE)
+                files = dir(new.object@runinfo[id, outdir], recursive = FALSE)
+                rec_files = dir(new.object@runinfo[id, outdir], recursive = TRUE)
+                names(files) = paste(new.object@runinfo[id, outdir], files, sep = '/')
+                names(rec_files) = paste(new.object@runinfo[id, outdir], rec_files, sep = '/')
+                for (k in 1:length(outkeys)) {
+                    if (is.na(new.object@outputs[id, names(files)[grep(outre[k], files)][1]])) {
+                        new.object@outputs[id, eval(outkeys[k]) := names(rec_files)[grep(outre[k], rec_files)][1]]
+                    } else {
+                        new.object@outputs[id, eval(outkeys[k]) := names(files)[grep(outre[k], files)][1]]
+                    }
+                }
+            }
 
-              outdated = matrix(FALSE, nrow = length(new.object), ncol = length(args), dimnames = list(ids, names(args)))
-              cat('Checking input date stamps\n')
-              for (this.arg in names(args))
-              {
+            out.status = !is.na(new.object@outputs[, outkeys, with = FALSE])
+            has.out = rowSums(out.status)>0
+            missing.out = rowSums(!out.status)>0
+            status = ifelse(status=='completed',
+                     ifelse(missing.out, 'completed; some outputs missing', 'completed'),
+                     ifelse(has.out, paste(status, 'and some outputs present'), status))
+        }
+
+    ## determine ready / not ready / outdated status based on the existence of
+    ## of file names
+    args = new.object@task@args
+
+    if (length(args)>0)
+        if (check.inputs)
+        {
+            output.date = as.POSIXct(file.info(as.character(new.object@runinfo$stdout))$mtime)
+
+            outdated = matrix(FALSE, nrow = length(new.object), ncol = length(args), dimnames = list(ids, names(args)))
+            cat('Checking input date stamps\n')
+            for (this.arg in names(args))
+            {
                 if (args[[this.arg]]@path)
                 {
-                  fn = as.character(new.object@inputs[[this.arg]])
-                  fn[nchar(fn)==0] = NA ## NA out blank paths
-                  nfiles = sum(!is.na(fn))
-                  cat('\tfor', this.arg, sprintf('(%s files)', nfiles), '\n')
-                  fe = file.exists(fn)
-                  old.date = as.POSIXct(new.object@stamps[[this.arg]])
-                  if (any(fe))
+                    fn = as.character(new.object@inputs[[this.arg]])
+                    fn[nchar(fn)==0] = NA ## NA out blank paths
+                    nfiles = sum(!is.na(fn))
+                    cat('\tfor', this.arg, sprintf('(%s files)', nfiles), '\n')
+                    fe = file.exists(fn)
+                    old.date = as.POSIXct(new.object@stamps[[this.arg]])
+                    if (any(fe))
                     {
-                      if (any(ix<-is.na(old.date))) ## if for some reason blank, set to some time in the far future
-                        old.date[ix] = Sys.time()+5e9
-                      if (is(args[[this.arg]], 'FlowLiteral') & args[[this.arg]]@path)
-                        outdated[, this.arg] =
+                        if (any(ix<-is.na(old.date))) ## if for some reason blank, set to some time in the far future
+                            old.date[ix] = Sys.time()+5e9
+                        if (is(args[[this.arg]], 'FlowLiteral') & args[[this.arg]]@path)
+                            outdated[, this.arg] =
                                         #                                          as.POSIXct(as.character(file.info(args[[this.arg]]@arg)$mtime))>old.date &
-                          ifelse(is.na(output.date), FALSE, as.POSIXct(as.character(file.info(as.character(new.object@inputs[[this.arg]]))$mtime))>output.date)
-                      else if (is(args[[this.arg]], 'FlowAnnotation') & args[[this.arg]]@path)
-                        outdated[, this.arg] =
+                                ifelse(is.na(output.date), FALSE, as.POSIXct(as.character(file.info(as.character(new.object@inputs[[this.arg]]))$mtime))>output.date)
+                        else if (is(args[[this.arg]], 'FlowAnnotation') & args[[this.arg]]@path)
+                            outdated[, this.arg] =
                                         #                                         as.POSIXct(as.character(file.info(new.object@inputs[[this.arg]])$mtime))>old.date &
-                          ifelse(is.na(output.date), FALSE, as.POSIXct(as.character(file.info(as.character(new.object@inputs[[this.arg]]))$mtime))>output.date)
-                      else
-                        outdated[, this.arg] = FALSE
+                                ifelse(is.na(output.date), FALSE, as.POSIXct(as.character(file.info(as.character(new.object@inputs[[this.arg]]))$mtime))>output.date)
+                        else
+                            outdated[, this.arg] = FALSE
                     }
 
-                  if (any(!fe))
-                    outdated[!fe, this.arg] = NA
+                    if (any(!fe))
+                        outdated[!fe, this.arg] = NA
                 }
-              }
+            }
 
 
-              status = ifelse(rowSums(outdated, na.rm = TRUE)>0, 'outdated', status)
-              status.info = paste(status.info, apply(outdated, 1,
-                                                     function(x) if (length(which(x))>0) paste('Updates in', paste(colnames(outdated)[which(x)], collapse = ', '))
-                                                                 else ''))
-              notready = rowSums(is.na(outdated))>0
-              if (any(notready))
-              {
+            status = ifelse(rowSums(outdated, na.rm = TRUE)>0, 'outdated', status)
+            status.info = paste(status.info, apply(outdated, 1,
+                                                   function(x) if (length(which(x))>0) paste('Updates in', paste(colnames(outdated)[which(x)], collapse = ', '))
+                                                               else ''))
+            notready = rowSums(is.na(outdated))>0
+            if (any(notready))
+            {
                 status[notready] = 'not ready'
                 status.info[notready] = paste(status.info[notready], apply(is.na(outdated[notready, , drop = FALSE]), 1,
                                                                            function(x) paste(paste(colnames(outdated)[which(x)], collapse = ', '), 'not ready')))
-              }
             }
+        }
 
-        new.object@runinfo$status = status
-        new.object@runinfo$status.info = str_trim(status.info)
-        new.object@runinfo = .update_cmd(new.object)
+    new.object@runinfo$status = status
+    new.object@runinfo$status.info = str_trim(status.info)
+    new.object@runinfo = .update_cmd(new.object)
 
-        if (cache.object)
-            cache(new.object)
+    if (cache.object)
+        cache(new.object)
 
-        if (print.status)
-            print(table(status(new.object)))
-        ## weird R voodoo to modify object in place
+    if (print.status)
+        print(table(status(new.object)))
+    ## weird R voodoo to modify object in place
+    eval(
         eval(
-              eval(
-                       substitute(
-                                   expression(object <<- new.object)
-                                ,env=parent.frame(1) )
-                    )
-            )
-        cat('')
+            substitute(
+                expression(object <<- new.object)
+               ,env=parent.frame(1) )
+        )
+    )
+    cat('')
 })
 
 
@@ -2133,29 +2133,29 @@ setMethod('show', 'Job', function(object)
 .update_cmd = function(.Object)
 {
 
-        ## utility func for instantiation of Job and modifying memory
-        .cmd2bcmd = function(cmd, outdir, name, ids, queue, mem, cores) bsub_cmd(paste('touch ', outdir, '/started; ', cmd, ';', sep = ''), queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = .jname(outdir, name, ids), jlabel = .jname(outdir, name, ids))
-        .cmd2qcmd = function(cmd, outdir, name, ids, queue, mem, cores, now) qsub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now)
+    ## utility func for instantiation of Job and modifying memory
+    .cmd2bcmd = function(cmd, outdir, name, ids, queue, mem, cores) bsub_cmd(paste('touch ', outdir, '/started; ', cmd, ';', sep = ''), queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = .jname(outdir, name, ids), jlabel = .jname(outdir, name, ids))
+    .cmd2qcmd = function(cmd, outdir, name, ids, queue, mem, cores, now) qsub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, touch_job_out = TRUE)
 
-        .Object@runinfo[, bcmd := '']
-        ix = which(status(.Object) != 'not ready')
-        .Object@runinfo[ix, bcmd := .cmd2bcmd(cmd.og, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores)]
-        .Object@runinfo[, cmd := '']
-        .Object@runinfo[, cmd.quiet := '']
-        .Object@runinfo[ix, cmd := paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, '(ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
-        .Object@runinfo[ix, cmd.quiet := paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, 'ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
+    .Object@runinfo[, bcmd := '']
+    ix = which(status(.Object) != 'not ready')
+    .Object@runinfo[ix, bcmd := .cmd2bcmd(cmd.og, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores)]
+    .Object@runinfo[, cmd := '']
+    .Object@runinfo[, cmd.quiet := '']
+    .Object@runinfo[ix, cmd := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, '(ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
+    .Object@runinfo[ix, cmd.quiet := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, 'ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
 
-        .Object@runinfo$cmd.path = paste(outdir(.Object), '/', names(outdir(.Object)), '.cmd.sh', sep = '')
-
-        ## write cmd.og to file for qsub command
-#        .Object@runinfo[, mapply(function(text, path) writeLines(text, path), paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; /usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = ''), cmd.path)] ## writes cmd to path
+    .Object@runinfo$cmd.path = paste(outdir(.Object), '/', names(outdir(.Object)), '.cmd.sh', sep = '')
+    
+    ## write cmd.og to file for qsub command
+                                        #        .Object@runinfo[, mapply(function(text, path) writeLines(text, path), paste('flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; /usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = ''), cmd.path)] ## writes cmd to path
                                         #        .Object@runinfo[, mapply(function(text, path) writeLines(text, path), paste('echo "FLOW.SGE.JOBID=$JOB_ID"; cd ', outdir, ';touch ', outdir, '/started; ~/Software/time/time -v ', cmd.og, '; cp ', stdout, ' ', stderr, sep = ''), cmd.path)] ## writes cmd to path
 
-  .Object@runinfo[, mapply(function(text, path) writeLines(text, path), cmd, cmd.path)] ## writes cmd to path
-        .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now)]
+    .Object@runinfo[, mapply(function(text, path) writeLines(text, path), cmd, cmd.path)] ## writes cmd to path
+    .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now)]
 
-        return(.Object@runinfo)
-    }
+    return(.Object@runinfo)
+}
 
 
 

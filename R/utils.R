@@ -98,7 +98,7 @@ bsub_cmd = function(cmd, queue = NULL, jname = NULL, jlabel = NULL, jgroup = NUL
 #' @param deadline boolean specifies if deadline initiation time used (default = FALSE)
 #' @author Marcin Imielinski
 #' @export
-qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup = NULL, mem = NULL, group = NULL, cwd = NULL, mc.cores = NULL, deadline = F, now = FALSE)
+qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup = NULL, mem = NULL, group = NULL, cwd = NULL, mc.cores = NULL, deadline = F, now = FALSE, touch_job_out = TRUE)
 {
     if (is.null(jname) & is.null(names(script.fn))){
         jname = 'job'
@@ -122,7 +122,10 @@ qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup
     if (!is.null(group)) out_cmd = paste(out_cmd, " -P ", group)
     if (!is.null(mem)) out_cmd = paste(out_cmd, " -l h_vmem=", mem, "g", sep = "")
     if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
-    if (!is.null(cwd)) out_cmd = paste(out_cmd, " -wd ", cwd )
+    if (!is.null(cwd)) {
+        out_cmd = paste(out_cmd, " -wd ", cwd )
+        system(sprintf("umask 002; touch %s", paste0(cwd, "/", qjout)), show.output.on.console = FALSE)
+    }
     if (!is.null(qjname)) out_cmd = paste(out_cmd, " -N ", jlabel)
     out_cmd = paste(out_cmd, '-now', ifelse(now, 'y', 'n'))
     if (!is.null(mc.cores)) out_cmd = paste(out_cmd, ifelse(!is.na(mc.cores), ifelse(mc.cores > 1,  paste(" -pe smp",  mc.cores), ''), ''))
