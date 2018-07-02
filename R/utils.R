@@ -124,7 +124,7 @@ qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup
     if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
     if (!is.null(cwd)) {
         out_cmd = paste(out_cmd, " -wd ", cwd )
-        system(sprintf("umask 002; touch %s", paste0(cwd, "/", qjout)), show.output.on.console = FALSE)
+        system(sprintf("umask 002; touch %s", paste0(cwd, "/", qjout)))
     }
     if (!is.null(qjname)) out_cmd = paste(out_cmd, " -N ", jlabel)
     out_cmd = paste(out_cmd, '-now', ifelse(now, 'y', 'n'))

@@ -1018,7 +1018,7 @@ setGeneric('update', function(object, ...) {standardGeneric('update')})
 #' @exportMethod update
 #' @export
 #' @author Marcin Imielinski
-setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, cache.object = TRUE, print.status = TRUE) {
+setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, cache.object = TRUE, print.status = TRUE, parse_recursive = FALSE) {
     ## for every output, apply regexp in files of outdir to search for files
     status.info = rep('', length(object))
     status = rep('ready', length(object))
@@ -1050,7 +1050,7 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
                 names(files) = paste(new.object@runinfo[id, outdir], files, sep = '/')
                 names(rec_files) = paste(new.object@runinfo[id, outdir], rec_files, sep = '/')
                 for (k in 1:length(outkeys)) {
-                    if (is.na(new.object@outputs[id, names(files)[grep(outre[k], files)][1]])) {
+                    if (parse_recursive & is.na(new.object@outputs[id, names(files)[grep(outre[k], files)][1]])) {
                         new.object@outputs[id, eval(outkeys[k]) := names(rec_files)[grep(outre[k], rec_files)][1]]
                     } else {
                         new.object@outputs[id, eval(outkeys[k]) := names(files)[grep(outre[k], files)][1]]
