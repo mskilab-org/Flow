@@ -998,11 +998,16 @@ setMethod('purge', 'Job', function(object, check.inputs = TRUE, mc.cores = 1)
         cat('OK here we go .. \n')
         ## mclapply(outdir(object), function(x) system(paste('rm -r', x)), mc.cores = mc.cores)
         base::unlink(outdir(object), recursive = TRUE)
-        mclapply(outdir(object), function(x) system(paste('rm -r', x)), mc.cores = mc.cores)
+        ## mclapply(outdir(object), function(x) system(paste('rm -r', x)), mc.cores = mc.cores)
         cat('Regenerating fresh output directories\n')
-        mclapply(outdir(object), function(x) dir.create(x, mode = "0775"), mc.cores = mc.cores)
+        withr::with_options(new = list(warn = 1), code = {
+            mclapply(outdir(object), function(x) base::dir.create(x, mode = "0775"), mc.cores = mc.cores)
+        })
         ## mclapply(outdir(object), function(x) system(paste('mkdir -p', x)), mc.cores = mc.cores)
+        current_umask = Sys.umask(mode = NA)
+        Sys.umask(mode = "0002")
         mclapply(1:length(object), function(x) saveRDS(object[x], paste(outdir(object)[x], 'Job.rds', sep = '/')), mc.cores = mc.cores)
+        Sys.umask(mode = current_umask)
         cat('Done\n')
     })
 
@@ -2257,11 +2262,12 @@ setMethod('show', 'Job', function(object)
 .jname = function(outdir, name, ids) paste(outdir, '/', name, '.', ids, sep = '')
 
 .update_cmd = function(.Object, ...) {
+    ix = which(status(.Object) != 'not ready')
     halt = FALSE
     ## testing for invalid args
-    io_c_val = .Object@runinfo$io_c
-    io_n_val = .Object@runinfo$io_n
-    qprior_val = .Object@runinfo$qprior
+    io_c_val = .Object@runinfo[ix]$io_c
+    io_n_val = .Object@runinfo[ix]$io_n
+    qprior_val = .Object@runinfo[ix]$qprior
     if (!is.null(io_c_val) & !is.null(io_n_val) & !is.null(qprior_val)) {
         if (any(! .Object@runinfo$io_c %in% seq(0, 3))) {
             message("invalid io_c parameter(s) specified\nMust be integer between 0 and 3")
@@ -2290,7 +2296,7 @@ setMethod('show', 'Job', function(object)
     .cmd2qcmd = function(cmd, outdir, name, ids, queue, mem, cores, now, qprior) qsub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, touch_job_out = TRUE, qprior = qprior)
 
     .Object@runinfo[, bcmd := '']
-    ix = which(status(.Object) != 'not ready')
+
     .Object@runinfo[ix, bcmd := .cmd2bcmd(cmd.og, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores)]
     .Object@runinfo[, cmd := '']
     .Object@runinfo[, cmd.quiet := '']

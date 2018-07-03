@@ -116,7 +116,8 @@ qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup
     qjout = paste( "", names(script.fn), ".bsub.out", " " , sep="" )
     qjerr = paste( "", names(script.fn), ".bsub.err", "", sep="" )
     qjrout = paste( "", names(script.fn), ".R.out", "", sep="" )
-    out_cmd = sprintf("qsub -V -j y -p %s -o %s ", qprior, qjout)
+    out_cmd = paste0("qsub -V -j y -p ", qprior, " -o ", qjout)
+    ## out_cmd = sprintf("qsub -V -j y -p %s -o %s ", qprior, qjout)
     ## out_cmd = paste("qsub -V -j y -o ", qjout);
     out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-q ", queue)))
     #if (!is.null(queue)) out_cmd = ifelse(is.na(queue), '', paste("-q ", queue))
@@ -124,8 +125,13 @@ qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup
     if (!is.null(mem)) out_cmd = paste(out_cmd, " -l h_vmem=", mem, "g", sep = "")
     if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
     if (!is.null(cwd)) {
+        current_umask = Sys.umask(mode = NA)
         out_cmd = paste(out_cmd, " -wd ", cwd )
-        system(sprintf("umask 002; touch %s", paste0(cwd, "/", qjout)))
+        Sys.umask(mode = "0002")
+        base::file.create(trimws(paste0(cwd, "/", qjout)))
+        Sys.umask(mode = current_umask)
+        ## cmds = sprintf("umask 002; touch %s", paste0(cwd, "/", qjout))
+        ## lapply(cmds, function(this_cmd) {system(this_cmd); return(NULL)})
     }
     if (!is.null(qjname)) out_cmd = paste(out_cmd, " -N ", jlabel)
     out_cmd = paste(out_cmd, '-now', ifelse(now, 'y', 'n'))
@@ -134,8 +140,6 @@ qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup
     names(out_cmd)= names(script.fn)
     return(out_cmd)
 }
-
-
 
 
 #' @name parse.info
