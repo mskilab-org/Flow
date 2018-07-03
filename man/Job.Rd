@@ -2,10 +2,10 @@
 % Please edit documentation in R/Flow.R
 \name{Job}
 \alias{Job}
-\title{Constructs a job object from a Task and keyed data.table of one or more entities. 
+\title{Constructs a job object from a Task and keyed data.table of one or more entities.
 
 Job instantiation combines the Task configuration with job specific info to create $cmd, $bcmd, $qcmd to run job locally and submit to LSF / SGE and output
-to task / entity specific output directories,  The job object can be polled to examine job status, and run or re-run specific jobs. 
+to task / entity specific output directories,  The job object can be polled to examine job status, and run or re-run specific jobs.
 
 A Job object is instantiated from the combination of a text .task file containing the task configuration
 and a keyed data.table of entities (eg samples, pairs, individuals)
@@ -14,12 +14,13 @@ Instantation involves populating the task with all the relevant columns of the e
 
 Job instantiation requires a Task object or path to a .task file as input + and keyed "entities" data table with all the necessary input columns
 required by the task configuration.
-If any of these columns don't exist then the Job object will fail to be instantiated.  Optional input rootdir specifies root directory of all job specific  output directories. 
+If any of these columns don't exist then the Job object will fail to be instantiated.  Optional input rootdir specifies root directory of all job specific  output directories.
 All outputs for jobs will be written to directories that are named by the task name / row key.   These directories are created
 at time of object instantiation.  An .rds of the job object is stored in a standard location in the rootdir (with name TASKNAME.rds)}
 \usage{
 Job(task, entities, rootdir = "./Flow/", queue = as.character(NA),
-  mem = NULL, nice = NULL, cores = 1, mock = FALSE, ...)
+  mem = NULL, nice = NULL, cores = 1, mock = FALSE, update_cores = 1,
+  parse_recursive = FALSE, ...)
 }
 \arguments{
 \item{task}{task config (.task file) or Task object}

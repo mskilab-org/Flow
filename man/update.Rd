@@ -9,7 +9,8 @@ This method checks inputs for updates to input files, polls output directories f
 other things to assess job status.  Once finished, it caches results to the .rds object associated with this Job.}
 \usage{
 \S4method{update}{Job}(object, check.inputs = TRUE, mc.cores = 1,
-  cache.object = TRUE, print.status = TRUE)
+  cache.object = TRUE, print.status = TRUE, parse_recursive = FALSE,
+  io_c = 2, io_n = 7, qprior = 0)
 }
 \author{
 Marcin Imielinski

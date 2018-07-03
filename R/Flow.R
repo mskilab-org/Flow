@@ -601,287 +601,292 @@ FlowOutput = function(...) new('FlowOutput', ...)
 setClass('Job', representation(task = 'Task', rootdir = 'character', entities = 'data.table', runinfo = 'data.table', inputs = "data.table", stamps = "data.table", outputs = "data.table"))
 
 setMethod('initialize', 'Job', function(.Object,
-                                          task, ##Task wrapping around an Module expecting literal and annotation arguments
-                                                ##this can also just be an .task config file
-                                          entities = NULL, ## keyed data.table, key will determine id of outgoing jobs, columns of table used to populate task
-                                          rootdir = './Flow/',
-                                          queue = as.character(NA),
-                                          nice = NULL,
-                                          mem = NULL,
+                                        task, ##Task wrapping around an Module expecting literal and annotation arguments
+                                        ##this can also just be an .task config file
+                                        entities = NULL, ## keyed data.table, key will determine id of outgoing jobs, columns of table used to populate task
+                                        rootdir = './Flow/',
+                                        queue = as.character(NA),
+                                        nice = NULL,
+                                        mem = NULL,
                                         cores = 1,
                                         now = FALSE,
                                         mock = FALSE,
-                                        update_cores = 1
-                                          )
+                                        update_cores = 1,
+                                        parse_recursive = FALSE,
+                                        io_c = 2,
+                                        io_n = 7,
+                                        qprior = 0) {
+    require(stringr)
+    if (is.null(nice))
+        nice = TRUE
+
+    if (is.character(task)) ##
+        task = Task(task)
+    else if (!is(task, 'Task'))
+        stop('Job must be instantiated from Task object or .fhtask file')
+
+    if (!is.data.table(entities))
     {
-        require(stringr)
-        if (is.null(nice))
-            nice = TRUE
-
-        if (is.character(task)) ##
-            task = Task(task)
-        else if (!is(task, 'Task'))
-            stop('Job must be instantiated from Task object or .fhtask file')
-
-        if (!is.data.table(entities))
-            {
-                if (is.data.frame(entities))
-                    {
-                        id = rownames(entities)
-                        if (is.null(id))
-                            stop('Input must be keyed data.table or data.frame with rownames')
-                        warning('Converting entities data.frame to data.table setting key "id" from rownames')
-                        entities = as.data.table(entities)
-                        entities$id = id
-                        setkey(entities, 'id')
-                    }
-                else
-                    stop("Entities input must be keyed data.table or data.frame with non NULL and unique rownames'")
-            }
+        if (is.data.frame(entities))
+        {
+            id = rownames(entities)
+            if (is.null(id))
+                stop('Input must be keyed data.table or data.frame with rownames')
+            warning('Converting entities data.frame to data.table setting key "id" from rownames')
+            entities = as.data.table(entities)
+            entities$id = id
+            setkey(entities, 'id')
+        }
         else
-            if (is.null(data.table::key(entities)))
-                stop('Entities argument must be a keyed data.table, please add a key')
+            stop("Entities input must be keyed data.table or data.frame with non NULL and unique rownames'")
+    }
+    else
+        if (is.null(data.table::key(entities)))
+            stop('Entities argument must be a keyed data.table, please add a key')
 
-        if (any(duplicated(entities[[data.table::key(entities)]])))
-            stop(sprintf('Input entities table has duplicated keys! Check column "%s" of entities table or use a different column as a key', data.table::key(entities)))
+    if (any(duplicated(entities[[data.table::key(entities)]])))
+        stop(sprintf('Input entities table has duplicated keys! Check column "%s" of entities table or use a different column as a key', data.table::key(entities)))
 
-        .Object@entities = copy(entities)
+    .Object@entities = copy(entities)
 
-        tabstring = function(tab, sep = ', ')
-            return(paste(names(tab), '(', tab, ')', sep = '', collapse = sep))
+    tabstring = function(tab, sep = ', ')
+        return(paste(names(tab), '(', tab, ')', sep = '', collapse = sep))
 
-        ann.args = do.call(c, lapply(task@args, function(x)
-            if (is(x, 'FlowAnnotation'))
-                return(x)
-            else
-                return(NULL)))
+    ann.args = do.call(c, lapply(task@args, function(x)
+        if (is(x, 'FlowAnnotation'))
+            return(x)
+        else
+            return(NULL)))
 
-        tmp = task@args[unlist(lapply(task@args, is, 'FlowLiteral'))]
-        lit.args = structure(lapply(tmp, function(x) x@arg), names = names(tmp))
+    tmp = task@args[unlist(lapply(task@args, is, 'FlowLiteral'))]
+    lit.args = structure(lapply(tmp, function(x) x@arg), names = names(tmp))
 
-        if (any(iz <- unlist(lapply(ann.args, function(x) !is.null(default(x))))))
-            if (any(ix <- !unlist(lapply(ann.args[iz], function(x) x@arg) %in% names(entities))))
-                for (arg in ann.args[iz][ix])
-                    entities[[arg@arg]] = NA
+    if (any(iz <- unlist(lapply(ann.args, function(x) !is.null(default(x))))))
+        if (any(ix <- !unlist(lapply(ann.args[iz], function(x) x@arg) %in% names(entities))))
+            for (arg in ann.args[iz][ix])
+                entities[[arg@arg]] = NA
 
-         if (!all(ix <- unlist(lapply(ann.args, function(x) x@arg) %in% names(entities))))
-             stop(sprintf('These annotations / columns required for task %s are missing from entities data.table: %s', task@name, paste(sapply(ann.args, function(x) x@arg)[!ix], collapse = ', ')))
+    if (!all(ix <- unlist(lapply(ann.args, function(x) x@arg) %in% names(entities))))
+        stop(sprintf('These annotations / columns required for task %s are missing from entities data.table: %s', task@name, paste(sapply(ann.args, function(x) x@arg)[!ix], collapse = ', ')))
 
-        if (any(duplicated(entities[, data.table::key(entities), with = FALSE][[1]])))
-             stop('Duplicate entities present with respect to current key.  Each entity should have a unique key.  Check entities table and/or key settings')
+    if (any(duplicated(entities[, data.table::key(entities), with = FALSE][[1]])))
+        stop('Duplicate entities present with respect to current key.  Each entity should have a unique key.  Check entities table and/or key settings')
 
-         module = task@module
-         .Object@task = task
+    module = task@module
+    .Object@task = task
 
-        if (!mock)
-            {
-                ## system(paste('mkdir -p', rootdir))
-                base::dir.create(rootdir, recursive = TRUE, mode = "0775")
-                rootdir = normalizePath(rootdir)
-            }
-        .Object@rootdir = rootdir
-        .Object@stamps = data.table(entities[, data.table::key(entities), with = FALSE])
-        .Object@outputs = data.table(entities[, data.table::key(entities), with = FALSE])
-        .Object@inputs = data.table(entities[, data.table::key(entities), with = FALSE])
-        .Object@runinfo = data.table(entities[, data.table::key(entities), with = FALSE])
-        .Object@runinfo$outdir = paste(rootdir, task@name, entities[[data.table::key(entities)]], sep = '/')
-        .Object@runinfo$outdir = paste(rootdir, gsub('\\W', '.', task@name), entities[[data.table::key(entities)]], sep = '/') ## JEREMIAH
-        .Object@runinfo[, status := 'ready']
-        .Object@runinfo[, now := now]
-        setkeyv(.Object@inputs, data.table::key(entities))
-        setkeyv(.Object@outputs, data.table::key(entities))
-        setkeyv(.Object@runinfo, data.table::key(entities))
-        setkeyv(.Object@stamps, data.table::key(entities))
+    if (!mock)
+    {
+        ## system(paste('mkdir -p', rootdir))
+        base::dir.create(rootdir, recursive = TRUE, mode = "0775")
+        rootdir = normalizePath(rootdir)
+    }
+    .Object@rootdir = rootdir
+    .Object@stamps = data.table(entities[, data.table::key(entities), with = FALSE])
+    .Object@outputs = data.table(entities[, data.table::key(entities), with = FALSE])
+    .Object@inputs = data.table(entities[, data.table::key(entities), with = FALSE])
+    .Object@runinfo = data.table(entities[, data.table::key(entities), with = FALSE])
+    .Object@runinfo$outdir = paste(rootdir, task@name, entities[[data.table::key(entities)]], sep = '/')
+    .Object@runinfo$outdir = paste(rootdir, gsub('\\W', '.', task@name), entities[[data.table::key(entities)]], sep = '/') ## JEREMIAH
+    .Object@runinfo[, status := 'ready']
+    .Object@runinfo[, now := now]
+    setkeyv(.Object@inputs, data.table::key(entities))
+    setkeyv(.Object@outputs, data.table::key(entities))
+    setkeyv(.Object@runinfo, data.table::key(entities))
+    setkeyv(.Object@stamps, data.table::key(entities))
 
-        if (length(ann.args)>0)
-            {
-                 ### of course we are noting timestamps <now>
-                 ### the inputs may be modified between now and run time
-                 ### in which case the task output may appear to be falsely outdated
-                 ### when we check in the future ..
-                 ### but this (false positive outdating) is less dangerous than false-negative outdating
+    if (length(ann.args)>0)
+    {
+### of course we are noting timestamps <now>
+### the inputs may be modified between now and run time
+### in which case the task output may appear to be falsely outdated
+### when we check in the future ..
+### but this (false positive outdating) is less dangerous than false-negative outdating
 ### ie if we thought that the task was up to date but in fact inputs have changed.
-                if (!mock)
-                    cat('Noting time stamps of inputs\n')
-                 for (this.arg in names(ann.args))
-                     {
-                         this.ann = ann.args[[this.arg]]@arg
-                         nfiles = length(setdiff(entities[[this.ann]], NA))
+        if (!mock)
+            cat('Noting time stamps of inputs\n')
+        for (this.arg in names(ann.args))
+        {
+            this.ann = ann.args[[this.arg]]@arg
+            nfiles = length(setdiff(entities[[this.ann]], NA))
 
-                         if (is.list(entities[[this.ann]]))
-                         {
-                             warning(sprintf('Annotation column "%s" is a list and not a vector.  Flow currently only supports entities tables with vector columns.  Will default to taking first element of each list item.  Please check the %s column to ensure that the data is correct.', this.ann, this.ann))
-                             entities[[this.ann]] = unlist(lapply(entities[[this.ann]], '[', 1))
-                         }
+            if (is.list(entities[[this.ann]]))
+            {
+                warning(sprintf('Annotation column "%s" is a list and not a vector.  Flow currently only supports entities tables with vector columns.  Will default to taking first element of each list item.  Please check the %s column to ensure that the data is correct.', this.ann, this.ann))
+                entities[[this.ann]] = unlist(lapply(entities[[this.ann]], '[', 1))
+            }
 
-                         .Object@inputs[[this.arg]] = as.character(entities[[this.ann]])
+            .Object@inputs[[this.arg]] = as.character(entities[[this.ann]])
                                         #                 .Object@inputs[, eval(this.arg) := entities[[this.ann]]]
 
-                         if (.Object@task@args[[this.arg]]@path)
-                         {
-                           if (!mock)
-                           {
-                             fn = .Object@inputs[[this.arg]]
-                             fn[nchar(fn)==0] = NA ## NA out blank paths
-                             nfiles = sum(!is.na(fn))
-                             cat('\tfor', this.arg, sprintf('(%s files)', nfiles), '\n')
-                           }
+            if (.Object@task@args[[this.arg]]@path)
+            {
+                if (!mock)
+                {
+                    fn = .Object@inputs[[this.arg]]
+                    fn[nchar(fn)==0] = NA ## NA out blank paths
+                    nfiles = sum(!is.na(fn))
+                    cat('\tfor', this.arg, sprintf('(%s files)', nfiles), '\n')
+                }
 
-                           if (is.numeric(entities[[this.ann]]))
-                             stop(sprintf('Numeric annotation %s provided as path argument %s to task - check task configuration or entities table', this.ann, this.arg))
+                if (is.numeric(entities[[this.ann]]))
+                    stop(sprintf('Numeric annotation %s provided as path argument %s to task - check task configuration or entities table', this.ann, this.arg))
 
-                           .Object@stamps[, eval(this.arg) := as.character(file.info(ifelse(is.na(entities[[this.ann]]), '', entities[[this.ann]]))$mtime)]
+                .Object@stamps[, eval(this.arg) := as.character(file.info(ifelse(is.na(entities[[this.ann]]), '', entities[[this.ann]]))$mtime)]
                                         #                                 if (!mock)
                                         #                                     print(this.arg)
 
-                           cmd = paste(this.arg, ':= normalizePath(', this.arg, ')')
+                cmd = paste(this.arg, ':= normalizePath(', this.arg, ')')
 
-                           .Object@inputs[!is.na(.Object@stamps[[this.arg]]), eval(parse(text = cmd))]
+                .Object@inputs[!is.na(.Object@stamps[[this.arg]]), eval(parse(text = cmd))]
 
-                           if (!is.null(default(ann.args[[this.arg]])))
-                             if (any(fenix <- !file.exists(ifelse(is.na(.Object@inputs[[this.arg]]), '', entities[[this.ann]]))))
+                if (!is.null(default(ann.args[[this.arg]])))
+                    if (any(fenix <- !file.exists(ifelse(is.na(.Object@inputs[[this.arg]]), '', entities[[this.ann]]))))
                                         #                                     if (any(fenix <- !file.exists(.Object@inputs[[this.arg]])))
-                             {
-                               .Object@inputs[fenix, eval(this.arg) := default(ann.args[[this.arg]])]
-                               .Object@stamps[fenix, eval(this.arg) := as.character(Sys.time())]
-                             }
-                         }
-                         else
-                         {
-
-                             nix = (nchar(str_trim(.Object@inputs[[this.arg]]))==0)
-                             nix = nix[!is.na(nix)]
-                             if (length(nix)>0)
-                                 if (any(nix))
-                                     .Object@inputs[nix, eval(this.arg) := NA]
-
-                             if (!is.null(default(ann.args[[this.arg]])))
-                                 if (any(fenix <- is.na(.Object@inputs[[this.arg]])))
-                                     .Object@inputs[[this.arg]][fenix] = default(ann.args[[this.arg]])
-
-                             .Object@stamps[, eval(this.arg) := ifelse(!is.na(.Object@inputs[[this.arg]]), as.character(Sys.time()), NA)]
-                         }
-                     }
-             }
-
-         if (length(lit.args)>0)
-         {
-                 .Object@inputs = cbind(.Object@inputs, as.data.table(as.data.frame(lit.args)[rep(1, nrow(entities)), , drop = FALSE]))
-
-                 for (this.arg in names(lit.args))
-                     {
-                         if (.Object@task@args[[this.arg]]@path)
-                             .Object@stamps[,
-                                            eval(this.arg) :=
-                                                as.character(file.info(lit.args[[this.arg]])$mtime)]
-                         else
-                             .Object@stamps[, eval(this.arg) := as.character(Sys.time())]
-                     }
-             }
-
-        if (ncol(.Object@stamps)>1) ## this should basically always be true
-            {
-                cols = setdiff(names(.Object@stamps), data.table::key(.Object))
-                ready.mat = is.na(as.matrix(.Object@stamps[, cols, with = FALSE]))
-                .Object@runinfo$status = ifelse(rowSums(ready.mat)>0, 'not ready', 'ready')
-                .Object@runinfo$status.info = ''
-                if (any(ix <- .Object@runinfo$status != 'ready'))
-                    .Object@runinfo$status.info[ix] = apply(ready.mat[ix, , drop = FALSE], 1,
-                                                   function(x) paste(paste(colnames(ready.mat)[x], collapse = ','), 'not ready'))
-
-                if (any(ix <- nchar(.Object@runinfo$status.info)>1))
-                    warning(sprintf('missing annotations resulting causing %s jobs to be not ready.\n Breakdown of detailed statuses (with # entities with each specific status):\n\t%s',
-                                  sum(status(.Object)!='ready'),
-                                  paste(tabstring(table(.Object@runinfo$status.info[ix]), sep = ' '), collapse = ',')))
-
-
-            }
-        else
-            {
-                .Object@runinfo$status = 'ready'
-                .Object@runinfo$status.info = ''
-            }
-
-        if (!mock)
-        {
-            cat('making output directories under', paste(.Object@rootdir, gsub('\\/', '.', task@name), sep = '/'), '\n')
-            ## lapply(paste('mkdir -pv', .Object@runinfo$outdir), system)
-            lapply(.Object@runinfo$outdir, function(this_path) {
-                withr::with_options(new = list(warn = 1), code = {
-                    lg = base::dir.create(this_path, recursive = TRUE, mode = "0775")
-                })
-                if (lg) {
-                    message(sprintf("%s directory created", this_path))
-                }
-                return(NULL)
-            })
-#                system(paste('mkdir -p', paste(.Object@runinfo$outdir, collapse = ' ')))
-            }
-
-        ## instantiate commands for each row in entities table
-        .Object@runinfo[, cmd.og := unlist(lapply(1:nrow(entities), function(this.entity)
-            {
-                this.cmd = str_replace_all(module@cmd, stringr::fixed('<libdir>'), task@libdir)
-                for (k in 1:length(task@args))
-                {
-                        this.arg = names(task@args)[[k]]
-                        this.val = .Object@inputs[this.entity, ][[gsub('\\-', '.', names(task@args)[k])]]
-                        if (is.na(this.val))
-                            this.val = ''
-                        this.cmd = str_replace_all(this.cmd, stringr::fixed(paste('<', this.arg, '>', sep = '')), this.val)
+                    {
+                        .Object@inputs[fenix, eval(this.arg) := default(ann.args[[this.arg]])]
+                        .Object@stamps[fenix, eval(this.arg) := as.character(Sys.time())]
                     }
-                ## final cmd with all placeholders replaced
-                return(this.cmd)
-            }))]
-
-        if (is.null(mem))
-            mem = NA
-
-        if (!is.null(mem))
-            mem = cbind(1:nrow(entities), mem)[,2]
-
-        setkeyv(.Object@stamps, data.table::key(entities))
-
-        .Object@runinfo[, queue := queue]
-        .Object@runinfo[, mem := ifelse(is.na(mem), task@mem, mem)]
-        .Object@runinfo[, nice := nice]
-        .Object@runinfo[, cores := cores]
-
-        ## append time call and input / output redirects to local function calls
-        .Object@runinfo[, stderr := paste(outdir, '/', task@name, '.', entities[[data.table::key(entities)]], '.bsub.err', sep = '')]
-        .Object@runinfo[, stdout := paste(outdir, '/',  task@name, '.', entities[[data.table::key(entities)]], '.bsub.out', sep = '')]
-
-        .Object@runinfo[, jname := .jname(outdir, task@name, entities[[data.table::key(entities)]])]
-
-#        if (!mock)
-        .Object@runinfo = .update_cmd(.Object) ## updates BCMD / CMD
-
-
-        ## populate output collection
-        if (length(task@outputs)>0)
-            if (sum(unlist(lapply(task@outputs, is, 'FlowOutput')>0)))
-                {
-                    if (!mock)
-                        cat('initializing output annotations\n')
-                    for (nm in sapply(task@outputs, function(x) x@name))
-                        .Object@outputs[, eval(nm) := as.character(NA)]
-                }
-
-        ## dump out rds of Job file for each entity, so we can reconstruct jobs, check outputs, compare
-        ## time stamps etc later on
-        if (!mock)
-            {
-                cat('Dumping out', length(.Object), 'Job.rds files to subdirectories of', .Object@rootdir, '\n')
-                mclapply(1:length(.Object), function(x) saveRDS(.Object[x], paste(.Object@runinfo$outdir[x], 'Job.rds', sep = '/')), mc.cores = update_cores)
-                cache(.Object)
-                ids = ids(.Object)
-                update(.Object, check.inputs = TRUE, mc.cores = update_cores)
-                path = paste(.Object@rootdir, '/', task(.Object)@name, '.rds', sep = '')
-#                cat('Refreshing object from', path, '\n')
-                .Object = readRDS(path)[ids, id = TRUE]
             }
-        return(.Object)
-    })
+            else
+            {
+
+                nix = (nchar(str_trim(.Object@inputs[[this.arg]]))==0)
+                nix = nix[!is.na(nix)]
+                if (length(nix)>0)
+                    if (any(nix))
+                        .Object@inputs[nix, eval(this.arg) := NA]
+
+                if (!is.null(default(ann.args[[this.arg]])))
+                    if (any(fenix <- is.na(.Object@inputs[[this.arg]])))
+                        .Object@inputs[[this.arg]][fenix] = default(ann.args[[this.arg]])
+
+                .Object@stamps[, eval(this.arg) := ifelse(!is.na(.Object@inputs[[this.arg]]), as.character(Sys.time()), NA)]
+            }
+        }
+    }
+
+    if (length(lit.args)>0)
+    {
+        .Object@inputs = cbind(.Object@inputs, as.data.table(as.data.frame(lit.args)[rep(1, nrow(entities)), , drop = FALSE]))
+
+        for (this.arg in names(lit.args))
+        {
+            if (.Object@task@args[[this.arg]]@path)
+                .Object@stamps[,
+                               eval(this.arg) :=
+                                   as.character(file.info(lit.args[[this.arg]])$mtime)]
+            else
+                .Object@stamps[, eval(this.arg) := as.character(Sys.time())]
+        }
+    }
+
+    if (ncol(.Object@stamps)>1) ## this should basically always be true
+    {
+        cols = setdiff(names(.Object@stamps), data.table::key(.Object))
+        ready.mat = is.na(as.matrix(.Object@stamps[, cols, with = FALSE]))
+        .Object@runinfo$status = ifelse(rowSums(ready.mat)>0, 'not ready', 'ready')
+        .Object@runinfo$status.info = ''
+        if (any(ix <- .Object@runinfo$status != 'ready'))
+            .Object@runinfo$status.info[ix] = apply(ready.mat[ix, , drop = FALSE], 1,
+                                                    function(x) paste(paste(colnames(ready.mat)[x], collapse = ','), 'not ready'))
+
+        if (any(ix <- nchar(.Object@runinfo$status.info)>1))
+            warning(sprintf('missing annotations resulting causing %s jobs to be not ready.\n Breakdown of detailed statuses (with # entities with each specific status):\n\t%s',
+                            sum(status(.Object)!='ready'),
+                            paste(tabstring(table(.Object@runinfo$status.info[ix]), sep = ' '), collapse = ',')))
+
+
+    }
+    else
+    {
+        .Object@runinfo$status = 'ready'
+        .Object@runinfo$status.info = ''
+    }
+
+    if (!mock)
+    {
+        cat('making output directories under', paste(.Object@rootdir, gsub('\\/', '.', task@name), sep = '/'), '\n')
+        ## lapply(paste('mkdir -pv', .Object@runinfo$outdir), system)
+        lapply(.Object@runinfo$outdir, function(this_path) {
+            withr::with_options(new = list(warn = 1), code = {
+                lg = base::dir.create(this_path, recursive = TRUE, mode = "0775")
+            })
+            if (lg) {
+                message(sprintf("%s directory created", this_path))
+            }
+            return(NULL)
+        })
+                                        #                system(paste('mkdir -p', paste(.Object@runinfo$outdir, collapse = ' ')))
+    }
+
+    ## instantiate commands for each row in entities table
+    .Object@runinfo[, cmd.og := unlist(lapply(1:nrow(entities), function(this.entity)
+    {
+        this.cmd = str_replace_all(module@cmd, stringr::fixed('<libdir>'), task@libdir)
+        for (k in 1:length(task@args))
+        {
+            this.arg = names(task@args)[[k]]
+            this.val = .Object@inputs[this.entity, ][[gsub('\\-', '.', names(task@args)[k])]]
+            if (is.na(this.val))
+                this.val = ''
+            this.cmd = str_replace_all(this.cmd, stringr::fixed(paste('<', this.arg, '>', sep = '')), this.val)
+        }
+        ## final cmd with all placeholders replaced
+        return(this.cmd)
+    }))]
+
+    if (is.null(mem))
+        mem = NA
+
+    if (!is.null(mem))
+        mem = cbind(1:nrow(entities), mem)[,2]
+
+    setkeyv(.Object@stamps, data.table::key(entities))
+
+    .Object@runinfo[, queue := queue]
+    .Object@runinfo[, mem := ifelse(is.na(mem), task@mem, mem)]
+    .Object@runinfo[, nice := nice]
+    .Object@runinfo[, cores := cores]
+    .Object@runinfo[, io_c := io_c]
+    .Object@runinfo[, io_n := io_n]
+    .Object@runinfo[, qprior := qprior]
+
+    ## append time call and input / output redirects to local function calls
+    .Object@runinfo[, stderr := paste(outdir, '/', task@name, '.', entities[[data.table::key(entities)]], '.bsub.err', sep = '')]
+    .Object@runinfo[, stdout := paste(outdir, '/',  task@name, '.', entities[[data.table::key(entities)]], '.bsub.out', sep = '')]
+
+    .Object@runinfo[, jname := .jname(outdir, task@name, entities[[data.table::key(entities)]])]
+
+                                        #        if (!mock)
+    .Object@runinfo = .update_cmd(.Object) ## updates BCMD / CMD
+
+
+    ## populate output collection
+    if (length(task@outputs)>0)
+        if (sum(unlist(lapply(task@outputs, is, 'FlowOutput')>0)))
+        {
+            if (!mock)
+                cat('initializing output annotations\n')
+            for (nm in sapply(task@outputs, function(x) x@name))
+                .Object@outputs[, eval(nm) := as.character(NA)]
+        }
+
+    ## dump out rds of Job file for each entity, so we can reconstruct jobs, check outputs, compare
+    ## time stamps etc later on
+    if (!mock)
+    {
+        cat('Dumping out', length(.Object), 'Job.rds files to subdirectories of', .Object@rootdir, '\n')
+        mclapply(1:length(.Object), function(x) saveRDS(.Object[x], paste(.Object@runinfo$outdir[x], 'Job.rds', sep = '/')), mc.cores = update_cores)
+        cache(.Object)
+        ids = ids(.Object)
+        update(.Object, check.inputs = TRUE, mc.cores = update_cores, parse_recursive = parse_recursive)
+        path = paste(.Object@rootdir, '/', task(.Object)@name, '.rds', sep = '')
+                                        #                cat('Refreshing object from', path, '\n')
+        .Object = readRDS(path)[ids, id = TRUE]
+    }
+    return(.Object)
+})
 
 
 #' @name Job
@@ -919,9 +924,12 @@ Job = function(
     mem = NULL,
     nice = NULL,
     cores = 1,
-    mock = FALSE, ...) {
+    mock = FALSE,
+    update_cores = 1,
+    parse_recursive = FALSE,
+    ...) {
     new('Job', task = task, entities = entities, rootdir = rootdir,
-        queue = queue, nice = nice, mem = mem, cores = cores, mock = mock, ...)
+        queue = queue, nice = nice, mem = mem, cores = cores, mock = mock, update_cores = update_cores, parse_recursive = parse_recursive, ...)
 }
 
 
@@ -1006,7 +1014,9 @@ setMethod('purge', 'Job', function(object, check.inputs = TRUE, mc.cores = 1)
 #' @rdname Job-class
 #' @exportMethod update
 #' @export
-setGeneric('update', function(object, ...) {standardGeneric('update')})
+setGeneric('update', function(object, ...) {
+    standardGeneric('update')
+})
 
 
 #' @name update
@@ -1018,7 +1028,7 @@ setGeneric('update', function(object, ...) {standardGeneric('update')})
 #' @exportMethod update
 #' @export
 #' @author Marcin Imielinski
-setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, cache.object = TRUE, print.status = TRUE, parse_recursive = FALSE) {
+setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, cache.object = TRUE, print.status = TRUE, parse_recursive = FALSE, io_c = 2, io_n = 7, qprior = 0) {
     ## for every output, apply regexp in files of outdir to search for files
     status.info = rep('', length(object))
     status = rep('ready', length(object))
@@ -1049,8 +1059,9 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
                 rec_files = dir(new.object@runinfo[id, outdir], recursive = TRUE)
                 names(files) = paste(new.object@runinfo[id, outdir], files, sep = '/')
                 names(rec_files) = paste(new.object@runinfo[id, outdir], rec_files, sep = '/')
+                is_dir = grepl("\\/", outre)
                 for (k in 1:length(outkeys)) {
-                    if (parse_recursive & is.na(new.object@outputs[id, names(files)[grep(outre[k], files)][1]])) {
+                    if (parse_recursive & is.na(new.object@outputs[id, names(files)[grep(outre[k], files)][1]]) & is_dir[k]) {
                         new.object@outputs[id, eval(outkeys[k]) := names(rec_files)[grep(outre[k], rec_files)][1]]
                     } else {
                         new.object@outputs[id, eval(outkeys[k]) := names(files)[grep(outre[k], files)][1]]
@@ -1448,7 +1459,122 @@ setReplaceMethod('mem', 'Job', function(.Object, value)
                      .Object@runinfo[, mem := value]
                      .Object@runinfo = .update_cmd(.Object)
                      return(.Object)
-                 })
+})
+
+#########
+
+#' @name Job-class
+#' @rdname Job-class
+#' @exportMethod io_c
+#' @export
+setGeneric('io_c', function(.Object) {standardGeneric('io_c')})
+
+#' @name io_c
+#' @title Gets ionice -c
+#' @description
+#' getting ionice -c
+#'
+#' @exportMethod io_c
+#' @export
+#' @author Kevin Hadi
+setMethod('io_c', 'Job', function(.Object) {
+  structure(.Object@runinfo[, io_c], names = .Object@runinfo[[key(.Object@runinfo)]])
+})
+
+#' @export
+setGeneric('io_c<-', function(.Object, value) {standardGeneric('io_c<-')})
+
+#' @name io_c<-
+#' @title Sets ionice parameters associated with Job object
+#' @description
+#' setting io_c parameters associated with job object
+#'
+#' @exportMethod io_c<-
+#' @export
+#' @author Kevin Hadi
+setReplaceMethod('io_c', 'Job', function(.Object, value) {
+    .Object@runinfo[, io_c := value]
+    .Object@runinfo = .update_cmd(.Object)
+    return(.Object)
+})
+
+
+#' @name Job-class
+#' @rdname Job-class
+#' @exportMethod io_n
+#' @export
+setGeneric('io_n', function(.Object) {standardGeneric('io_n')})
+
+#' @name io_n
+#' @title Gets ionice -n
+#' @description
+#' getting ionice -n
+#'
+#' @exportMethod io_n
+#' @export
+#' @author Kevin Hadi
+setMethod('io_n', 'Job', function(.Object) {
+  structure(.Object@runinfo[, io_n], names = .Object@runinfo[[key(.Object@runinfo)]])
+})
+
+#' @export
+setGeneric('io_n<-', function(.Object, value) {standardGeneric('io_n<-')})
+
+#' @name io_n<-
+#' @title Sets ionice parameters associated with Job object
+#' @description
+#' setting io_n parameters associated with job object
+#'
+#' @exportMethod io_n<-
+#' @export
+#' @author Kevin Hadi
+setReplaceMethod('io_n', 'Job', function(.Object, value) {
+    .Object@runinfo[, io_n := value]
+    .Object@runinfo = .update_cmd(.Object)
+    return(.Object)
+})
+
+
+
+#' @name Job-class
+#' @rdname Job-class
+#' @exportMethod qprior
+#' @export
+setGeneric('qprior', function(.Object) {standardGeneric('qprior')})
+
+#' @name qprior
+#' @title Gets qprior value
+#' @description
+#' sets qsub -p parameter
+#' this is the parameter that specifies priority
+#' can be value between -1023 to 2014
+#' default is 0
+#'
+#' @exportMethod qprior
+#' @export
+#' @author Kevin Hadi
+setMethod('qprior', 'Job', function(.Object) {
+  structure(.Object@runinfo[, qprior], names = .Object@runinfo[[key(.Object@runinfo)]])
+})
+
+#' @export
+setGeneric('qprior<-', function(.Object, value) {standardGeneric('qprior<-')})
+
+#' @name qprior<-
+#' @title Sets qprior parameter associated with job object
+#' @description
+#' Sets qprior parameter which passes a value onto qsub -p command
+#'
+#' @exportMethod qprior<-
+#' @export
+#' @author Kevin Hadi
+setReplaceMethod('qprior', 'Job', function(.Object, value) {
+    .Object@runinfo[, qprior := value]
+    .Object@runinfo = .update_cmd(.Object)
+    return(.Object)
+})
+###########
+
 
 #' @name Job-class
 #' @rdname Job-class
@@ -2130,20 +2256,38 @@ setMethod('show', 'Job', function(object)
 
 .jname = function(outdir, name, ids) paste(outdir, '/', name, '.', ids, sep = '')
 
-.update_cmd = function(.Object)
-{
-
+.update_cmd = function(.Object, ...) {
+    halt = FALSE
+    ## testing for invalid args
+    if (any(! .Object@runinfo$io_c %in% seq(0, 3))) {
+        message("invalid io_c parameter(s) specified\nMust be integer between 0 and 3")
+        halt = TRUE
+    }
+    if (any(! .Object@runinfo$io_n %in% seq(0, 7))) {
+        message("invalid io_n parameter(s) specified\nMust be integer between 0 and 7")
+        halt = TRUE
+    }
+    if (any(! .Object@runinfo$qprior %in% seq(-1023, 1024))) {
+        message("invalid qprior parameter(s) specified\nMust be integer between -1023 and 1024")
+        halt = TRUE
+    }
+    if (halt) {
+        stop("invalid parameters specified... reset using valid parameters")
+    }
+    
     ## utility func for instantiation of Job and modifying memory
     .cmd2bcmd = function(cmd, outdir, name, ids, queue, mem, cores) bsub_cmd(paste('touch ', outdir, '/started; ', cmd, ';', sep = ''), queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = .jname(outdir, name, ids), jlabel = .jname(outdir, name, ids))
-    .cmd2qcmd = function(cmd, outdir, name, ids, queue, mem, cores, now) qsub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, touch_job_out = TRUE)
+    .cmd2qcmd = function(cmd, outdir, name, ids, queue, mem, cores, now, qprior) qsub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, touch_job_out = TRUE, qprior = qprior)
 
     .Object@runinfo[, bcmd := '']
     ix = which(status(.Object) != 'not ready')
     .Object@runinfo[ix, bcmd := .cmd2bcmd(cmd.og, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores)]
     .Object@runinfo[, cmd := '']
     .Object@runinfo[, cmd.quiet := '']
-    .Object@runinfo[ix, cmd := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, '(ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
-    .Object@runinfo[ix, cmd.quiet := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, 'ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
+    ## .Object@runinfo[ix, cmd := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, '(ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
+    ## .Object@runinfo[ix, cmd.quiet := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, 'ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
+    .Object@runinfo[ix, cmd := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('(ionice -c %s -n %s nice ', .Object@runinfo$io_c, .Object@runinfo$io_n), ''), '/usr/bin/time -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
+    .Object@runinfo[ix, cmd.quiet := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('ionice -c %s -n %s nice ', .Object@runinfo$io_c, .Object@runinfo$io_n), ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
 
     .Object@runinfo$cmd.path = paste(outdir(.Object), '/', names(outdir(.Object)), '.cmd.sh', sep = '')
     
@@ -2152,7 +2296,7 @@ setMethod('show', 'Job', function(object)
                                         #        .Object@runinfo[, mapply(function(text, path) writeLines(text, path), paste('echo "FLOW.SGE.JOBID=$JOB_ID"; cd ', outdir, ';touch ', outdir, '/started; ~/Software/time/time -v ', cmd.og, '; cp ', stdout, ' ', stderr, sep = ''), cmd.path)] ## writes cmd to path
 
     .Object@runinfo[, mapply(function(text, path) writeLines(text, path), cmd, cmd.path)] ## writes cmd to path
-    .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now)]
+    .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, qprior = qprior)]
 
     return(.Object@runinfo)
 }

@@ -6,7 +6,8 @@
 \usage{
 qsub_cmd(script.fn, queue = NULL, jname = NULL, jlabel = NULL,
   jgroup = NULL, mem = NULL, group = NULL, cwd = NULL,
-  mc.cores = NULL, deadline = F, now = FALSE)
+  mc.cores = NULL, deadline = F, now = FALSE, touch_job_out = TRUE,
+  qprior = 0)
 }
 \arguments{
 \item{script.fn}{string shell command to be submitted via bsub}

@@ -18,17 +18,17 @@ Module('path.to.module.directory.with.module.or.hydrant.deploy.file')
 
 
 The input placeholders are specified using the following syntax: ${t Argument_Name}.  These inputs will eventually be attached to entity
-annotation. 
+annotation.
 
 There is also a line <libdir> that specifies the file path of the <module directory>.  Since the code will be eventually executed in a
 Job specific output (hence the need for the module to only write to relative paths) there needs to be a way
-the code to refer to other files in the module directory.  This is what <libdir> provides a handle to. 
+the code to refer to other files in the module directory.  This is what <libdir> provides a handle to.
 
 So an example module file for JabbA has a single line:
-command: sh <libdir>run.sh <libdir>run.jabba.R -l <libdir> -n ${t TumorName} -s ${t SegFile} -a ${t CovFile} -r ${t RAfile} -g ${t SubSample} -b ${t NormalSegFile} -k ${t SlackPenaltyPerLooseEndCopy} --iterate ${t NumIterations} --tfield ${t TierFieldName} --hets ${t OptionalHetPileupOutput} 
+command: sh <libdir>run.sh <libdir>run.jabba.R -l <libdir> -n ${t TumorName} -s ${t SegFile} -a ${t CovFile} -r ${t RAfile} -g ${t SubSample} -b ${t NormalSegFile} -k ${t SlackPenaltyPerLooseEndCopy} --iterate ${t NumIterations} --tfield ${t TierFieldName} --hets ${t OptionalHetPileupOutput}
 
 
-Now, in most cases run.sh will be a pretty generic top level shell script that will set up the environment (eg loading additional libraries, setting environment variables) and pipe the remaining commands to an R, python, or perl script.  In other cases this can be a script doing more of the "heavy lifting" in the task.  This is up to the user.  However the .module file itself should be a one-liner as above. 
+Now, in most cases run.sh will be a pretty generic top level shell script that will set up the environment (eg loading additional libraries, setting environment variables) and pipe the remaining commands to an R, python, or perl script.  In other cases this can be a script doing more of the "heavy lifting" in the task.  This is up to the user.  However the .module file itself should be a one-liner as above.
 
 Regarding outputs, The module definitoin does not currently specify what are its output files (this may change).
 These are currently specified at the task level, where the task author (who presumably knows the module) will specify regexp to scrape

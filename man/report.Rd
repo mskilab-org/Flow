@@ -9,7 +9,7 @@
 }
 \description{
 Scrapes the underlying output directories associated with this Job object to determine whether jobs completed, stats on how much
-memory and time was used by the job, when the jobs launched and when they finished, etc. 
+memory and time was used by the job, when the jobs launched and when they finished, etc.
 
 This is used by the Job update method, but can also be useful for debugging and diagnostics.
 }

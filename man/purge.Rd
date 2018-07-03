@@ -8,7 +8,7 @@
 \usage{
 purge(object, ...)
 
-\S4method{purge}{Job}(object, check.inputs = TRUE)
+\S4method{purge}{Job}(object, check.inputs = TRUE, mc.cores = 1)
 }
 \author{
 Marcin Imielinski

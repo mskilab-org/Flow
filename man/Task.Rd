@@ -22,7 +22,7 @@ Task(...)
 \description{
 initializing Task
 requires Module object (or path to module file), and values for all arguments required by Task with literals or names of columns
-from which to populate eventual job data. 
+from which to populate eventual job data.
 also can specify default mem for task (can be changed at job level)
 output is a task configuration
 module can also be a text based task configuration file which will have the format:
@@ -35,7 +35,7 @@ output      ANNOTATION_NAME                  REGEXP_FOR_FILE
 ie first row is the module path, the next rows specify whether input or output is being specified
 in the first column, and if input, the second column specifies whether annotation or literal and third column specifis value
 otherwise for output, second column specifies the name of the output annotation and the third column specifies the
-regexp used to query the output directory for the output file 
+regexp used to query the output directory for the output file
 
 a task object is normally instantiated from a text .task file.
 
