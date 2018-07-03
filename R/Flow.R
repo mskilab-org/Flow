@@ -2259,20 +2259,30 @@ setMethod('show', 'Job', function(object)
 .update_cmd = function(.Object, ...) {
     halt = FALSE
     ## testing for invalid args
-    if (any(! .Object@runinfo$io_c %in% seq(0, 3))) {
-        message("invalid io_c parameter(s) specified\nMust be integer between 0 and 3")
-        halt = TRUE
-    }
-    if (any(! .Object@runinfo$io_n %in% seq(0, 7))) {
-        message("invalid io_n parameter(s) specified\nMust be integer between 0 and 7")
-        halt = TRUE
-    }
-    if (any(! .Object@runinfo$qprior %in% seq(-1023, 1024))) {
-        message("invalid qprior parameter(s) specified\nMust be integer between -1023 and 1024")
-        halt = TRUE
-    }
-    if (halt) {
-        stop("invalid parameters specified... reset using valid parameters")
+    io_c_val = .Object@runinfo$io_c
+    io_n_val = .Object@runinfo$io_n
+    qprior_val = .Object@runinfo$qprior
+    if (!is.null(io_c_val) & !is.null(io_n_val) & !is.null(qprior_val)) {
+        if (any(! .Object@runinfo$io_c %in% seq(0, 3))) {
+            message("invalid io_c parameter(s) specified\nMust be integer between 0 and 3")
+            halt = TRUE
+        }
+        if (any(! .Object@runinfo$io_n %in% seq(0, 7))) {
+            message("invalid io_n parameter(s) specified\nMust be integer between 0 and 7")
+            halt = TRUE
+        }
+        if (any(! .Object@runinfo$qprior %in% seq(-1023, 1024))) {
+            message("invalid qprior parameter(s) specified\nMust be integer between -1023 and 1024")
+            halt = TRUE
+        }
+        if (halt) {
+            stop("invalid parameters specified... reset using valid parameters")
+        }
+    } else {
+        warning("Flow object may be outdated, setting io_c, io_n, and qprior values to defaults")
+        io_c_val = 2
+        io_n_val = 7
+        qprior_val = 0
     }
     
     ## utility func for instantiation of Job and modifying memory
@@ -2286,8 +2296,8 @@ setMethod('show', 'Job', function(object)
     .Object@runinfo[, cmd.quiet := '']
     ## .Object@runinfo[ix, cmd := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, '(ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
     ## .Object@runinfo[ix, cmd.quiet := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, 'ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
-    .Object@runinfo[ix, cmd := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('(ionice -c %s -n %s nice ', .Object@runinfo$io_c, .Object@runinfo$io_n), ''), '/usr/bin/time -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
-    .Object@runinfo[ix, cmd.quiet := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('ionice -c %s -n %s nice ', .Object@runinfo$io_c, .Object@runinfo$io_n), ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
+    .Object@runinfo[ix, cmd := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('(ionice -c %s -n %s nice ', io_c_val, io_n_val), ''), '/usr/bin/time -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
+    .Object@runinfo[ix, cmd.quiet := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('ionice -c %s -n %s nice ', io_c_val, io_n_val), ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
 
     .Object@runinfo$cmd.path = paste(outdir(.Object), '/', names(outdir(.Object)), '.cmd.sh', sep = '')
     
@@ -2296,7 +2306,7 @@ setMethod('show', 'Job', function(object)
                                         #        .Object@runinfo[, mapply(function(text, path) writeLines(text, path), paste('echo "FLOW.SGE.JOBID=$JOB_ID"; cd ', outdir, ';touch ', outdir, '/started; ~/Software/time/time -v ', cmd.og, '; cp ', stdout, ' ', stderr, sep = ''), cmd.path)] ## writes cmd to path
 
     .Object@runinfo[, mapply(function(text, path) writeLines(text, path), cmd, cmd.path)] ## writes cmd to path
-    .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, qprior = qprior)]
+    .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, qprior = qprior_val)]
 
     return(.Object@runinfo)
 }
