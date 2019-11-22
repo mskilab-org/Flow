@@ -3,25 +3,16 @@
 \docType{class}
 \name{Job-class}
 \alias{Job-class}
-\alias{Job-class}
 \alias{[<-}
 \alias{[,Job-class}
-\alias{Job-class}
-\alias{Job-class}
-\alias{Job-class}
-\alias{Job-class}
-\alias{Job-class}
-\alias{Job-class}
 \alias{runinfo}
-\alias{[,Job-class}
-\alias{Job-class}
 \alias{merge}
 \alias{merge,Job-class}
 \title{Class representing a set of jobs, each which is the combination of a Task and entity (i.e. a sample, pair, or set)}
 \usage{
 update(object, ...)
 
-\S4method{[}{Job}(x, i, id = FALSE) <- value
+\S4method{[}{Job,ANY,ANY,ANY}(x, i, id = FALSE) <- value
 
 module(.Object)
 
@@ -32,6 +23,8 @@ mem(.Object)
 queue(.Object)
 
 cores(.Object)
+
+time(.Object)
 
 now(.Object)
 

@@ -7,6 +7,9 @@
 \usage{
 \S4method{entities}{Job}(.Object)
 }
+\description{
+returns original keyed data.table of entities associated with this Job object
+}
 \author{
 Marcin Imielinski
 }

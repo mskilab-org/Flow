@@ -10,6 +10,9 @@
 \arguments{
 \item{all}{logical flag whether to run all jobs (including completed)}
 }
+\description{
+Returns vector of bsub (ie LSF) commands associated with this Job object
+}
 \author{
 Marcin Imielinski
 }

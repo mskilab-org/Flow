@@ -7,6 +7,9 @@
 \usage{
 \S4method{status}{Job}(.Object)
 }
+\description{
+Returns character vector of status of jobs in this Job object.  Regexps on these statuses can be also used as character inputs to [] accessor
+}
 \author{
 Marcin Imielinski
 }

@@ -7,6 +7,9 @@
 \usage{
 \S4method{err}{Job}(.Object)
 }
+\description{
+returns vector of paths to stderr files associated with this job object
+}
 \author{
 Marcin Imielinski
 }

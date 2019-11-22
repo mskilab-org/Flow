@@ -7,6 +7,9 @@
 \usage{
 \S4method{cmd}{Job}(.Object, all = FALSE, quiet = TRUE)
 }
+\description{
+Gets vector of command line calls associated with the jobs in the Job object
+}
 \author{
 Marcin Imielinski
 }

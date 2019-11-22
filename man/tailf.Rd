@@ -2,7 +2,6 @@
 % Please edit documentation in R/Flow.R, R/utils.R
 \name{tailf}
 \alias{tailf}
-\alias{tailf}
 \title{tailf}
 \usage{
 tailf(x, n = NULL, grep = NULL)

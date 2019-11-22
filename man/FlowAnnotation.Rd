@@ -15,3 +15,6 @@ FlowAnnotation(...)
 
 \item{default}{can specify default value (ie what do to if annotation is missing from input table) (default is NULL)}
 }
+\description{
+Creates an entity-specific annotation object (ie a path or value), used for wiring modules into tasks
+}

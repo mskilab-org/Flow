@@ -9,6 +9,14 @@ S4 class for \code{FlowOutput}
 Class \code{FlowOutput}is a simple container for capturing  output from Tasks
 which consists of name (of output annotation) and pattern (to match the output path in the
 task's output directory)}
+\description{
+Class representing the wiring of a regexp on a job output directory to an output annotation
+S4 class for \code{FlowOutput}
+
+Class \code{FlowOutput}is a simple container for capturing  output from Tasks
+which consists of name (of output annotation) and pattern (to match the output path in the
+task's output directory)
+}
 \section{Slots}{
 
 \describe{

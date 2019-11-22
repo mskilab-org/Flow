@@ -7,6 +7,9 @@
 \usage{
 \S4method{inputs}{Job}(.Object)
 }
+\description{
+returns keyed data.table of inputs annotation associated with the jobs in this Job object
+}
 \author{
 Marcin Imielinski
 }

@@ -4,9 +4,9 @@
 \alias{bsub_cmd}
 \title{bsub_cmd}
 \usage{
-bsub_cmd(cmd, queue = NULL, jname = NULL, jlabel = NULL, jgroup = NULL,
-  mem = NULL, group = NULL, cwd = NULL, mc.cores = NULL,
-  deadline = FALSE)
+bsub_cmd(cmd, queue = NULL, jname = NULL, jlabel = NULL,
+  jgroup = NULL, mem = NULL, group = NULL, cwd = NULL,
+  mc.cores = NULL, deadline = FALSE)
 }
 \arguments{
 \item{cmd}{string shell command to be submitted via bsub}

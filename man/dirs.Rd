@@ -7,6 +7,9 @@
 \usage{
 \S4method{dirs}{Job}(.Object, pattern = NULL, full = TRUE, ...)
 }
+\description{
+returns list of character vectors containing the contents of directory associated with these jobs
+}
 \author{
 Marcin Imielinski
 }

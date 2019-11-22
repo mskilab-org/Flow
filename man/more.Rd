@@ -2,7 +2,6 @@
 % Please edit documentation in R/Flow.R, R/utils.R
 \name{more}
 \alias{more}
-\alias{more}
 \title{more}
 \usage{
 more(x, grep = NULL, pipe = FALSE)

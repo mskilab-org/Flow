@@ -7,6 +7,9 @@
 \usage{
 \S4method{cache}{Job}(object, verbose = TRUE)
 }
+\description{
+caches .rds copy of job object to standard location (TASK.NAME.rds in Job output root directory)
+}
 \author{
 Marcin Imielinski
 }

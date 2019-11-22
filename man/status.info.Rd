@@ -7,6 +7,9 @@
 \usage{
 \S4method{status.info}{Job}(.Object)
 }
+\description{
+returns vector of more detailed statuses associated with jobs in this Job object
+}
 \author{
 Marcin Imielinski
 }
