@@ -142,6 +142,65 @@ qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup
 }
 
 
+#' @name ssub_cmd
+#' @title ssub_cmd
+#' @description
+#'
+#' Makes ssub command that wraps shell command "script.fn" to send to queue "queue"
+#' redirecting output / error etc streams to path prefixed by "jname",
+#' optional_args: maximum memory requirements "mem", "jlabel" job label
+#'
+#' @param script.fn string shell command to be submitted via bsub
+#' @param queue string queue destination, specifies destination of the job '-q "destination" ' (default = NULL)
+#' @param jname  string path prefix by 'jname' (default = NULL)
+#' @param jlabel string job name for '-J "job_name" ' (default = NULL)
+#' @param jgroup string job_group_name for '-g "job_group_name" ' (default = NULL)
+#' @param mem  integer amount of virtual memory/RAM to use via resource requirement arg '-R "res_req"'' (default = NULL)
+#' @param group  string project_name for '-P' (default = NULL)
+#' @param cwd string pathname to current working directory; -cwd "current_working_directory" (default = NULL)
+#' @param mc.cores integer number of cores to use (default = 1)
+#' @param deadline boolean specifies if deadline initiation time used (default = FALSE)
+#' @author Zoran Gajic
+#' @export
+ssub_cmd = function(script.fn, queue, jname = NULL, jlabel = NULL, jgroup = NULL, mem=NULL, group = NULL, cwd = NULL, mc.cores = NULL, deadline = F, now = FALSE, time = "00")
+{
+        if (is.null(jname) & is.null(names(script.fn)))
+            jname = 'job'
+        
+        if (length(jname) != length(script.fn))
+            jname = rep(jname, length(script.fn))
+        
+        if (!is.null(jname))
+            names(script.fn) = dedup(jname)    
+        qjname = paste( "\"", names(script.fn), "\"", sep="" )
+        qjout = paste( "", names(script.fn), ".bsub.out", " " , sep="" )
+        qjerr = paste( "", names(script.fn), ".bsub.err", "", sep="" )
+        qjrout = paste( "", names(script.fn), ".R.out", "", sep="" )                    
+        out_cmd = paste("sbatch --export=ALL --output=", qjout, sep = '');
+        out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("--partition=", queue)))
+        out_cmd = paste(out_cmd, '--time=',time, ':00:00 ', sep = '') 
+        if (!is.null(mem)) out_cmd = paste(out_cmd, " --mem=", mem, "G", sep = "");
+        #if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
+        ## if (!is.null(cwd)) out_cmd = paste(out_cmd, " --workdir=", cwd , sep = '')
+        if (!is.null(cwd)) {
+            current_umask = Sys.umask(mode = NA)
+            out_cmd = paste0(out_cmd, " --chdir=", cwd)
+            Sys.umask(mode = "0002")
+            base::file.create(trimws(paste0(cwd, "/", qjout)))
+            Sys.umask(mode = current_umask)
+            ## cmds = sprintf("umask 002; touch %s", paste0(cwd, "/", qjout))
+            ## lapply(cmds, function(this_cmd) {system(this_cmd); return(NULL)})
+        }
+        if (!is.null(qjname)) out_cmd = paste(out_cmd, " --job-name=", jlabel, sep = '')
+        #out_cmd = paste(out_cmd, '-now', ifelse(now, 'y', 'n'))
+        if (!is.null(mc.cores)) out_cmd = paste(out_cmd, ifelse(!is.na(mc.cores), ifelse(mc.cores>1,  paste(" --cpus-per-task=",  mc.cores, sep = ""), ''), ''))
+        out_cmd = paste(out_cmd, script.fn)
+        names(out_cmd)= names(script.fn)
+        return(out_cmd)
+    }
+
+
+
 #' @name parse.info
 #' @title parse.info
 #' @description

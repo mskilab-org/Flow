@@ -2,7 +2,6 @@
 % Please edit documentation in R/Flow.R, R/utils.R
 \name{xml2task}
 \alias{xml2task}
-\alias{xml2task}
 \title{Makes a best attempt to convert a firehose xml task configuration into a Task object or .task file}
 \usage{
 xml2task(path, module = NULL, out.file = NULL)

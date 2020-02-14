@@ -27,6 +27,11 @@
 #' @importMethodsFrom data.table key
 #' @import stringr
 
+############################## setting skipNul to TRUE to avoid errors, overwriting the base R functionality for Flow
+readLines = function(con = stdin(), n = -1L , ok = TRUE, warn = TRUE, encoding = "unknown", skipNul = TRUE) {
+    base::readLines(con = con, n = n, ok = ok, warn = warn, encoding = encoding, skipNul = skipNul)
+}
+
 
 #' @name Module-class
 #' @title Module class
@@ -615,7 +620,8 @@ setMethod('initialize', 'Job', function(.Object,
                                         parse_recursive = FALSE,
                                         io_c = 2,
                                         io_n = 7,
-                                        qprior = 0) {
+                                        qprior = 0,
+                                        time = 24) {
     require(stringr)
     if (is.null(nice))
         nice = TRUE
@@ -851,6 +857,7 @@ setMethod('initialize', 'Job', function(.Object,
     .Object@runinfo[, io_c := io_c]
     .Object@runinfo[, io_n := io_n]
     .Object@runinfo[, qprior := qprior]
+    .Object@runinfo[, time := time]
 
     ## append time call and input / output redirects to local function calls
     .Object@runinfo[, stderr := paste(outdir, '/', task@name, '.', entities[[data.table::key(entities)]], '.bsub.err', sep = '')]
@@ -927,9 +934,10 @@ Job = function(
     mock = FALSE,
     update_cores = 1,
     parse_recursive = FALSE,
+    time = "24",
     ...) {
     new('Job', task = task, entities = entities, rootdir = rootdir,
-        queue = queue, nice = nice, mem = mem, cores = cores, mock = mock, update_cores = update_cores, parse_recursive = parse_recursive, ...)
+        queue = queue, nice = nice, mem = mem, cores = cores, mock = mock, update_cores = update_cores, parse_recursive = parse_recursive, time = time, ...)
 }
 
 
@@ -997,8 +1005,9 @@ setMethod('purge', 'Job', function(object, check.inputs = TRUE, mc.cores = 1)
         Sys.sleep(5)
         cat('OK here we go .. \n')
         ## mclapply(outdir(object), function(x) system(paste('rm -r', x)), mc.cores = mc.cores)
-        base::unlink(outdir(object), recursive = TRUE)
+        ## base::unlink(outdir(object), recursive = TRUE)
         ## mclapply(outdir(object), function(x) system(paste('rm -r', x)), mc.cores = mc.cores)
+        mclapply(outdir(object), function(x) system2("rm", args = c("-rf", x)), mc.cores = mc.cores)
         cat('Regenerating fresh output directories\n')
         withr::with_options(new = list(warn = 1), code = {
             mclapply(outdir(object), function(x) base::dir.create(x, mode = "0775"), mc.cores = mc.cores)
@@ -1061,9 +1070,11 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
             {
                 ## files = dir(new.object@runinfo[id, outdir], recursive = TRUE)
                 files = dir(new.object@runinfo[id, outdir], recursive = FALSE)
-                rec_files = dir(new.object@runinfo[id, outdir], recursive = TRUE)
                 names(files) = paste(new.object@runinfo[id, outdir], files, sep = '/')
-                names(rec_files) = paste(new.object@runinfo[id, outdir], rec_files, sep = '/')
+                if (parse_recursive) {
+                    rec_files = dir(new.object@runinfo[id, outdir], recursive = TRUE)
+                    names(rec_files) = paste(new.object@runinfo[id, outdir], rec_files, sep = '/')
+                }
                 is_dir = grepl("\\/", outre)
                 for (k in 1:length(outkeys)) {
                     if (parse_recursive & is.na(new.object@outputs[id, names(files)[grep(outre[k], files)][1]]) & is_dir[k]) {
@@ -1344,8 +1355,7 @@ setMethod('[', 'Job', function(x, i, id = FALSE)
 #' @exportMethod [<-
 #' @export
 #' @author Marcin Imielinski
-setMethod('[<-', 'Job', function(x, i, value, id = FALSE)
-    {
+setMethod('[<-', 'Job', function(x, i, value, id = FALSE) {
         if (!is(value, 'Job'))
             stop('Must replace with Job object')
 
@@ -1370,7 +1380,7 @@ setMethod('[<-', 'Job', function(x, i, value, id = FALSE)
         if (.hasSlot(x, 'entities') & .hasSlot(value, 'entities'))
             x@entities[i, ] = value@entities
         return(x)
-    })
+})
 
 
 
@@ -1752,15 +1762,32 @@ setMethod('run', 'Job', function(.Object, mc.cores = 1, all = FALSE, quiet = TRU
 
 
         cmds = cmd(.Object, quiet = quiet, all = all)
+        nm = names(cmds)
         if (length(cmds)==0)
             {
                 cat('No jobs to run\n')
                 return()
             }
-        if (is.null(names(cmds)))
+        if (is.null(names(cmds))) {
             names(cmds) = ids(.Object)
+            nm = names(cmds)
+        }
                                         #        mclapply(names(cmd(.Object, quiet = quiet)), function(x)
-        mclapply(names(cmds), function(x)
+        if (any(is.na(nm)) | any(is.na(cmds)) | any(!nzchar(cmds))) {
+            nnas = which(!is.na(nm))
+            cmds = cmds[nnas]
+            nas = which(is.na(cmds) | !nzchar(cmds))
+            if (length(nas) > 0) {
+                message("Warning: the following id's have NA or zero character cmd; removing from run queue")
+                lapply(nas, function(ix) {
+                    message(names(cmds[ix]))
+                })
+            }
+            cmds = na.omit(cmds)
+            cmds = cmds[nzchar(cmds)]
+            nm = names(cmds)
+        }
+        mclapply(nm, function(x)
             {
                 cat('Starting', task(.Object)@name, 'on entity',  x, '\n')
                                         #                system(cmd(.Object, quiet = quiet)[x])
@@ -1820,7 +1847,6 @@ setMethod('qcmd', 'Job', function(.Object, all = FALSE)
         warning('Job object corrupted: qcmd missing')
         .Object@runinfo = .update_cmd(.Object)
     }
-
         if (!all)
         {
             ix = runinfo(.Object)[, which(!(status %in% c('completed', 'not ready')))]
@@ -1828,7 +1854,18 @@ setMethod('qcmd', 'Job', function(.Object, all = FALSE)
         }
         else
             structure(.Object@runinfo[, qcmd], names = .Object@runinfo[[data.table::key(.Object@runinfo)]])
-    })
+})
+
+try2 = function(expr, ..., finally) {
+    tryCatch(expr,
+             error = function(e) {
+                 msg = structure(paste(conditionMessage(e), conditionCall(e), sep = "\n"), class = "err")
+                 cat("Error: ", msg, "\n\n")
+                 return(msg)
+             },
+             finally = finally,
+             ... = ...)
+}
 
 #' @export
 setGeneric('qrun', function(.Object, ...) {standardGeneric('qrun')})
@@ -1841,11 +1878,135 @@ setGeneric('qrun', function(.Object, ...) {standardGeneric('qrun')})
 setMethod('qrun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
     {
         qcmds = qcmd(.Object, all = all)
-        res = lapply(qcmds, function(x) {p = pipe(x); out = readLines(p); close(p); return(out)})
+        nm = names(qcmds)
+        if (any(is.na(nm)) | any(is.na(qcmds)) | any(!nzchar(qcmds))) {
+            nnas = which(!is.na(nm))
+            qcmds = qcmds[nnas]
+            nas = which(is.na(qcmds) | !nzchar(qcmds))
+            if (length(nas) > 0) {
+                message("Warning: the following id's have NA or zero character qcmd; removing from qsub")
+                lapply(nas, function(ix) {
+                    message(names(qcmds[ix]))
+                })
+            }
+            qcmds = na.omit(qcmds)
+            qcmds = qcmds[nzchar(qcmds)]
+        }
+        res = mclapply(mc.cores = mc.cores, qcmds, function(x) {
+            ## this.i = eval.parent(substitute(x)[[3]])
+            ## if (is.na(nm[this.i])) {
+            ##     NA
+            ## } else {
+                ## p = pipe(x); out = readLines(p); close(p); return(out)
+            ## })
+            p = pipe(x); out = readLines(p); close(p); return(out)
+        })
+        ## res = lapply(qcmds, function(x) {
+        ##     try2({
+        ##         p = pipe(qcmds[x]); out = readLines(p); close(p); return(out)})
+        ## })
         jobids = unlist(lapply(res, function(x) gsub('Your job (\\d+) .*', '\\1', x)))
-        mapply(function(d,j) writeLines(j, paste0(d,'/sge.jobid')), outdir(.Object)[names(qcmds)], jobids, SIMPLIFY = FALSE) ## save last jobids
-        writeLines(paste('Deploying', jobids, 'for entity', ids(.Object)))
+        mapply(function(d,j) try2({writeLines(j, paste0(d,'/sge.jobid'))}), outdir(.Object)[names(qcmds)], jobids, SIMPLIFY = FALSE) ## save last jobids
+        ## writeLines(paste('Deploying', jobids, 'for entity', ids(.Object)))
+        writeLines(paste('Deploying', jobids, 'for entity', names(jobids)))
     })
+
+#' @export
+setGeneric('scmd', function(.Object, ...) {standardGeneric('scmd')})
+
+#' @name scmd
+#' @title Returns vector of ssub (ie Slurm) commands associated with this Job object
+#' @exportMethod scmd
+#' @export
+#' @param all logical flag whether to run all jobs (including completed)
+#' @author Zoran Gajic
+setMethod('scmd', 'Job', function(.Object, all = FALSE)
+    {
+        if (!all)
+            {
+                ix = runinfo(.Object)[, which(!(status %in% c('completed', 'not ready')))]
+                structure(.Object@runinfo[, scmd[ix]], names = ids(.Object)[ix])
+            }
+        else
+            structure(.Object@runinfo[, scmd], names = .Object@runinfo[[data.table::key(.Object@runinfo)]])
+    })
+
+#' @export
+setGeneric('srun', function(.Object, ...) {standardGeneric('srun')})
+
+#' @name srun
+#' @title Runs jobs on Slurm
+#' @exportMethod srun
+#' @export
+#' @param mc.cores Number of parallel cores to run jobs with (=1)
+#' @author Marcin Imielinski, Zoran Gajic
+setMethod('srun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
+    {
+        Slurmize(.Object)
+        ####################
+        scmds = scmd(.Object, all = all)
+        nm = names(scmds)
+        if (any(is.na(nm)) | any(is.na(scmds)) | any(!nzchar(scmds))) {
+            nnas = which(!is.na(nm))
+            scmds = scmds[nnas]
+            nas = which(is.na(scmds) | !nzchar(scmds))
+            if (length(nas) > 0) {
+                message("Warning: the following id's have NA or zero character scmd; removing from qsub")
+                lapply(nas, function(ix) {
+                    message(names(scmds[ix]))
+                })
+            }
+            scmds = na.omit(scmds)
+            scmds = scmds[nzchar(scmds)]
+        }
+        res = mclapply(mc.cores = mc.cores, scmds, function(x) {
+            ## this.i = eval.parent(substitute(x)[[3]])
+            ## if (is.na(nm[this.i])) {
+            ##     NA
+            ## } else {
+                ## p = pipe(x); out = readLines(p); close(p); return(out)
+            ## })
+            p = pipe(x); out = readLines(p); close(p); return(out)
+        })
+        ## res = lapply(scmds, function(x) {
+        ##     try2({
+        ##         p = pipe(scmds[x]); out = readLines(p); close(p); return(out)})
+        ## })
+        jobids = unlist(lapply(res, function(x) gsub('Submitted batch job (\\d+).*', '\\1', x)))
+        mapply(function(d,j) try2({writeLines(j, paste0(d,'/slurm.jobid'))}), outdir(.Object)[names(scmds)], jobids, SIMPLIFY = FALSE) ## save last jobids
+        ## writeLines(paste('Deploying', jobids, 'for entity', ids(.Object)))
+        writeLines(paste('Deploying', jobids, 'for entity', names(jobids)))
+        ## ####################
+        ## scmds = scmd(.Object, all = all)
+        ## res = lapply(scmds, function(x) {p = pipe(x); out = readLines(p); close(p); return(out)})
+        ## jobids = sapply(res, function(x) gsub('Your job (\\d+) .*', '\\1', x))
+        ## mapply(function(d,j) writeLines(j, paste0(d,'/slurm.jobid')), outdir(.Object)[names(scmds)], jobids) ## save last jobids
+        ## writeLines(paste('Deploying', jobids, 'for entity', ids(.Object)))
+    })
+
+
+
+#' @export
+setGeneric('Slurmize', function(.Object, ...) {standardGeneric('Slurmize')})
+
+#' @name Slurmize
+#' @title updates cmd.sh to run on slurm
+#' @exportMethod Slurmize
+#' @export
+#' @param job, the job object to update
+#' @author Zoran Gajic
+setMethod("Slurmize", "Job", function(.Object)
+{
+    paths = runinfo(.Object)$cmd.path
+    sapply(c(1:length(paths)), function(x){
+        fConn <- file(paths[x], 'r+')
+        Lines <- readLines(fConn)
+        if(!("#!/bin/sh" %in% Lines)){
+            writeLines(paste("#!/bin/sh", Lines, sep = "\n"),con = fConn)
+        }
+        close(fConn)
+    })
+})
 
 
 
@@ -2039,37 +2200,117 @@ setGeneric('qjobs', function(.Object, ...) {standardGeneric('qjobs')})
 #' @export
 #' @author Marcin Imielinski
 setMethod('qjobs', 'Job', function(.Object)
+{
+    fn.jids = unlist(lapply(outdir(.Object), function(x) paste(x, 'sge.jobid', sep = '/')))
+    ix = file.exists(fn.jids)
+    out1 = out2 = NULL
+    nms = c('jobid','prior','ntckt','name','user','project','department','state','cpu','mem','io','tckts','ovrts','otckt','ftckt','stckt','share','queue','slots')
+                                        #        nms = c('jobid', 'prior', 'name', 'user', 'state', 'start.sumit.at', 'queue', 'slots', 'taskid')
+    out = runinfo(.Object)[, key(.Object), with = FALSE]
+    for (nm in nms)
+        out[[nm]] = as.character(NA)
+    if (any(ix))
     {
-        fn.jids = unlist(lapply(outdir(.Object), function(x) paste(x, 'sge.jobid', sep = '/')))
+        jids = rep(NA, length(.Object))
+        jids[ix] = unlist(lapply(fn.jids[ix], function(x) readLines(x)[1]))
+        p = pipe('qstat -ext -u \"*\"')
+        rdl = readLines(p)
+        rdl = grep("-{5,}", rdl, value = TRUE, invert = TRUE)
+        ## tab = strsplit(str_trim(readLines(p)), '\\s+')
+        tab = as.data.table(tstrsplit(str_trim(rdl), "\\s+"))
+        close(p)
+        ## iix = lengths(tab)<=length(nms) & lengths(tab)>14
+        ## if (length(tab)>0)
+        if (nrow(tab)>0)
+        {
+            setnames(tab, as.matrix(as.data.table(tab)[1,])[1,])
+            tab = tab[-1]
+            ## tab = lapply(tab, function(x) x[1:length(nms)])
+            tmp = copy(tab)
+            ## tmp = as.data.table(matrix(unlist(tab[iix]), ncol = length(nms), byrow = TRUE))
+            setnames(tmp, nms)
+            setkey(tmp, jobid)
+            out = cbind(runinfo(.Object)[, key(.Object), with = FALSE], tmp[jids, ])
+            out[is.na(state), jobid := NA_character_]
+            ## na = is.na(out$state)
+            ## if (any(na))
+            ##     out$jobid[na] = NA
+        }
+    }
+    return(out)
+})
+
+#' @export
+setGeneric('sjobs', function(.Object, ...) {standardGeneric('sjobs')})
+
+
+#' @name sjobs
+#' @title Tracks down any slurm jobs associated with this Job object using a bjobs query (warning can be slow)
+#' @exportMethod sjobs
+#' @export
+#' @author Marcin Imielinski / Kevin Hadi
+setMethod('sjobs', 'Job', function(.Object)
+    {
+        fn.jids = sapply(outdir(.Object), function(x) paste(x, 'slurm.jobid', sep = '/'))
         ix = file.exists(fn.jids)
         out1 = out2 = NULL
-        nms = c('jobid','prior','ntckt','name','user','project','department','state','cpu','mem','io','tckts','ovrts','otckt','ftckt','stckt','share','queue','slots')
+        nms = unlist(strsplit(c("username,groupname,state,name,jobid,associd", "timelimit,timeused,submittime,starttime,endtime,eligibletime,minmemory,numcpus,numnodes,priority,nice,reason,reboot"), split = ","))
+        ## nms = c('jobid','prior','ntckt','name','user','project','department','state','cpu','mem','io','tckts','ovrts','otckt','ftckt','stckt','share','queue','slots')
 #        nms = c('jobid', 'prior', 'name', 'user', 'state', 'start.sumit.at', 'queue', 'slots', 'taskid')
         out = runinfo(.Object)[, key(.Object), with = FALSE]
         for (nm in nms)
-            out[[nm]] = as.character(NA)
+            set(out, j = nm, value = NA_character_)
+            ## out[[nm]] = as.character(NA)
         if (any(ix))
             {
                 jids = rep(NA, length(.Object))
-                jids[ix] = unlist(lapply(fn.jids[ix], function(x) readLines(x)[1]))
-                p = pipe('qstat -ext -u \"*\"')
-                tab = strsplit(str_trim(readLines(p)), '\\s+')
-                close(p)
-                iix = unlist(lapply(tab, length))<=length(nms) & unlist(lapply(tab, length))>14
-                if (length(tab)>0)
+                jids[ix] = sapply(fn.jids[ix], function(x) readLines(x)[1])
+                jids = gsub('Submitted batch job (\\d+).*', '\\1', jids) ## if left over
+                tab = as.data.table(lapply(c(1:length(nms)), function(x) {
+                    p = pipe(paste("squeue -O", nms[x]))
+                    tmp = readLines(p)
+                    tmp = tail(tmp, -1)
+                    close(p)
+                    out = str_trim(gsub(" ", "", tmp))
+                }))
+                ## iix = lengths(tab)<=length(nms) & lengths(tab)>14 ? not sure what this is for
+                if (nrow(tab)>0)
                     {
-                        tab = lapply(tab, function(x) x[1:length(nms)])
-                        tmp = as.data.table(matrix(unlist(tab[iix]), ncol = length(nms), byrow = TRUE))
-                        setnames(tmp, nms)
-                        setkey(tmp, jobid)
-                        out = cbind(runinfo(.Object)[, key(.Object), with = FALSE], tmp[jids, ])
-                        na = is.na(out$state)
-                        if (any(na))
-                            out$jobid[na] = NA
+                        setnames(tab, nms)
+                        setkey(tab, jobid)
+                        out = cbind(runinfo(.Object)[, key(.Object), with = FALSE], tab[jids, ])
+                        ## na = is.na(out$state)
+                        out[is.na(state), jobid := NA_character_]
+                        ## if (any(na))
+                        ##     set(out, i = na, j = "jobid", value = NA_character_)
                     }
             }
-                return(out)
+                return(out)            
             })
+
+
+
+
+#' @export
+setGeneric('skill', function(.Object, ...) {standardGeneric('skill')})
+
+#' @name skill
+#' @title Kills any running Slurm jobs associated with this Job object
+#' @exportMethod skill
+#' @export
+#' @author Kevin Hadi
+setMethod('skill', 'Job', function(.Object, jid = NULL)
+    {
+        
+        sj = sjobs(.Object)
+        ix = !is.na(sj$jobid)
+        if (any(ix))
+            system2('scancel', paste(sj$jobid[ix], collapse = ","))
+        else
+            cat('No queued or running Slurm jobs to kill\n')
+    })
+
+
 
 
 #' @export
@@ -2259,6 +2500,13 @@ setMethod('show', 'Job', function(object)
 ##     }
 
 
+#' @author Kevin Hadi
+make_chunks = function(vec, max_per_chunk = 100) {
+    ind = parallel::splitIndices(length(vec), ceiling(length(vec) / max_per_chunk))
+    split(vec, rep(seq_along(ind), times = base::lengths(ind)))
+}
+
+
 .jname = function(outdir, name, ids) paste(outdir, '/', name, '.', ids, sep = '')
 
 .update_cmd = function(.Object, ...) {
@@ -2294,6 +2542,7 @@ setMethod('show', 'Job', function(object)
     ## utility func for instantiation of Job and modifying memory
     .cmd2bcmd = function(cmd, outdir, name, ids, queue, mem, cores) bsub_cmd(paste('touch ', outdir, '/started; ', cmd, ';', sep = ''), queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = .jname(outdir, name, ids), jlabel = .jname(outdir, name, ids))
     .cmd2qcmd = function(cmd, outdir, name, ids, queue, mem, cores, now, qprior) qsub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, touch_job_out = TRUE, qprior = qprior)
+    .cmd2scmd = function(cmd, outdir, name, ids, queue, mem, cores, now, time) ssub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, time = time)
 
     .Object@runinfo[, bcmd := '']
 
@@ -2313,6 +2562,7 @@ setMethod('show', 'Job', function(object)
 
     .Object@runinfo[, mapply(function(text, path) writeLines(text, path), cmd, cmd.path)] ## writes cmd to path
     .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, qprior = qprior_val)]
+    .Object@runinfo[ix, scmd := .cmd2scmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, time)]
 
     return(.Object@runinfo)
 }
@@ -2344,6 +2594,7 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
         setkeyv(out, key(.Object))
         return(out[1:nrow(out), ])
     })
+
 
 .parse.info = function(jname, detailed = F, force = FALSE, mc.cores = 1)
 {
@@ -2386,8 +2637,21 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
         ## or if (somehow) the err and out don't exist but the report does
         fn.rep.ex = mtime[ ,ifelse(!is.na(report), ifelse(!is.na(err) | is.na(out), pmin(report>err, report>out, na.rm = TRUE), FALSE), FALSE)] & !force
 
-        if (any(fn.rep.ex))
+        if (any(fn.rep.ex)) {
+            make_chunks = function(vec, max_per_chunk = 100) {
+                ind = parallel::splitIndices(length(vec), ceiling(length(vec) / max_per_chunk))
+                split(vec, rep(seq_along(ind), times = base::lengths(ind)))
+            }
+            iter.fun = function(vec) {
+                out = trimws(system2("wc", c(vec, "-l"), stdout = TRUE))
+                if (length(grep("total", tail(out, 1))))
+                    out = head(out, -1)
+            }
+            replines = trimws(sapply(make_chunks(fn.report[fn.rep.ex], 500), iter.fun)) ## breaks if you do >500 at a time
+            ## replines = trimws(system2("wc", c(fn.report[fn.rep.ex], "-l"), stdout = TRUE)) ## report can be empty, testing for this
+            fn.rep.ex[fn.rep.ex] = fn.rep.ex[fn.rep.ex] & (tstrsplit(replines, "\\s+")[[1]] > 1)
             outs[fn.rep.ex, ] = do.call(rbind, lapply(fn.report[fn.rep.ex], read.delim, strings = FALSE))[, names(outs)]
+        }
 
         ## fn.ex these are the ones we need to parse again
         fn.ex = (file.exists(fn) | file.exists(fn.err)) & !fn.rep.ex;
@@ -2457,9 +2721,14 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
                         }
                     else ## interpret job as locally run with a /usr/bin/time -v output
                     {
-                            y = tryCatch(readLines(fn.err[i]), error = function(e) NULL)
-                            if (is.null(y))
-                                y = readLines(fn[i])
+                            p = pipe(paste('tail -n 100', fn.err[i]))
+                            y = tryCatch(readLines(p), error = function(e) NULL); close(p)
+                            ## y = tryCatch(readLines(fn.err[i]), error = function(e) NULL)
+                            if (is.null(y) | length(y) == 0) {
+                                ## y = readLines(fn[i])
+                                p = pipe(paste('tail -n 100', fn[i]))
+                                y = tryCatch(readLines(p), error = function(e) NULL); close(p)
+                            }
                             ix = grep('Command being timed', y)
                             if (length(ix)==0) ## fail
                                 return(rep(as.character(NA), 10))

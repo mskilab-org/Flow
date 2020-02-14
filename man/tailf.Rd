@@ -2,7 +2,6 @@
 % Please edit documentation in R/Flow.R, R/utils.R
 \name{tailf}
 \alias{tailf}
-\alias{tailf}
 \title{tailf}
 \usage{
 tailf(x, n = NULL, grep = NULL)
@@ -10,13 +9,9 @@ tailf(x, n = NULL, grep = NULL)
 tailf(x, n = NULL, grep = NULL)
 }
 \arguments{
-\item{x}{vector of iles}
+\item{x}{vector of files}
 
 \item{n}{integer specific number of lines in file (default = NULL)}
-
-\item{grep}{string to grep in files (=NULL)}
-
-\item{x}{vector of files}
 
 \item{grep}{string to grep in files (default = NULL)}
 }
