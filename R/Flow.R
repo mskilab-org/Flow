@@ -1461,6 +1461,35 @@ setGeneric('mem<-', function(.Object, value) {standardGeneric('mem<-')})
 
 
 
+#' @name Job-class
+#' @rdname Job-class
+#' @exportMethod time
+#' @export
+setGeneric('time', function(.Object) {standardGeneric('time')})
+
+#' @name time
+#' @title Gets max time limit associated with job object
+#' @description
+#'
+#' max time limit (in hours or days) the job is allowed to run for
+#' i.e. "days-hours" or "hours" format
+#' "3-00" or "72" specifies 3 days/72 hours
+#'
+#' @exportMethod time
+#' @export
+#' @author Kevin Hadi
+setMethod('time', 'Job', function(.Object)
+{
+  structure(.Object@runinfo[, time], names = .Object@runinfo[[key(.Object@runinfo)]])
+})
+
+
+
+#' @export
+setGeneric('time<-', function(.Object, value) {standardGeneric('time<-')})
+
+
+
 #' @name mem<-
 #' @title Sets max memory associated with the jobs in the Job object
 #' @description

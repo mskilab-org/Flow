@@ -20,6 +20,8 @@ task(.Object)
 
 mem(.Object)
 
+time(.Object)
+
 io_c(.Object)
 
 io_n(.Object)
