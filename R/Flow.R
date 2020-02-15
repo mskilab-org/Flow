@@ -1484,7 +1484,6 @@ setMethod('time', 'Job', function(.Object)
 })
 
 
-
 #' @export
 setGeneric('time<-', function(.Object, value) {standardGeneric('time<-')})
 
@@ -2199,7 +2198,7 @@ setGeneric('bjobs', function(.Object, ...) {standardGeneric('bjobs')})
 
 #' @name bjobs
 #' @title Tracks down any LSF jobs associated with this Job object using a bjobs query (warning can be slow)
-#' @exportMethod jname
+#' @exportMethod bjobs
 #' @export
 #' @author Marcin Imielinski
 setMethod('bjobs', 'Job', function(.Object, mc.cores = 1)
@@ -2225,7 +2224,7 @@ setGeneric('qjobs', function(.Object, ...) {standardGeneric('qjobs')})
 
 #' @name qjobs
 #' @title Tracks down any sGE jobs associated with this Job object using a bjobs query (warning can be slow)
-#' @exportMethod jname
+#' @exportMethod qjobs
 #' @export
 #' @author Marcin Imielinski
 setMethod('qjobs', 'Job', function(.Object)
@@ -2255,7 +2254,7 @@ setMethod('qjobs', 'Job', function(.Object)
             setnames(tab, as.matrix(as.data.table(tab)[1,])[1,])
             tab = tab[-1]
             ## tab = lapply(tab, function(x) x[1:length(nms)])
-            tmp = copy(tab)
+            tmp = copy(tab)[, seq_along(nms), with = FALSE]
             ## tmp = as.data.table(matrix(unlist(tab[iix]), ncol = length(nms), byrow = TRUE))
             setnames(tmp, nms)
             setkey(tmp, jobid)
@@ -2676,7 +2675,7 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
                 if (length(grep("total", tail(out, 1))))
                     out = head(out, -1)
             }
-            replines = trimws(sapply(make_chunks(fn.report[fn.rep.ex], 500), iter.fun)) ## breaks if you do >500 at a time
+            replines = trimws(unlist(lapply(make_chunks(fn.report[fn.rep.ex], 500), iter.fun))) ## breaks if you do >500 at a time
             ## replines = trimws(system2("wc", c(fn.report[fn.rep.ex], "-l"), stdout = TRUE)) ## report can be empty, testing for this
             fn.rep.ex[fn.rep.ex] = fn.rep.ex[fn.rep.ex] & (tstrsplit(replines, "\\s+")[[1]] > 1)
             outs[fn.rep.ex, ] = do.call(rbind, lapply(fn.report[fn.rep.ex], read.delim, strings = FALSE))[, names(outs)]
