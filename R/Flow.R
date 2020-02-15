@@ -1455,9 +1455,25 @@ setMethod('mem', 'Job', function(.Object)
 })
 
 
-
 #' @export
 setGeneric('mem<-', function(.Object, value) {standardGeneric('mem<-')})
+
+#' @name mem<-
+#' @title Sets max memory associated with the jobs in the Job object
+#' @description
+#' Setting max mem (in GB) associated with Job object
+#'
+#' @exportMethod mem<-
+#' @export
+#' @author Marcin Imielinski
+setReplaceMethod('mem', 'Job', function(.Object, value)
+{
+                     .Object@runinfo[, mem := value]
+                     .Object@runinfo = .update_cmd(.Object)
+                     return(.Object)
+})
+
+
 
 
 
@@ -1488,21 +1504,25 @@ setMethod('time', 'Job', function(.Object)
 setGeneric('time<-', function(.Object, value) {standardGeneric('time<-')})
 
 
-
-#' @name mem<-
-#' @title Sets max memory associated with the jobs in the Job object
+#' @name time<-
+#' @title Sets max time limit associated with the jobs in the Job object
 #' @description
-#' Setting max mem (in GB) associated with Job object
+#' Setting time limit ("days-hours" or "hours") associated with Job object
+#' e.g. ("3-00" or "72" for 3 days / 72 hours)
 #'
-#' @exportMethod mem<-
+#' @exportMethod time<-
 #' @export
-#' @author Marcin Imielinski
-setReplaceMethod('mem', 'Job', function(.Object, value)
+#' @author Kevin Hadi
+setReplaceMethod('time', 'Job', function(.Object, value)
 {
-                     .Object@runinfo[, mem := value]
+                     .Object@runinfo[, time := value]
                      .Object@runinfo = .update_cmd(.Object)
                      return(.Object)
 })
+
+
+
+
 
 #########
 

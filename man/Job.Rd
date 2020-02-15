@@ -18,20 +18,9 @@ If any of these columns don't exist then the Job object will fail to be instanti
 All outputs for jobs will be written to directories that are named by the task name / row key.   These directories are created
 at time of object instantiation.  An .rds of the job object is stored in a standard location in the rootdir (with name TASKNAME.rds)}
 \usage{
-Job(
-  task,
-  entities,
-  rootdir = "./Flow/",
-  queue = as.character(NA),
-  mem = NULL,
-  nice = NULL,
-  cores = 1,
-  mock = FALSE,
-  update_cores = 1,
-  parse_recursive = FALSE,
-  time = "24",
-  ...
-)
+Job(task, entities, rootdir = "./Flow/", queue = as.character(NA),
+  mem = NULL, nice = NULL, cores = 1, mock = FALSE,
+  update_cores = 1, parse_recursive = FALSE, time = "24", ...)
 }
 \arguments{
 \item{task}{task config (.task file) or Task object}

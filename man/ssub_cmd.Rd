@@ -4,20 +4,9 @@
 \alias{ssub_cmd}
 \title{ssub_cmd}
 \usage{
-ssub_cmd(
-  script.fn,
-  queue,
-  jname = NULL,
-  jlabel = NULL,
-  jgroup = NULL,
-  mem = NULL,
-  group = NULL,
-  cwd = NULL,
-  mc.cores = NULL,
-  deadline = F,
-  now = FALSE,
-  time = "00"
-)
+ssub_cmd(script.fn, queue, jname = NULL, jlabel = NULL,
+  jgroup = NULL, mem = NULL, group = NULL, cwd = NULL,
+  mc.cores = NULL, deadline = F, now = FALSE, time = "00")
 }
 \arguments{
 \item{script.fn}{string shell command to be submitted via bsub}

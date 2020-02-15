@@ -9,11 +9,15 @@ more(x, grep = NULL, pipe = FALSE)
 more(x, grep = NULL, pipe = FALSE)
 }
 \arguments{
+\item{x}{vector of iles}
+
+\item{grep}{string to grep in files (=NULL)}
+
+\item{pipe}{boolean grep piped input 'x' (default = NULL)}
+
 \item{x}{vector of files}
 
 \item{grep}{string to grep in files (default = NULL)}
-
-\item{pipe}{boolean grep piped input 'x' (default = NULL)}
 }
 \description{
 "more" +/- grep vector of files
