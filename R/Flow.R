@@ -213,7 +213,7 @@ setMethod('initialize', 'Task', function(.Object,
                 if (length(lens)>1)
                     if (!all(lens[-1]>=3))
                         stop(paste('Error reading module file:\n', errstr))
-                
+
                 modfn = str_trim(lines[[1]])
                 lines = lines[-1]
 
@@ -240,7 +240,7 @@ setMethod('initialize', 'Task', function(.Object,
                 output = NULL
                 
                 if (length(lines)>0)
-                    {
+                {
                         lqre = '^\\s*[\\"\\\']'
                         rqre = '[\\"\\\']\\s*$'
                         .gsub = function(x) gsub(rqre, '', gsub(lqre, '', x))
@@ -644,7 +644,10 @@ setMethod('initialize', 'Job', function(.Object,
 
         if (any(duplicated(entities[[data.table::key(entities)]])))
             stop(sprintf('Input entities table has duplicated keys! Check column "%s" of entities table or use a different column as a key', data.table::key(entities)))
-        
+
+        if (!is.character(entities[[data.table::key(entities)]]))
+          stop(sprintf('Keys to entity table must be a character. Your current key "%s" is of type "%s". Please convert this key to character or choose another key. Sorry!!!', data.table::key(entities), class(entities[[data.table::key(entities)]])))
+
         .Object@entities = copy(entities)
 
         tabstring = function(tab, sep = ', ')
@@ -802,11 +805,11 @@ setMethod('initialize', 'Job', function(.Object,
             }
 
         if (!mock)
-            {
-                cat('making output directories under', paste(.Object@rootdir, gsub('\\/', '.', task@name), sep = '/'), '\n')
-                sapply(paste('mkdir -pv', .Object@runinfo$outdir), system)
-#                system(paste('mkdir -p', paste(.Object@runinfo$outdir, collapse = ' ')))
-            }
+        {
+          cat('making output directories under', paste(.Object@rootdir, gsub('\\/', '.', task@name), sep = '/'), '\n')
+          sapply(paste('mkdir -pv', .Object@runinfo$outdir), system)
+                                        #                system(paste('mkdir -p', paste(.Object@runinfo$outdir, collapse = ' ')))
+        }
         
         ## instantiate commands for each row in entities table         
         .Object@runinfo[, cmd.og := sapply(1:nrow(entities), function(this.entity)
@@ -1015,10 +1018,12 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
         new.object = object
         ids = new.object@outputs[[key(new.object@outputs)]]
         
-        st = file.info(paste(outdir(new.object), 'started', sep = '/'))
+      st = file.info(paste(outdir(new.object), 'started', sep = '/'))
         en = file.info(paste(outdir(new.object), 'failed', sep = '/'))
+
         rep = report(new.object, mc.cores = mc.cores)
-        status = ifelse(!is.na(st$mtime),
+        
+      status = ifelse(!is.na(st$mtime),
             ifelse(!is.na(rep$success),
                    ifelse(rep$success, 'completed', 'failed'),
                    ifelse(!is.na(st$mtime), 'running', 'ready')), 'ready')
@@ -1031,10 +1036,10 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
                     outre = sapply(new.object@task@outputs, function(x) x@pattern)
                     for (id in ids)
                         {
-                            files = dir(new.object@runinfo[id, outdir])
-                            names(files) = paste(new.object@runinfo[id, outdir], files, sep = '/')                           
+                            files = dir(new.object@runinfo[.(id), outdir])
+                            names(files) = paste(new.object@runinfo[.(id), outdir], files, sep = '/')                           
                             for (k in 1:length(outkeys))
-                                new.object@outputs[id, eval(outkeys[k]) := names(files)[grep(outre[k], files)][1]]
+                                new.object@outputs[.(id), eval(outkeys[k]) := names(files)[grep(outre[k], files)][1]]
                         }
 
                     out.status = !is.na(new.object@outputs[, outkeys, with = FALSE])
@@ -1596,19 +1601,51 @@ setGeneric('run', function(.Object, ...) {standardGeneric('run')})
 #' @author Marcin Imielinski
 setMethod('run', 'Job', function(.Object, mc.cores = 1, all = FALSE, quiet = TRUE)
     {
-        require(parallel)
+        ## require(parallel)
 
 
+        ## cmds = cmd(.Object, quiet = quiet, all = all)
+        ## if (length(cmds)==0)
+        ##     {
+        ##         cat('No jobs to run\n')
+        ##         return()                
+        ##     }
+        ## if (is.null(names(cmds)))
+        ##     names(cmds) = ids(.Object)        
+        ##                                 #        mclapply(names(cmd(.Object, quiet = quiet)), function(x)
+        ## mclapply(names(cmds), function(x)
+        ##     {
+        ##         cat('Starting', task(.Object)@name, 'on entity',  x, '\n')
+        ##                                 #                system(cmd(.Object, quiet = quiet)[x])
+        ##         system(cmds[x])
+        ##     }, mc.cores = mc.cores)
         cmds = cmd(.Object, quiet = quiet, all = all)
+        nm = names(cmds)
         if (length(cmds)==0)
             {
                 cat('No jobs to run\n')
-                return()                
+                return()
             }
-        if (is.null(names(cmds)))
-            names(cmds) = ids(.Object)        
+        if (is.null(names(cmds))) {
+            names(cmds) = ids(.Object)
+            nm = names(cmds)
+        }
                                         #        mclapply(names(cmd(.Object, quiet = quiet)), function(x)
-        mclapply(names(cmds), function(x)
+        if (any(is.na(nm)) | any(is.na(cmds)) | any(!nzchar(cmds))) {
+            nnas = which(!is.na(nm))
+            cmds = cmds[nnas]
+            nas = which(is.na(cmds) | !nzchar(cmds))
+            if (length(nas) > 0) {
+                message("Warning: the following id's have NA or zero character cmd; removing from run queue")
+                lapply(nas, function(ix) {
+                    message(names(cmds[ix]))
+                })
+            }
+            cmds = na.omit(cmds)
+            cmds = cmds[nzchar(cmds)]
+            nm = names(cmds)
+        }
+        mclapply(nm, function(x)
             {
                 cat('Starting', task(.Object)@name, 'on entity',  x, '\n')
                                         #                system(cmd(.Object, quiet = quiet)[x])
@@ -1676,7 +1713,19 @@ setMethod('qcmd', 'Job', function(.Object, all = FALSE)
         }
         else
             structure(.Object@runinfo[, qcmd], names = .Object@runinfo[[data.table::key(.Object@runinfo)]])
-    })
+})
+
+try2 = function(expr, ..., finally) {
+    tryCatch(expr,
+             error = function(e) {
+                 msg = structure(paste(conditionMessage(e), conditionCall(e), sep = "\n"), class = "err")
+                 cat("Error: ", msg, "\n\n")
+                 return(msg)
+             },
+             finally = finally,
+             ... = ...)
+}
+
 
 #' @export
 setGeneric('qrun', function(.Object, ...) {standardGeneric('qrun')})
@@ -1688,10 +1737,31 @@ setGeneric('qrun', function(.Object, ...) {standardGeneric('qrun')})
 #' @author Marcin Imielinski
 setMethod('qrun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
     {
+        ## qcmds = qcmd(.Object, all = all)
+        ## res = lapply(qcmds, function(x) {p = pipe(x); out = readLines(p); close(p); return(out)})
+        ## jobids = sapply(res, function(x) gsub('Your job (\\d+) .*', '\\1', x))
+        ## mapply(function(d,j) writeLines(j, paste0(d,'/sge.jobid')), outdir(.Object)[names(qcmds)], jobids) ## save last jobids
+        ## writeLines(paste('Deploying', jobids, 'for entity', ids(.Object)))
         qcmds = qcmd(.Object, all = all)
-        res = lapply(qcmds, function(x) {p = pipe(x); out = readLines(p); close(p); return(out)})
-        jobids = sapply(res, function(x) gsub('Your job (\\d+) .*', '\\1', x))
-        mapply(function(d,j) writeLines(j, paste0(d,'/sge.jobid')), outdir(.Object)[names(qcmds)], jobids) ## save last jobids
+        nm = names(qcmds)
+        if (any(is.na(nm)) | any(is.na(qcmds)) | any(!nzchar(qcmds))) {
+            nnas = which(!is.na(nm))
+            qcmds = qcmds[nnas]
+            nas = which(is.na(qcmds) | !nzchar(qcmds))
+            if (length(nas) > 0) {
+                message("Warning: the following id's have NA or zero character qcmd; removing from qsub")
+                lapply(nas, function(ix) {
+                    message(names(qcmds[ix]))
+                })
+            }
+            qcmds = na.omit(qcmds)
+            qcmds = qcmds[nzchar(qcmds)]
+        }
+        res = mclapply(mc.cores = mc.cores, qcmds, function(x) {
+            p = pipe(x); out = readLines(p); close(p); return(out)
+        })
+        jobids = unlist(lapply(res, function(x) gsub('Your job (\\d+) .*', '\\1', x)))
+        mapply(function(d,j) try2({writeLines(j, paste0(d,'/sge.jobid'))}), outdir(.Object)[names(qcmds)], jobids, SIMPLIFY = FALSE) ## save last jobids
         writeLines(paste('Deploying', jobids, 'for entity', ids(.Object)))
     })
 
@@ -1739,6 +1809,14 @@ setMethod('err', 'Job', function(.Object)
         structure(.Object@runinfo[, stderr], names = .Object@runinfo[[data.table::key(.Object@runinfo)]])
     })
 
+#' @name setwd
+#' @title changes directory to the directory of the job
+#' @export
+#' @author Marcin Imielinski
+"setwd.Job" = function(jb)
+{
+  setwd(outdir(jb))
+}
 
 #' @export
 setGeneric('out', function(.Object) {standardGeneric('out')})
@@ -2027,7 +2105,7 @@ setMethod('show', 'Job', function(object)
             estring = ids(object)
         else
             estring = paste0(substr(paste(ids(object), collapse = ', '), 1, 20), '...')
-        
+
         cat(sprintf('Job on %s entities (%s) with rootdir %s from task %s using module %s version %s\nJob status: %s\n', length(object), estring, object@rootdir, object@task@name, object@task@module@name, object@task@module@stamp, .tabstring(table(status(object)))))
     })
 
@@ -2216,7 +2294,7 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
         
         tmp = matrix(unlist(mclapply(which(fn.ex),
             function(i)
-                {
+            {
                     p = pipe(paste('tail -n 100', fn[i]))
                     y = readLines(p);
                     close(p)
@@ -2289,14 +2367,12 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
                                 names = sapply(tmp, function(x) if (length(x)>1) x[[2]] else NA))
                             etime = file.info(fn.err[i])$mtime
                             stime = etime - as.numeric(keyval['User time (seconds)'])
-                            exit.status = ifelse(keyval['Exit status']==0, 'Successfully completed.', keyval['Exit status'])
+                            exit.status = ifelse(keyval['Exit status']==0, 'Successfully completed.', keyval['Exit status'])                            
                             return(c('local', exit.status, NA, as.character(stime), as.character(etime),
                                      keyval['User time (seconds)'], keyval['Maximum resident set size (kbytes)'], NA,
                                      as.numeric(gsub('\\%', '', keyval['Percent of CPU this job got']))/100, NA))
                         }
                 }, mc.cores = mc.cores)), ncol = 10, byrow = T)
-
-
         
         colnames(tmp) = c('job.type', 'exit.flag', 'term.flag', 'started', 'reported', 'cpu.time', 'max.memory', 'max.swap', 'max.cpu', 'max.thr')
         
@@ -2592,8 +2668,8 @@ setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix =
                         ix <- ifelse(is.na(ix), FALSE, ix)
                         if (any(ix))
                             {
-                                old.mtime = file.info(old[[this.ov]][ix])$mtime
-                                new.mtime = file.info(new[[this.ov]][ix])$mtime
+                                old.mtime = file.info(as.character(old[[this.ov]][ix]))$mtime
+                                new.mtime = file.info(as.character(new[[this.ov]][ix]))$mtime
                                 ix2 <- ifelse(is.na(old.mtime>new.mtime), FALSE, old.mtime>new.mtime)
                                 if (!force & any(ix2))
                                 {
