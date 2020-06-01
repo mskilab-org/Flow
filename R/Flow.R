@@ -3345,7 +3345,7 @@ setMethod('initialize', 'Flow', function(.Object,
     if (is.null(entities))
     {
        if (verbose)
-         message('Generating master entities table from Job objects, may provide externally if this takes a while')
+         message('Generating master entities table from Job objects, may provide externally to expedite')
        
        keys = sapply(jl, key)
       ukey = unique(keys)
