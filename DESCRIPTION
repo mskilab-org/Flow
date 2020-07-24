@@ -25,6 +25,7 @@ Description: Flow is an R package that enables local configuration and execution
 Depends:
     R (>= 3.1.0),
     data.table,
+    igraph,
     stringr,
     parallel
 Imports:
@@ -34,4 +35,4 @@ Suggests:
     testthat
 License: GPL v3.0
 LazyData: true
-RoxygenNote: 7.0.2
+RoxygenNote: 7.1.0

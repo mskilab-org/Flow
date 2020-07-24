@@ -158,7 +158,8 @@ setMethod('as.character', 'Module', function(x, ...)
         tmp.cmd = paste(str_sub(x@cmd, 1, pmin(nchar(x@cmd), NCHAR)), ifelse(nchar(x@cmd) > NCHAR, '...', ''), sep = '')
 #        cat(sprintf('module %s, with command:  %s\nand args:\n%s\n', x@name, tmp.cmd, paste(x@args, collapse = '\n')))
         out = sprintf('#Module %s ("%s")', x@name, tmp.cmd)
-        out = c(out, x@sourcedir, paste('input', x@args, '<INPUT_BINDING>', '<(path)|(value)>', sep = '\t'))
+                                        #      out = c(out, x@sourcedir, paste('input', x@args, '<INPUT_BINDING>', '<(path)|(value)>', sep = '\t'))
+        out = c(out, x@sourcedir, paste('input', x@args, x@args, '<(path)|(value)>', sep = '\t'))
         out = c(out, paste('output\t<OUTPUT_ANNOTATION>\t<OUTPUT_REGEXP>'))
         return(out)
     })
@@ -186,7 +187,7 @@ setMethod('as.character', 'Module', function(x, ...)
 #' @rdname Task-class
 #' @exportClass Task
 #' @export
-setClass('Task', representation(name = 'character', module = 'Module', mem = 'numeric', libdir = 'character', args = 'list', stamp = "character", outputs = "list"))
+setClass('Task', representation(name = 'character', path = 'character', module = 'Module', mem = 'numeric', libdir = 'character', args = 'list', stamp = "character", outputs = "list"))
 
 
 #' @export
@@ -235,6 +236,7 @@ setMethod('initialize', 'Task', function(.Object,
                     stop(paste('Module path', modfn,  'pointed to by this task config file does not exist.  Check the path and read format spec belwow:\n', errstr))
 
                 .Object@module  = Module(modfn)
+                .Object@path = module
                 .Object@libdir  = .Object@module@sourcedir
                 .Object@mem  = as.numeric(mem)
 
@@ -410,7 +412,10 @@ setMethod('as.character', 'Task', function(x, ...)
     {
         NCHAR = 100
         tmp.cmd = paste(str_sub(x@module@cmd, 1, pmin(nchar(x@module@cmd), NCHAR)), ifelse(nchar(x@module@cmd) > NCHAR, '...', ''), sep = '')
-        out = sprintf('#Module %s [Task: %s ] ("%s")', x@module@name, x@name, tmp.cmd)
+        path = '???'
+        if (.hasSlot(x, 'path'))
+          path = x@path
+        out = sprintf('#Module %s [Task: %s path: %s] ("%s")', x@module@name, x@name, path, tmp.cmd)
         if (length(x@args)>0)
             out = c(out, x@module@sourcedir,
                 paste('input\t',
@@ -421,14 +426,15 @@ setMethod('as.character', 'Task', function(x, ...)
                       '\t',
                       ifelse(unlist(lapply(x@args, function(x) x@path)), 'path', 'value'),
                       '\t',
-                      ifelse(unlist(lapply(unlist(lapply(x@args, default)), is.null)), '', unlist(lapply(x@args, default))),
+                      sapply(x@args, function(x) c(default(x), '')[1]),
                       sep = ''))
 
-        if (length(x@outputs)>0)
+        outs = x@outputs[sapply(x@outputs, class) == 'FlowOutput']
+        if (length(outs)>0)
             out = c(out,
                 paste('output\t',
-                      unlist(lapply(x@outputs, function(x) x@name)), '\t',
-                      unlist(lapply(x@outputs, function(x) x@pattern))))
+                      unlist(lapply(outs, function(x) x@name)), '\t',
+                      unlist(lapply(outs, function(x) x@pattern))))
 
         return(out)
     })
@@ -684,7 +690,9 @@ setMethod('initialize', 'Job', function(.Object,
     if (!mock)
     {
         ## system(paste('mkdir -p', rootdir))
-        base::dir.create(rootdir, recursive = TRUE, mode = "0775")
+        suppressWarnings({
+            base::dir.create(rootdir, recursive = TRUE, mode = "0775")
+        })
         rootdir = normalizePath(rootdir)
     }
     .Object@rootdir = rootdir
@@ -745,6 +753,8 @@ setMethod('initialize', 'Job', function(.Object,
                 cmd = paste(this.arg, ':= normalizePath(', this.arg, ')')
 
                 .Object@inputs[!is.na(.Object@stamps[[this.arg]]), eval(parse(text = cmd))]
+
+
 
                 if (!is.null(default(ann.args[[this.arg]])))
                     if (any(fenix <- !file.exists(ifelse(is.na(.Object@inputs[[this.arg]]), '', entities[[this.ann]]))))
@@ -815,7 +825,7 @@ setMethod('initialize', 'Job', function(.Object,
         cat('making output directories under', paste(.Object@rootdir, gsub('\\/', '.', task@name), sep = '/'), '\n')
         ## lapply(paste('mkdir -pv', .Object@runinfo$outdir), system)
         lapply(.Object@runinfo$outdir, function(this_path) {
-            withr::with_options(new = list(warn = 1), code = {
+            suppressWarnings({
                 lg = base::dir.create(this_path, recursive = TRUE, mode = "0775")
             })
             if (lg) {
@@ -1007,16 +1017,17 @@ setMethod('purge', 'Job', function(object, check.inputs = TRUE, mc.cores = 1)
         ## mclapply(outdir(object), function(x) system(paste('rm -r', x)), mc.cores = mc.cores)
         ## base::unlink(outdir(object), recursive = TRUE)
         ## mclapply(outdir(object), function(x) system(paste('rm -r', x)), mc.cores = mc.cores)
-        mclapply(outdir(object), function(x) system2("rm", args = c("-rf", x)), mc.cores = mc.cores)
+        mclapply(outdir(object), function(x) system2("rm", args = c("-rf", grep('cmd\\.sh$', dir(x, full.names = T), value = T, invert = T))), mc.cores = mc.cores)
         cat('Regenerating fresh output directories\n')
-        withr::with_options(new = list(warn = 1), code = {
-            mclapply(outdir(object), function(x) base::dir.create(x, mode = "0775"), mc.cores = mc.cores)
-        })
+        ## withr::with_options(new = list(warn = 1), code = {
+        ##     mclapply(outdir(object), function(x) base::dir.create(x, mode = "0775"), mc.cores = mc.cores)
+        ## })
+        suppressWarnings(mclapply(outdir(object), function(x) base::dir.create(x, mode = "0775"), mc.cores = mc.cores))
         ## mclapply(outdir(object), function(x) system(paste('mkdir -p', x)), mc.cores = mc.cores)
         current_umask = Sys.umask(mode = NA)
+        on.exit(Sys.umask(mode = current_umask))
         Sys.umask(mode = "0002")
         mclapply(1:length(object), function(x) saveRDS(object[x], paste(outdir(object)[x], 'Job.rds', sep = '/')), mc.cores = mc.cores)
-        Sys.umask(mode = current_umask)
         cat('Done\n')
     })
 
@@ -1065,28 +1076,34 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
             ## outkeys = sapply(new.object@task@outputs, function(x) x@name)
             outkeys = unlist(lapply(new.object@task@outputs, function(x) x@name))
             ## outre = sapply(new.object@task@outputs, function(x) x@pattern)
-            outre = unlist(lapply(new.object@task@outputs, function(x) x@pattern))
-            for (id in ids)
+          outre = unlist(lapply(new.object@task@outputs, function(x) x@pattern))
+          outre.dn = dirname(outre)
+          outre.fn = basename(outre)
+          outre.dn[outre.dn == '.'] = ''
+          for (id in ids)
+          {
+            this.dir = gsub('\\/$', '', gsub('\\\\', '', paste(new.object@runinfo[id, outdir], outre.dn, sep = '/')))
+            files = dir(this.dir, recursive = FALSE, full = TRUE)
+            if (length(files))
             {
-                ## files = dir(new.object@runinfo[id, outdir], recursive = TRUE)
-                files = dir(new.object@runinfo[id, outdir], recursive = FALSE)
-                names(files) = paste(new.object@runinfo[id, outdir], files, sep = '/')
-                if (parse_recursive) {
-                    rec_files = dir(new.object@runinfo[id, outdir], recursive = TRUE)
-                    names(rec_files) = paste(new.object@runinfo[id, outdir], rec_files, sep = '/')
-                }
-                is_dir = grepl("\\/", outre)
+              files = structure(basename(files), names = files)
+              if (parse_recursive) {
+                rec_files = dir(this.dir, recursive = TRUE, full = TRUE)
+                rec_files = structure(basename(rec_files), names = rec_files)
+              }
+              is_dir = grepl("\\/", outre.fn)
                 for (k in 1:length(outkeys)) {
-                    if (parse_recursive & is.na(new.object@outputs[id, names(files)[grep(outre[k], files)][1]]) & is_dir[k]) {
-                        new.object@outputs[id, eval(outkeys[k]) := names(rec_files)[grep(outre[k], rec_files)][1]]
-                    } else {
-                        new.object@outputs[id, eval(outkeys[k]) := names(files)[grep(outre[k], files)][1]]
-                    }
+                  if (parse_recursive & is.na(new.object@outputs[id, names(files)[grep(outre.fn[k], files)][1]]) & is_dir[k]) {
+                    new.object@outputs[id, eval(outkeys[k]) := names(rec_files)[grep(outre.fn[k], rec_files)][1]]
+                  } else {
+                    new.object@outputs[id, eval(outkeys[k]) := names(files)[grep(outre.fn[k], files)][1]]
+                  }
                 }
             }
-
-            out.status = !is.na(new.object@outputs[, outkeys, with = FALSE])
-            has.out = rowSums(out.status)>0
+          }
+          
+          out.status = !is.na(new.object@outputs[, outkeys, with = FALSE])
+          has.out = rowSums(out.status)>0
             missing.out = rowSums(!out.status)>0
             status = ifelse(status=='completed',
                      ifelse(missing.out, 'completed; some outputs missing', 'completed'),
@@ -1119,13 +1136,13 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
                         if (any(ix<-is.na(old.date))) ## if for some reason blank, set to some time in the far future
                             old.date[ix] = Sys.time()+5e9
                         if (is(args[[this.arg]], 'FlowLiteral') & args[[this.arg]]@path)
-                            outdated[, this.arg] =
-                                        #                                          as.POSIXct(as.character(file.info(args[[this.arg]]@arg)$mtime))>old.date &
-                                ifelse(is.na(output.date), FALSE, as.POSIXct(as.character(file.info(as.character(new.object@inputs[[this.arg]]))$mtime))>output.date)
+                          outdated[, this.arg] =
+                            ifelse(is.na(output.date), FALSE,
+                                   as.POSIXct(as.character(file.info(as.character(new.object@inputs[[this.arg]]))$mtime)) > output.date)
                         else if (is(args[[this.arg]], 'FlowAnnotation') & args[[this.arg]]@path)
-                            outdated[, this.arg] =
-                                        #                                         as.POSIXct(as.character(file.info(new.object@inputs[[this.arg]])$mtime))>old.date &
-                                ifelse(is.na(output.date), FALSE, as.POSIXct(as.character(file.info(as.character(new.object@inputs[[this.arg]]))$mtime))>output.date)
+                          outdated[, this.arg] =
+                            ifelse(is.na(output.date), FALSE,
+                                   as.POSIXct(as.character(file.info(as.character(new.object@inputs[[this.arg]]))$mtime)) > output.date)
                         else
                             outdated[, this.arg] = FALSE
                     }
@@ -1135,8 +1152,7 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
                 }
             }
 
-
-            status = ifelse(rowSums(outdated, na.rm = TRUE)>0, 'outdated', status)
+            status = ifelse(rowSums(outdated, na.rm = TRUE)>0 & status == 'completed', 'outdated', status)
             status.info = paste(status.info, apply(outdated, 1,
                                                    function(x) if (length(which(x))>0) paste('Updates in', paste(colnames(outdated)[which(x)], collapse = ', '))
                                                                else ''))
@@ -1325,7 +1341,6 @@ setMethod('[', 'Job', function(x, i, id = FALSE)
             x@entities = x@entities[i, ]
             setkeyv(x@entities, id)
         }
-
         ## some kind of data.table bug where key gets lost every w subsetting once in a while ... #CHECK
         setkeyv(x@runinfo, id)
         setkeyv(x@inputs, id)
@@ -1940,23 +1955,25 @@ setMethod('qrun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
             qcmds = na.omit(qcmds)
             qcmds = qcmds[nzchar(qcmds)]
         }
-        res = mclapply(mc.cores = mc.cores, qcmds, function(x) {
-            ## this.i = eval.parent(substitute(x)[[3]])
-            ## if (is.na(nm[this.i])) {
-            ##     NA
-            ## } else {
-                ## p = pipe(x); out = readLines(p); close(p); return(out)
-            ## })
-            p = pipe(x); out = readLines(p); close(p); return(out)
+        cix = seq_along(qcmds)
+        res = mclapply(mc.cores = mc.cores, cix, function(ix) {
+            this.env = environment()
+            x = qcmds[ix]
+            nm = names(x)
+            tryCatch({
+                p = pipe(x);
+                out = readLines(p);
+                jobid = gsub("Your job (\\d+) .*", '\\1', out)
+                writeLines(jobid, paste0(outdir(.Object)[this.env$nm], "/sge.jobid"))
+                writeLines(paste("Deploying", jobid, "for entity", nm))
+                close(p);
+                return(data.table(entity = nm, qjob = jobid, success = TRUE))
+            }, error = function(e)
+                return(data.table(entity = nm, qjob = NA_character_, success = FALSE)))
         })
-        ## res = lapply(qcmds, function(x) {
-        ##     try2({
-        ##         p = pipe(qcmds[x]); out = readLines(p); close(p); return(out)})
-        ## })
-        jobids = unlist(lapply(res, function(x) gsub('Your job (\\d+) .*', '\\1', x)))
-        mapply(function(d,j) try2({writeLines(j, paste0(d,'/sge.jobid'))}), outdir(.Object)[names(qcmds)], jobids, SIMPLIFY = FALSE) ## save last jobids
-        ## writeLines(paste('Deploying', jobids, 'for entity', ids(.Object)))
-        writeLines(paste('Deploying', jobids, 'for entity', names(jobids)))
+        outout = rbindlist(res)
+        message()
+        return(outout)
     })
 
 #' @export
@@ -1999,7 +2016,7 @@ setMethod('srun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
             scmds = scmds[nnas]
             nas = which(is.na(scmds) | !nzchar(scmds))
             if (length(nas) > 0) {
-                message("Warning: the following id's have NA or zero character scmd; removing from qsub")
+                message("Warning: the following id's have NA or zero character scmd; removing from srun")
                 lapply(nas, function(ix) {
                     message(names(scmds[ix]))
                 })
@@ -2007,23 +2024,26 @@ setMethod('srun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
             scmds = na.omit(scmds)
             scmds = scmds[nzchar(scmds)]
         }
-        res = mclapply(mc.cores = mc.cores, scmds, function(x) {
-            ## this.i = eval.parent(substitute(x)[[3]])
-            ## if (is.na(nm[this.i])) {
-            ##     NA
-            ## } else {
-                ## p = pipe(x); out = readLines(p); close(p); return(out)
-            ## })
-            p = pipe(x); out = readLines(p); close(p); return(out)
+        cix = seq_along(scmds)
+        res = mclapply(mc.cores = mc.cores, cix, function(ix) {
+            this.env = environment()
+            x = scmds[ix]
+            nm = names(x)
+            tryCatch({
+                p = pipe(x);
+                out = readLines(p);
+                jobid = gsub('Submitted batch job (\\d+).*', '\\1', out)
+                writeLines(jobid, paste0(outdir(.Object)[this.env$nm], "/slurm.jobid"))
+                writeLines(paste("Deploying", jobid, "for entity", nm))
+                close(p);
+                data.table(entity = nm, sjob = jobid, success = TRUE)
+                return(out)
+            }, error = function(e)
+                data.table(entity = nm, sjob = NA_character_, success = FALSE))
         })
-        ## res = lapply(scmds, function(x) {
-        ##     try2({
-        ##         p = pipe(scmds[x]); out = readLines(p); close(p); return(out)})
-        ## })
-        jobids = unlist(lapply(res, function(x) gsub('Submitted batch job (\\d+).*', '\\1', x)))
-        mapply(function(d,j) try2({writeLines(j, paste0(d,'/slurm.jobid'))}), outdir(.Object)[names(scmds)], jobids, SIMPLIFY = FALSE) ## save last jobids
-        ## writeLines(paste('Deploying', jobids, 'for entity', ids(.Object)))
-        writeLines(paste('Deploying', jobids, 'for entity', names(jobids)))
+        outout = rbindlist(res)
+        message()
+        return(outout)
         ## ####################
         ## scmds = scmd(.Object, all = all)
         ## res = lapply(scmds, function(x) {p = pipe(x); out = readLines(p); close(p); return(out)})
@@ -2285,6 +2305,7 @@ setMethod('qjobs', 'Job', function(.Object)
             ##     out$jobid[na] = NA
         }
     }
+    print(out)
     return(out)
 })
 
@@ -2298,7 +2319,7 @@ setGeneric('sjobs', function(.Object, ...) {standardGeneric('sjobs')})
 #' @export
 #' @author Marcin Imielinski / Kevin Hadi
 setMethod('sjobs', 'Job', function(.Object)
-    {
+{
         fn.jids = sapply(outdir(.Object), function(x) paste(x, 'slurm.jobid', sep = '/'))
         ix = file.exists(fn.jids)
         out1 = out2 = NULL
@@ -2306,35 +2327,41 @@ setMethod('sjobs', 'Job', function(.Object)
         ## nms = c('jobid','prior','ntckt','name','user','project','department','state','cpu','mem','io','tckts','ovrts','otckt','ftckt','stckt','share','queue','slots')
 #        nms = c('jobid', 'prior', 'name', 'user', 'state', 'start.sumit.at', 'queue', 'slots', 'taskid')
         out = runinfo(.Object)[, key(.Object), with = FALSE]
-        for (nm in nms)
-            set(out, j = nm, value = NA_character_)
-            ## out[[nm]] = as.character(NA)
+        
         if (any(ix))
-            {
-                jids = rep(NA, length(.Object))
-                jids[ix] = sapply(fn.jids[ix], function(x) readLines(x)[1])
-                jids = gsub('Submitted batch job (\\d+).*', '\\1', jids) ## if left over
-                tab = as.data.table(lapply(c(1:length(nms)), function(x) {
-                    p = pipe(paste("squeue -O", nms[x]))
-                    tmp = readLines(p)
-                    tmp = tail(tmp, -1)
-                    close(p)
-                    out = str_trim(gsub(" ", "", tmp))
-                }))
-                ## iix = lengths(tab)<=length(nms) & lengths(tab)>14 ? not sure what this is for
-                if (nrow(tab)>0)
-                    {
-                        setnames(tab, nms)
-                        setkey(tab, jobid)
-                        out = cbind(runinfo(.Object)[, key(.Object), with = FALSE], tab[jids, ])
-                        ## na = is.na(out$state)
-                        out[is.na(state), jobid := NA_character_]
-                        ## if (any(na))
-                        ##     set(out, i = na, j = "jobid", value = NA_character_)
-                    }
-            }
-                return(out)            
-            })
+        {
+          jids = rep(NA, length(.Object))
+          jids[ix] = sapply(fn.jids[ix], function(x) readLines(x)[1])
+          jidsc = paste(jids[!is.na(jids)], collapse = ',')
+
+          ## need to do some fixed width parsing training our parser on the header
+          p = pipe(paste('squeue -O', paste(nms, collapse = ',')))
+          res = readLines(p)
+          close(p)
+          header = res[1]
+          res = res[-1]
+          bks = c(0, str_locate_all(header, '\\s++')[[1]][, 'end'], nchar(header))
+          bkdt = data.table(start = bks[-length(bks)]+1, end = bks[-1])
+          nms = strsplit(header, '\\s+')[[1]] %>% tolower    
+          tmp = lapply(1:length(nms), function(i) str_trim(substr(res, bkdt[i,start], bkdt[i,end])))
+          names(tmp) = nms
+          tab = do.call(data.table, tmp)          
+          tab$state = factor(tab$state, unique(c(tab$state, 'RUNNING'))) %>% relevel('RUNNING')
+          
+          ## iix = lengths(tab)<=length(nms) & lengths(tab)>14 ? not sure what this is for
+          if (nrow(tab)>0)
+          {
+            setkey(tab, jobid)
+            out = cbind(runinfo(.Object)[, key(.Object), with = FALSE], tab[jids, ])
+            ## na = is.na(out$state)
+            out[is.na(state), jobid := NA_character_]
+            ## if (any(na))
+            ##     set(out, i = na, j = "jobid", value = NA_character_)
+          }
+        }
+        print(out)
+        return(out)            
+})
 
 
 
@@ -2349,12 +2376,12 @@ setGeneric('skill', function(.Object, ...) {standardGeneric('skill')})
 #' @author Kevin Hadi
 setMethod('skill', 'Job', function(.Object, jid = NULL)
     {
-        
-        sj = sjobs(.Object)
+        silent({sj = sjobs(.Object)})
         ix = !is.na(sj$jobid)
-        if (any(ix))
+        if (any(ix)) {
             system2('scancel', paste(sj$jobid[ix], collapse = ","))
-        else
+            sapply(sj$jobid[ix], function(x) cat("Slurm job id", x, "canceled"))
+        } else
             cat('No queued or running Slurm jobs to kill\n')
     })
 
@@ -2372,7 +2399,7 @@ setGeneric('qkill', function(.Object, ...) {standardGeneric('qkill')})
 setMethod('qkill', 'Job', function(.Object, jid = NULL)
     {
 
-        qj = qjobs(.Object)
+        silent({qj = qjobs(.Object)})
         ix = !is.na(qj$jobid)
         if (any(ix))
             system(paste(c('qdel', qj$jobid[ix]), collapse = ' '))
@@ -2585,6 +2612,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
         io_c_val = 2
         io_n_val = 7
         qprior_val = 0
+        time = '24'
     }
     
     ## utility func for instantiation of Job and modifying memory
@@ -2694,6 +2722,7 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
                 out = trimws(system2("wc", c(vec, "-l"), stdout = TRUE))
                 if (length(grep("total", tail(out, 1))))
                     out = head(out, -1)
+                return(out)
             }
             replines = trimws(unlist(lapply(make_chunks(fn.report[fn.rep.ex], 500), iter.fun))) ## breaks if you do >500 at a time
             ## replines = trimws(system2("wc", c(fn.report[fn.rep.ex], "-l"), stdout = TRUE)) ## report can be empty, testing for this
@@ -2710,10 +2739,10 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
         tmp = matrix(unlist(mclapply(which(fn.ex),
             function(i)
                 {
-                    p = pipe(paste('tail -n 100', fn[i]))
+                    p = pipe(paste('tail -n 100', fn[i], "2> /dev/null"))
                     y = readLines(p);
                     close(p)
-                    p = pipe(paste('head -n 100', fn[i]))
+                    p = pipe(paste('head -n 100', fn[i], "2> /dev/null"))
                     sge = grep('FLOW', readLines(p), value = TRUE)
                     close(p)
                     if (any(grepl('^Sender.*LSF System', y))) ## LSF job
@@ -2769,12 +2798,12 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
                         }
                     else ## interpret job as locally run with a /usr/bin/time -v output
                     {
-                            p = pipe(paste('tail -n 100', fn.err[i]))
+                            p = pipe(paste('tail -n 100', fn.err[i], "2> /dev/null"))
                             y = tryCatch(readLines(p), error = function(e) NULL); close(p)
                             ## y = tryCatch(readLines(fn.err[i]), error = function(e) NULL)
                             if (is.null(y) | length(y) == 0) {
                                 ## y = readLines(fn[i])
-                                p = pipe(paste('tail -n 100', fn[i]))
+                                p = pipe(paste('tail -n 100', fn[i], "2> /dev/null"))
                                 y = tryCatch(readLines(p), error = function(e) NULL); close(p)
                             }
                             ix = grep('Command being timed', y)
@@ -3244,7 +3273,7 @@ rrbind = function(..., union = T)
 ## #' As jobs complete, one may want to update a "master" data.table with the outputs of Jobs.  This can
 ## #' be useful for manual running of larger workflows to which a given task contributes.
 ## #'
-## #' #@exportMethod merge
+## #' @exportMethod merge
 ## #' @param x data.table or Job
 ## #' @param y data.table or Job
 ## #' @param force logical flag whether to force overwrite
@@ -3253,3 +3282,518 @@ rrbind = function(..., union = T)
 ## #' @param sep  separator to add to columns merged from the Job
 ## #' @author Marcin Imielinski
 ## #' @export
+
+
+#' @name Flow-class
+#' @rdname Flow-class
+#' @title Class representing a collection of tasks
+#' @description
+#' S4 class for \code{Flow}
+#'
+#' A Flow is just a set of tasks / jobs applied to a set of entities.  This class is currently only
+#' for monitoring progress / visualization of completeness, i.e. via a pie-network. 
+#'
+#' The taskdir is a directory which has .task objects, which are scraped via Task instantiator.
+#' 
+#' @section Slots:
+#' \describe{
+#'   \item{nodes}{data.table of nodes which are either annotations or Task objects}
+#'   \item{edges}{data.table of edges which are connect (input) annotations to Task objects or Task objects to output annotations}
+#'   \item{entities}{keyed data.table of entities to which tasks are (optionally) applied to} 
+#' }
+#' @exportClass Flow
+#' @export
+#' @author Marcin Imielinski
+setClass('Flow', representation(nodes = 'data.table', edges = 'data.table', entities = 'data.table'))
+
+##FFFLOW
+setMethod('initialize', 'Flow', function(.Object,
+                                         flowdir = './Flow',
+                                         taskdir = NULL,
+                                         entities = NULL,
+                                         paths.only = TRUE,
+                                         update = FALSE,
+                                         quick = FALSE,
+                                         verbose = TRUE,
+                                         mc.cores = 1
+                                         )
+{
+
+  .Object@nodes = .Object@edges = .Object@entities  = data.table()
+
+  if (!is.null(entities))
+    {
+      if (is.character(entities))
+        entities = readRDS(entities)
+      .Object@entities = entities
+    }
+  
+  .muffle = function(code, ...) return(tryCatch(code, error = function(e) NULL, ...))
+  if (is.null(taskdir))
+  {
+    if (verbose)
+      message('Pulling Job objects')
+
+    paths = dir(flowdir, full = TRUE, include.dirs = FALSE, '.rds$')
+    paths = unique(c(normalizePath(c(flowdir, paths)))) ## in case flowdir are also paths
+    paths = paths[which(!file.info(paths)$isdir)]
+
+
+    jl = mclapply(paths, function(x) .muffle(readRDS(x)), mc.cores = mc.cores)
+    jl = jl[!sapply(jl, is.null)]
+    jl = jl[sapply(jl, class) == 'Job']
+    
+    if (verbose)
+      message(' ... found ', length(jl))
+
+    if (length(jl)==0)
+    {    
+      warning('empty Flow directory without cached .rds Job objects: check contents')
+      return(.Object)
+    }
+
+    ## update jobs 
+    if (update)
+    {
+      if (verbose)
+        message('Updating ', length(jl), ' job objects')
+      jl = mclapply(jl, function(x)
+        {
+          .muffle(Flow::update(x, mc.cores = mc.cores))
+          path = paste0(x@rootdir, '/', x@task@name, '.rds')
+          return(readRDS(path))
+        }
+      , mc.cores = 1)
+      }
+
+    ## get tasks from list of job objects
+    tl = lapply(jl, task)
+    
+    if (is.null(entities))
+    {
+      ## only care about these columns ie that are inputs or outputs of the tasks
+      ucols = unique(
+        unlist(lapply(tl, function(x) lapply(x@args, function(y) y@name))),
+        unlist(lapply(tl, function(x) lapply(x@outputs, function(y) y@name)))
+      )
+
+       if (verbose)
+         message('Generating master entities table from Job objects, may provide externally to expedite')
+       
+      keys = sapply(jl, key)
+      ukey = unique(keys)
+
+      if (length(ukey)>1)
+        warning(sprintf('Multiple keys found across job objects (%s), will collapse all keys to %s', paste(ukey, collapse = ','), ukey[1]))
+
+      ukey = ukey[1]
+
+      if (verbose)
+        message('Melting ', length(jl), ' entities tables')
+
+      entm = rbindlist(mclapply(jl, function(x) {
+        y = entities(x)
+        y = y[, intersect(names(y), c(key(entities), ucols)), with = FALSE]
+        y = Flow::merge(x, y, force = TRUE)
+        tmp = suppressWarnings(melt(y, id.var = key(y)))
+        setnames(tmp, key(y), ukey)
+        tmp
+      }, mc.cores = mc.cores), fill = TRUE)
+
+      if (verbose)
+        message('Extracted ', nrow(entm), ' pair annotation combos .. aggregating to single entities table')
+
+      ## dcast to unique value
+      entities = eval(parse(
+        text = sprintf('dcast.data.table(entm, %s ~ variable, fun.aggregate = function(x) x[!is.na(x)][1])', ukey)))
+
+       setkeyv(entities, ukey)
+      if (verbose)
+        message('Inferred entities table with ', nrow(entities), ' rows.')
+
+    }
+
+  }
+  else 
+  {
+    paths = dir(taskdir, include.dirs = FALSE, full = TRUE)
+    paths = unique(c(normalizePath(c(taskdir, paths)))) ## in case flowdir are also paths
+    paths = paths[which(!file.info(paths)$isdir)]  ## in case taskdir are also just paths to task files
+
+    tl = mclapply(paths, function(x) .muffle(Task(x)), mc.cores = mc.cores)
+    tl = tl[!sapply(tl, is.null)]
+    
+    if (length(tl)==0)
+    {    
+      warning('no .task file found in task directory: check contents')
+      return(.Object)
+    }
+  }
+
+  inputs = rbindlist(mclapply(1:length(tl),
+                            function(x)
+                              cbind(data.table(task = tl[[x]]@name),
+                                    rbindlist(lapply(tl[[x]]@args,
+                                               function(y)
+                                                 if (inherits(y, 'FlowAnnotation'))
+                                                   data.table(
+                                                     type = 'io',
+                                                     subtype = 'annotation',
+                                                     name = y@arg,
+                                                     path = y@path,
+                                                     default = c(y@default, NA)[1])
+                                                 else
+                                                   data.table(type = 'io',
+                                                              subtype = 'literal',
+                                                              name = y@name,
+                                                              path = y@path,
+                                                              default = ifelse(is.na(y@arg), "NA", y@arg)) 
+                                               )))), fill = TRUE)
+  if (paths.only)
+    inputs = inputs[path == TRUE, ]
+
+  outputs = rbindlist(lapply(1:length(tl),
+                            function(x)
+                              cbind(data.table(task = tl[[x]]@name),
+                                    rbindlist(lapply(tl[[x]]@outputs,
+                                                     function(y)
+                                                       if (!is.null(y))
+                                                         data.table(type = 'io', path = TRUE, subtype = 'output', name = y@name) 
+                                               )))), fill = TRUE)[!is.na(type), ]
+
+  tasks = rbindlist(lapply(tl, function(x) data.table(type = 'task', name = x@name, task = x@name)), fill = TRUE)
+
+  nodes = rbind(inputs, outputs, tasks, fill = TRUE)
+  nodes$id = 1:nrow(nodes)
+  nodes[is.na(path), path := FALSE]
+
+  edges =
+    rbind(
+      nodes[type == 'io' & subtype != 'output', .(type = 'input', from = id, to = nodes$id[nodes$type == 'task'][match(task, nodes$name[nodes$type == 'task'])])],
+      nodes[type == 'io' & subtype == 'output', .(type = 'output', to = id, from = nodes$id[nodes$type == 'task'][match(task, nodes$name[nodes$type == 'task'])])], fill = TRUE)
+
+  ## collapse nodes based on type / name
+  unodes = unique(nodes, by = c('type', 'name'))
+  unodes$id = 1:nrow(unodes)
+  nodes$newid = match(nodes[, paste(type, name)], unodes[, paste(type, name)])
+  ## merge edges across this mapping
+
+  uedges = merge(
+    merge(edges,
+          nodes[, .(id, newid)], by.x = 'from', by.y = 'id', allow.cartesian = TRUE),
+    nodes[, .(id, newid)], by.x = 'to', by.y = 'id', allow.cartesian = TRUE)[, .(from = newid.x, to = newid.y)]
+
+  uedges[, from.name := unodes[from, name]]
+  uedges[, to.name := unodes[to, name]]
+  uedges = unique(uedges, by = c('from', 'to'))
+
+  unodes$nready = unodes$ndone = unodes$ntot = NA_integer_
+  nodes = unodes
+  edges = uedges
+
+  if (!is.null(entities))
+  {
+    nodes = flow.entities(.Object@entities, nodes, edges, quick = quick)
+  }
+
+  .Object@nodes = nodes
+  .Object@edges = edges
+   
+  return(.Object)
+})
+
+#' @name Flow
+#' @title Flow
+#' @description
+#'
+#' Instantiates a Flow object which is a purely diagnostic / visualization
+#' utility to monitor progress across a set of entities x tasks.
+#'
+#' Note: For job monitoring, it does not do anything fancy - just checks the paths pointed to
+#' by the columns of an entities table against task inputs and outputs to determine whether
+#' a task is ready or done.  
+#'
+#' However if some other task (or manual setting) of that column points to
+#' a valid path, then that pipeline will be marked as "done".  
+#'
+#' All job control should be done at the Job level. TBD: linking this object to a set of Flow
+#' object and allowing some job control at the Flow level. 
+#'
+#' Returns Flow object which then can be plotted or subsetted via [.Flow operator.
+#'
+#' @param flowdir path to Flow directory containing .rds of Job files, and/or paths to those .rds files
+#' @param taskdir path to task directory or set of task paths
+#' @param entities keyed entities data.table can be optionally provided with taskdir
+#' @param quick won't check existence of file paths, just will check to see if non empty
+#' @param update logical flag whether to update jobs if flowdir provided (FALSE)
+#' @param paths.only whether to build the DAG only using path annotations rather than all arguments (otherwise too crowded)
+#' @param mc.cores integer multicore param
+#' @return Flow object
+#' @export
+#' @author Marcin Imielinski
+
+Flow = function(
+                flowdir = './Flow',
+                taskdir = NULL,
+                entities = NULL,
+                update = FALSE, 
+                quick = FALSE,
+                mc.cores = 1, 
+                paths.only = TRUE
+                )
+{
+  new('Flow', flowdir = flowdir, taskdir = taskdir, update = update, mc.cores = mc.cores, entities = entities, quick = quick, paths.only = paths.only)
+}
+
+
+#' @name plot.Flow
+#' @title plot.Flow
+#' @description
+#'
+#' Plots a Flow as a graph of pie charts
+#'
+#' @param x Flow object
+#' @author Marcin Imielinski
+#' @export
+'plot.Flow' = function(x, y, paths.only = FALSE, seed = 42, layout = layout_with_fr)
+{
+  set.seed(42)
+  nodes = x@nodes
+  edges = x@edges
+
+  if (!length(nodes))
+    {
+      plot(0, type ="n", axes = F, main = 'Empty Flow')
+      warning('Empty graph provided, empty plot generated')
+      return()
+    }
+
+  if (paths.only) ## subset on path only 
+  {
+    nodes = nodes[(type == 'io' & (path == TRUE | type == 'output')) | type == 'task', ]
+    edges = edges[from %in% nodes$id & to %in% nodes$id, ]
+    nodes = nodes[id %in% c(edges$from, edges$to), ] ## another round of node pruning for any edgeless nodes
+    edges$from = match(edges$from, nodes$id)
+    edges$to = match(edges$to, nodes$id)
+    nodes$id = 1:nrow(nodes)
+  }
+
+  G = graph.edgelist(cbind(edges$from, edges$to))
+  V(G)$name = nodes$name
+  V(G)$type = nodes$type
+  V(G)$label.cex = ifelse(V(G)$type == 'io', 0.5, 1)
+  V(G)$shape = 'pie'
+  cols = c(done = 'blue', ready = 'green', incomplete = "red", missing = 'gray')
+  if (all(!is.na(nodes$ntot)) && all(nodes$ntot>0))
+    {
+      V(G)$pie = lapply(1:nrow(nodes), function(x) nodes[x, c(ndone, nready, nincomplete, ntot-nincomplete-ndone-nready)])
+      V(G)$pie.color = lapply(1:nrow(nodes), function(x) cols)
+    }
+  V(G)$size = ifelse(V(G)$type == 'io', 3, 8)
+  V(G)$label.color = ifelse(V(G)$type == 'io', 'gray30', 'black')
+  V(G)$label.dist = V(G)$size/8
+  V(G)$label.degree = pi/2
+  E(G)$size = 1
+  E(G)$color = ifelse(nodes[edges$from, type == 'task'], 'pink', 'gray70')
+  E(G)$arrow.size = 0.5
+
+  G$layout = layout
+  plot.igraph(G)
+
+  legend('topleft', pch = 19, col = cols, legend = names(cols))
+  title(paste('Flow across', nrow(x@entities), 'entities and ', length(tasks(x)), ' tasks.'))
+}
+
+#' @name entities
+#' @title returns original keyed data.table of entities associated with this Flow object
+#' @exportMethod entities
+#' @author Marcin Imielinski
+setMethod('entities', 'Flow', function(.Object)
+    {
+      copy(.Object@entities)      
+    })
+
+#' @export
+setGeneric('tasks', function(.Object) {standardGeneric('tasks')})
+
+#' @name tasks
+#' @title returns original keyed data.table of entities associated with this Flow object
+#' @exportMethod tasks
+#' @author Marcin Imielinski
+setMethod('tasks', 'Flow', function(.Object)
+    {
+      .Object@nodes[type == 'task', name]
+    })
+
+
+#' @name [.Flow
+#' @title Flow subset
+#' @description
+#'
+#' Overloads subset operator for Flow object. Allow subsetting object based on entities
+#' features (first argument, a la "rows") and tasks (a la "columns").
+#'
+#' First argument can be an expression on entity metadata that returns an integer or logical
+#' of length = nrow(entities).
+#'
+#' Tasks can be indices or names of tasks
+#'
+#'
+#' @param obj Flow object to be subset
+#' @param i indices of entities 
+#' @param j indices of tasks to subset 
+#' @param include character vector representing tasks to include in output object
+#' @param exclude character vector representing nodes or tasks to exclude in output object
+#' @return A new gNode that contains only the given id's
+#' @author Marcin Imielinski
+#' @export
+'[.Flow' = function(obj, i = NULL, j = NULL, include = NULL, exclude = NULL, quick = FALSE, ...)
+{
+  nodes = obj@nodes
+  edges = obj@edges
+  entities = obj@entities
+  tasks = nodes[type == 'task', name]
+
+  ## first process j i.e. tasks subsetting
+  if (!is.null(j) | !is.null(include) | !is.null(exclude))
+    {
+      if (!is.null(j))
+      {
+        if (is.character(tasks))
+          tasks = intersect(j, tasks)
+        else
+          tasks = tasks[j]
+      }
+      nodes = rbind(nodes[type == 'io', ], nodes[type == 'task', ][match(tasks, name), ])      
+
+      ## more filtering of nodes
+      keep = rep(TRUE, length(tasks))
+      if (!is.null(include))
+        keep = keep & rowSums(do.call(cbind, lapply(include, grepl, x = tasks, perl = TRUE)))
+      tasks = tasks[keep]
+      nodes = rbind(nodes[type == 'io', ], nodes[type == 'task', ][match(tasks, name), ])
+      
+      keep = rep(TRUE, nrow(nodes))
+      if (!is.null(exclude))
+        keep = keep & rowSums(do.call(cbind, lapply(exclude, grepl, x = nodes$name, perl = TRUE)))==0
+      nodes = nodes[keep, ]
+      
+      ## subset task nodes on provided tasks
+      edges = edges[from %in% nodes$id & to %in% nodes$id, ]
+      nodes = nodes[id %in% c(edges$from, edges$to), ] ## another round of node pruning for any edgeless nodes
+
+      edges$from = match(edges$from, nodes$id)
+      edges$to = match(edges$to, nodes$id)
+      nodes$id = 1:nrow(nodes)
+    }
+
+  ## now process i, i.e. entity subsetting
+  if (any(deparse(substitute(i)) != "NULL"))
+  {
+    inew = tryCatch(eval(eval(parse(text = substitute(deparse(substitute(i)))), parent.frame()), obj@entities, parent.frame(2)), error = function(e) NULL)
+
+    if (is.null(inew))
+    {
+      inew = i ## just give up
+    }  
+    else
+    {
+      inew = i
+    }
+
+    ## convert to logical if integer --> order ignored and doesn't matter since entities will continued to be key
+    if (!is.logical(inew))
+      inew = 1:nrow(entities) %in% inew | entities[[key(entities)]] %in% inew
+
+    if (!all(inew)) ## only run flow.entities if we are subsetting entities
+    {
+      ## update entities object
+      entities = entities[inew, ]
+      setkeyv(entities, key(obj@entities))
+
+      ## update counts in nodes
+      nodes = flow.entities(entities, nodes, edges, quick = quick)
+    }
+  }
+
+  obj@nodes = nodes
+  obj@edges = edges
+  obj@entities = entities
+
+  return(obj)
+}
+
+setMethod('show', 'Flow', function(object)
+{
+  if (!nrow(object@nodes))
+    cat('empty Flow object')
+
+  tasks = tasks(object)
+  cat(sprintf('Flow on %s entities and %s (%s, ...)\n', nrow(object@entities), length(tasks), paste(tasks[1:min(length(tasks), 3)], collapse = ',')))
+#  print(object@entities)
+})
+
+flow.entities = function(entities, nodes, edges, quick = FALSE)
+{
+  
+  if (is.null(key(entities)) || any(duplicated(entities[[key(entities)]])))
+    stop('entities must have a key column specified with a unique value for every row')
+
+  nodes[, dfe := (path & file.exists(default)) | (!path & !is.na(default))]
+  
+  key(entities)
+  
+  ## inputs has all the node ids of each task's input indexed by node id
+  inputs = merge(nodes[type == 'task', ], edges, by.x = 'id', by.y = 'to', allow.cartesian = TRUE)[, .(id = from, ninputs = .N), keyby = .(taskid = id)]
+  outputs = merge(nodes[type == 'task', ], edges, by.x = 'id', by.y = 'from', allow.cartesian = TRUE)[, .(id = to, noutputs = .N), keyby = .(taskid = id)]
+  nodes$ntot = nrow(entities)
+  
+  tmp = entities[, c(key(entities), intersect(names(entities), nodes$name)), with = FALSE]
+  em = suppressWarnings(melt(tmp, id.vars = key(entities)))
+  if (is.list(em$value)) ## catch any weirdness with columns 
+    em$value = sapply(em$value, function(x) c(unlist(x), NA)[1])
+  missing = as.data.table(expand.grid(entities[[key(entities)]], setdiff(nodes[type == 'io', ]$name, names(entities))))[, value := NA_character_]
+  setnames(missing, c(key(entities), 'name', 'value'))                     
+  setnames(em, 'variable', 'name')
+  em = rbind(em, missing)
+  em$type = 'io'   
+  emm = merge(nodes, em, all.x = TRUE, by = c('name', 'type'))
+
+  
+  emm[is.na(path), path := FALSE]
+
+  ## ife = input file exists (includes defaults)
+  ## ofe = output file exists (excludes defaults)
+  if (quick) ## only check if non NA
+    {
+      emm[, ife := ((!is.na(as.character(value)) | dfe))]
+      emm[, ofe := ((!is.na(as.character(value))))]
+    }
+  else ## check if paths actually exists
+  {
+    ## input file exists
+    emm[path == FALSE, ife := ((!is.na(as.character(value)) | dfe))]
+    emm[path == TRUE,  ife :=  ((dfe | file.exists(as.character(value))))]
+    emm[path == FALSE, ofe := !is.na(as.character(value))]
+    emm[path == TRUE,  ofe :=  (file.exists(as.character(value)))]
+  }
+  ready = eval(parse(text = sprintf("merge(emm, inputs, allow = TRUE, by = 'id')[, .(nife = sum(ife)), by = .(%s, taskid, ninputs)]",key(entities))))
+  done = eval(parse(text = sprintf("merge(emm, outputs, allow = TRUE, by = 'id')[, .(nofe = sum(ofe)), by = .(%s, taskid, noutputs)]",key(entities))))
+  
+  rd = merge(ready, done, by = c('taskid', key(entities)))[, .(ready = sum(ninputs == nife & noutputs == 0),
+                                                               incomplete = sum(ninputs == nife & nofe > 0 & nofe < noutputs),
+                                                               done = sum(ninputs == nife & noutputs == nofe)), keyby = taskid]
+
+
+  nodes$ndone = emm[type == 'io', .(nfe = sum(ife)), keyby = id][.(nodes$id), nfe]  
+  nodes[type == 'task', nready := rd[.(id), ready]]
+  nodes[type == 'task', nincomplete := rd[.(id), incomplete]]
+  nodes[type == 'task', ndone := rd[.(id), done]]
+  nodes[is.na(nready), nready := 0]
+  nodes[is.na(ndone),
+        ndone := 0]
+  nodes[is.na(nincomplete), nincomplete := 0]
+
+  return(nodes)
+}
+

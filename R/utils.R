@@ -660,3 +660,63 @@ tailf = function(x, n = NULL, grep = NULL)
     ## execute command
     system(x)
 }
+
+
+#' @name reset.job
+#' @title reset.job
+#'
+#' Reset a job with different params
+#'
+#' @return A Flow job object
+#' @author Kevin Hadi
+#' @export reset.job
+reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$mem, jb.cores = x@runinfo$cores, jb.time = "24", update_cores = 1) {
+    args = list(...)
+    new.ent = copy(entities(x))
+    if (!is.null(i)) {
+        jb.mem = replace(x@runinfo$mem, i, jb.mem)
+        jb.cores = replace(x@runinfo$cores, i, jb.cores)
+    }
+    if (!all(names(args) %in% names(new.ent)))
+        stop("adding additional column to entities... this function is just for resetting with new arguments")
+    for (j in seq_along(args))
+    {
+        data.table::set(new.ent, i = i, j = names(args)[j], value = args[[j]])
+    }
+    these.forms = formals(body(findMethods("initialize")$Job@.Data)[[2]][[3]])
+    if ("time" %in% names(these.forms)) {
+        if ("update_cores" %in% names(these.forms))
+            jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores, update_cores = update_cores)
+        else
+            jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores)
+    } else {
+        if ("update_cores" %in% names(these.forms))
+            jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores, update_cores = update_cores)
+        else
+            jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores)
+    }
+    return(jb)
+}
+
+
+#' @name silent
+#' @title run expression without any printed output
+#'
+#' execute expression without any output to console.
+#' silent({var = function_that_has_explicit_print(...)})
+#' 
+#'
+#' @author Kevin Hadi
+#' @param ... an expression
+#' @return NULL
+#' @export
+silent = function(this_expr, this_env = parent.frame()) {
+    eval(expr = {capture.output(
+            capture.output(... = this_expr,
+                           file = "/dev/null",
+                           type = c("output")),
+            file = "/dev/null",
+            type = "message")
+    }, envir = this_env)
+    invisible()
+}
