@@ -1968,8 +1968,10 @@ setMethod('qrun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
                 writeLines(paste("Deploying", jobid, "for entity", nm))
                 close(p);
                 return(data.table(entity = nm, qjob = jobid, success = TRUE))
-            }, error = function(e)
-                return(data.table(entity = nm, qjob = NA_character_, success = FALSE)))
+            }, error = function(e) {
+                writeLines(paste("Deploy failed for entity", nm))
+                data.table(entity = nm, qjob = NA_character_, success = FALSE)
+            })
         })
         outout = rbindlist(res)
         message()
@@ -2038,8 +2040,10 @@ setMethod('srun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
                 close(p);
                 data.table(entity = nm, sjob = jobid, success = TRUE)
                 return(out)
-            }, error = function(e)
-                data.table(entity = nm, sjob = NA_character_, success = FALSE))
+            }, error = function(e) {
+                writeLines(paste("Deploy failed for entity", nm))
+                data.table(entity = nm, sjob = NA_character_, success = FALSE)
+            })
         })
         outout = rbindlist(res)
         message()
@@ -2380,9 +2384,10 @@ setMethod('skill', 'Job', function(.Object, jid = NULL)
         ix = !is.na(sj$jobid)
         if (any(ix)) {
             system2('scancel', paste(sj$jobid[ix], collapse = ","))
-            sapply(sj$jobid[ix], function(x) cat("Slurm job id", x, "canceled"))
+            sapply(sj$jobid[ix], function(x) cat("Slurm job id", x, "canceled\n"))
         } else
             cat('No queued or running Slurm jobs to kill\n')
+        invisible()
     })
 
 
