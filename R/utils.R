@@ -670,14 +670,16 @@ tailf = function(x, n = NULL, grep = NULL)
 #' @return A Flow job object
 #' @author Kevin Hadi
 #' @export reset.job
-reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$mem, jb.cores = x@runinfo$cores, jb.time = "24", update_cores = 1) {
+reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$mem, jb.cores = x@runinfo$cores, jb.time = x@runinfo$time, update_cores = 1) {
     args = list(...)
     new.ent = copy(entities(x))
     if (!is.null(i)) {
         jb.mem = replace(x@runinfo$mem, i, jb.mem)
         jb.cores = replace(x@runinfo$cores, i, jb.cores)
     }
-    if (!all(names(args) %in% names(new.ent)))
+    tsk = viewtask(x)
+    ## if (!all(names(args) %in% colnames(new.ent)))
+    if (!all(names(args) %in% colnames(new.ent)) && !names(args) %in% viewtask(jb.gridss2)$V2)
         stop("adding additional column to entities... this function is just for resetting with new arguments")
     for (j in seq_along(args))
     {
@@ -719,4 +721,27 @@ silent = function(this_expr, this_env = parent.frame()) {
             type = "message")
     }, envir = this_env)
     invisible()
+}
+
+#' @name viewtask
+#' @title convert job task to table
+#'
+#' Parse task from Flow Job object, character task file,
+#' or Flow Task object
+#'
+#'
+#' @return A Flow job object
+#' @export
+viewtask = function(jb, arglst = c("name", "arg", "default")) {
+  ifun = function(x, arglst = arglst) {
+    unlist(lst.emptychar2na(lst.zerochar2empty(lapply(arglst, function(y)
+      tryCatch((slot(x, y)), error = function(e) NA_character_)))))
+  }
+  if (inherits(jb, "Job"))
+    obj = jb@task
+  else if (inherits(jb, "Task"))
+    obj = jb
+  else if (inherits(jb, "character"))
+    obj = Task(jb)
+  as.data.table(data.table::transpose(lapply(obj@args, ifun, arglst = arglst)))
 }

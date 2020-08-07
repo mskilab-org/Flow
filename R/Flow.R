@@ -944,7 +944,7 @@ Job = function(
     mock = FALSE,
     update_cores = 1,
     parse_recursive = FALSE,
-    time = "24",
+    time = "3-00",
     ...) {
     new('Job', task = task, entities = entities, rootdir = rootdir,
         queue = queue, nice = nice, mem = mem, cores = cores, mock = mock, update_cores = update_cores, parse_recursive = parse_recursive, time = time, ...)
@@ -1970,7 +1970,7 @@ setMethod('qrun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
                 return(data.table(entity = nm, qjob = jobid, success = TRUE))
             }, error = function(e) {
                 writeLines(paste("Deploy failed for entity", nm))
-                data.table(entity = nm, qjob = NA_character_, success = FALSE)
+                return(data.table(entity = nm, qjob = NA_character_, success = FALSE))
             })
         })
         outout = rbindlist(res)
@@ -2038,11 +2038,10 @@ setMethod('srun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
                 writeLines(jobid, paste0(outdir(.Object)[this.env$nm], "/slurm.jobid"))
                 writeLines(paste("Deploying", jobid, "for entity", nm))
                 close(p);
-                data.table(entity = nm, sjob = jobid, success = TRUE)
-                return(out)
+                return(data.table(entity = nm, sjob = jobid, success = TRUE))
             }, error = function(e) {
                 writeLines(paste("Deploy failed for entity", nm))
-                data.table(entity = nm, sjob = NA_character_, success = FALSE)
+                return(data.table(entity = nm, sjob = NA_character_, success = FALSE))
             })
         })
         outout = rbindlist(res)
@@ -2309,8 +2308,7 @@ setMethod('qjobs', 'Job', function(.Object)
             ##     out$jobid[na] = NA
         }
     }
-    print(out)
-    return(out)
+    return(base::withAutoprint(out, echo = F)$value)
 })
 
 #' @export
@@ -2363,8 +2361,7 @@ setMethod('sjobs', 'Job', function(.Object)
             ##     set(out, i = na, j = "jobid", value = NA_character_)
           }
         }
-        print(out)
-        return(out)            
+        return(base::withAutoprint(out, echo = F)$value)
 })
 
 
@@ -2385,6 +2382,7 @@ setMethod('skill', 'Job', function(.Object, jid = NULL)
         if (any(ix)) {
             system2('scancel', paste(sj$jobid[ix], collapse = ","))
             sapply(sj$jobid[ix], function(x) cat("Slurm job id", x, "canceled\n"))
+            invisible()
         } else
             cat('No queued or running Slurm jobs to kill\n')
         invisible()

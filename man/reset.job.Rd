@@ -13,7 +13,7 @@ reset.job(
   rootdir = x@rootdir,
   jb.mem = x@runinfo$mem,
   jb.cores = x@runinfo$cores,
-  jb.time = "24",
+  jb.time = x@runinfo$time,
   update_cores = 1
 )
 }
