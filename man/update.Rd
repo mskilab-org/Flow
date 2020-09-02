@@ -15,7 +15,7 @@ other things to assess job status.  Once finished, it caches results to the .rds
   print.status = TRUE,
   parse_recursive = FALSE,
   io_c = 2,
-  io_n = 7,
+  io_n = 4,
   qprior = 0
 )
 }
