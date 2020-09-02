@@ -2308,7 +2308,7 @@ setMethod('qjobs', 'Job', function(.Object)
             ##     out$jobid[na] = NA
         }
     }
-    return(base::withAutoprint(out, echo = F)$value)
+    return(out)
 })
 
 #' @export
