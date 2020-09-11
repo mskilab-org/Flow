@@ -28,6 +28,8 @@ io_n(.Object)
 
 qprior(.Object)
 
+nice_val(.Object)
+
 queue(.Object)
 
 cores(.Object)

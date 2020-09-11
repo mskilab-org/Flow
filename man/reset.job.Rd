@@ -14,7 +14,8 @@ reset.job(
   jb.mem = x@runinfo$mem,
   jb.cores = x@runinfo$cores,
   jb.time = x@runinfo$time,
-  update_cores = 1
+  update_cores = 1,
+  task = NULL
 )
 }
 \value{

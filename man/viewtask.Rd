@@ -2,10 +2,7 @@
 % Please edit documentation in R/utils.R
 \name{viewtask}
 \alias{viewtask}
-\title{convert job task to table
-
-Parse task from Flow Job object, character task file,
-or Flow Task object}
+\title{or Flow Task object}
 \usage{
 viewtask(jb, arglst = c("name", "arg", "default"))
 }
@@ -13,9 +10,6 @@ viewtask(jb, arglst = c("name", "arg", "default"))
 A Flow job object
 }
 \description{
-convert job task to table
-
-Parse task from Flow Job object, character task file,
 or Flow Task object
 }
 \author{
