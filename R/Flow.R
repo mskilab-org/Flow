@@ -2615,7 +2615,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
         io_c_val = 2
         io_n_val = 7
         qprior_val = 0
-        time = '24'
+        time = '3-00'
     }
     
     ## utility func for instantiation of Job and modifying memory
