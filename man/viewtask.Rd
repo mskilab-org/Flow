@@ -18,3 +18,6 @@ convert job task to table
 Parse task from Flow Job object, character task file,
 or Flow Task object
 }
+\author{
+Kevin Hadi
+}

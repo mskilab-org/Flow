@@ -625,9 +625,9 @@ setMethod('initialize', 'Job', function(.Object,
                                         update_cores = 1,
                                         parse_recursive = FALSE,
                                         io_c = 2,
-                                        io_n = 4,
+                                        io_n = 7,
                                         qprior = 0,
-                                        time = "3-00") {
+                                        time = 24) {
     require(stringr)
     if (is.null(nice))
         nice = TRUE
@@ -655,9 +655,6 @@ setMethod('initialize', 'Job', function(.Object,
     else
         if (is.null(data.table::key(entities)))
             stop('Entities argument must be a keyed data.table, please add a key')
-
-    if (any(grepl('\\s+', entities[[data.table::key(entities)]])))
-      stop('entity ids can not have spaces, please fix')
 
     if (any(duplicated(entities[[data.table::key(entities)]])))
         stop(sprintf('Input entities table has duplicated keys! Check column "%s" of entities table or use a different column as a key', data.table::key(entities)))
@@ -947,7 +944,7 @@ Job = function(
     mock = FALSE,
     update_cores = 1,
     parse_recursive = FALSE,
-    time = "3-00",
+    time = "24",
     ...) {
     new('Job', task = task, entities = entities, rootdir = rootdir,
         queue = queue, nice = nice, mem = mem, cores = cores, mock = mock, update_cores = update_cores, parse_recursive = parse_recursive, time = time, ...)
@@ -1056,7 +1053,7 @@ setGeneric('update', function(object, ...) {
 #' @exportMethod update
 #' @export
 #' @author Marcin Imielinski
-setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, cache.object = TRUE, print.status = TRUE, parse_recursive = FALSE, io_c = 2, io_n = 4, qprior = 0) {
+setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, cache.object = TRUE, print.status = TRUE, parse_recursive = FALSE, io_c = 2, io_n = 7, qprior = 0) {
     ## for every output, apply regexp in files of outdir to search for files
     status.info = rep('', length(object))
     status = rep('ready', length(object))
@@ -2303,7 +2300,8 @@ setMethod('qjobs', 'Job', function(.Object)
             ##     out$jobid[na] = NA
         }
     }
-    return(base::withAutoprint(out, echo = F)$value)
+    print(out)
+    return(out)
 })
 
 #' @export
@@ -2356,7 +2354,8 @@ setMethod('sjobs', 'Job', function(.Object)
             ##     set(out, i = na, j = "jobid", value = NA_character_)
           }
         }
-        return(base::withAutoprint(out, echo = F)$value)
+        print(out)
+        return(out)            
 })
 
 
@@ -2376,11 +2375,9 @@ setMethod('skill', 'Job', function(.Object, jid = NULL)
         ix = !is.na(sj$jobid)
         if (any(ix)) {
             system2('scancel', paste(sj$jobid[ix], collapse = ","))
-            sapply(sj$jobid[ix], function(x) cat("Slurm job id", x, "canceled\n"))
-            invisible()
+            sapply(sj$jobid[ix], function(x) cat("Slurm job id", x, "canceled"))
         } else
             cat('No queued or running Slurm jobs to kill\n')
-        invisible()
     })
 
 
@@ -2608,10 +2605,9 @@ make_chunks = function(vec, max_per_chunk = 100) {
     } else {
         warning("Flow object may be outdated, setting io_c, io_n, and qprior values to defaults")
         io_c_val = 2
-        ##        io_n_val = 7
-        io_n_val = 4
+        io_n_val = 7
         qprior_val = 0
-        time = '3-00'
+        time = '24'
     }
     
     ## utility func for instantiation of Job and modifying memory

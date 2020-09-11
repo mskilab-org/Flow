@@ -670,21 +670,14 @@ tailf = function(x, n = NULL, grep = NULL)
 #' @return A Flow job object
 #' @author Kevin Hadi
 #' @export reset.job
-reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$mem, jb.cores = x@runinfo$cores, jb.time = x@runinfo$time, update_cores = 1, task = NULL) {
-    if (!inherits(x, "Job")) stop ("x must be a Flow Job object")
-    if (is.null(task))
-        usetask = Flow::task(x@task)
-    else if (is.character(task) || inherits(task, "Task"))
-        usetask = task
+reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$mem, jb.cores = x@runinfo$cores, jb.time = "24", update_cores = 1) {
     args = list(...)
     new.ent = copy(entities(x))
     if (!is.null(i)) {
         jb.mem = replace(x@runinfo$mem, i, jb.mem)
         jb.cores = replace(x@runinfo$cores, i, jb.cores)
     }
-    tsk = viewtask(usetask)
-    ## if (!all(names(args) %in% colnames(new.ent)))
-    if (!all(names(args) %in% colnames(new.ent)) && !names(args) %in% viewtask(usetask)$V2)
+    if (!all(names(args) %in% names(new.ent)))
         stop("adding additional column to entities... this function is just for resetting with new arguments")
     for (j in seq_along(args))
     {
@@ -693,14 +686,14 @@ reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$m
     these.forms = formals(body(findMethods("initialize")$Job@.Data)[[2]][[3]])
     if ("time" %in% names(these.forms)) {
         if ("update_cores" %in% names(these.forms))
-            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores, update_cores = update_cores)
+            jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores, update_cores = update_cores)
         else
-            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores)
+            jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores)
     } else {
         if ("update_cores" %in% names(these.forms))
-            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores, update_cores = update_cores)
+            jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores, update_cores = update_cores)
         else
-            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores)
+            jb = Job(x@task, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores)
     }
     return(jb)
 }
@@ -726,33 +719,4 @@ silent = function(this_expr, this_env = parent.frame()) {
             type = "message")
     }, envir = this_env)
     invisible()
-}
-
-#' or Flow Task object
-#'
-#'
-#' @author Kevin Hadi
-#' @return A Flow job object
-#' @export
-viewtask = function(jb, arglst = c("name", "arg", "default")) {
-    lst.emptychar2na = function(x) {
-        x[!nzchar(x)] = NA_character_
-        x
-    }
-    lst.zerochar2empty = function(x) {
-        x[x == "character(0)"] = list("")
-        x
-    }
-    ifun = function(x, arglst = arglst) {
-        
-        unlist(lst.emptychar2na(lst.zerochar2empty(lapply(arglst, function(y)
-            tryCatch((slot(x, y)), error = function(e) NA_character_)))))
-    }
-    if (inherits(jb, "Job"))
-        obj = jb@task
-    else if (inherits(jb, "Task"))
-        obj = jb
-    else if (inherits(jb, "character"))
-        obj = Task(jb)
-    as.data.table(data.table::transpose(lapply(obj@args, ifun, arglst = arglst)))
 }
