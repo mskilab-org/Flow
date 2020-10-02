@@ -135,7 +135,7 @@ qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup
     }
     if (!is.null(qjname)) out_cmd = paste(out_cmd, " -N ", jlabel)
     out_cmd = paste(out_cmd, '-now', ifelse(now, 'y', 'n'))
-    if (!is.null(mc.cores)) out_cmd = paste(out_cmd, ifelse(!is.na(mc.cores), ifelse(mc.cores > 1,  paste(" -pe smp",  mc.cores), ''), ''))
+    if (!is.null(mc.cores)) out_cmd = paste(out_cmd, ifelse(!is.na(mc.cores), ifelse(mc.cores > 0,  paste(" -pe smp",  mc.cores), ''), ''))
     out_cmd = paste(out_cmd, script.fn)
     names(out_cmd)= names(script.fn)
     return(out_cmd)
@@ -192,8 +192,10 @@ ssub_cmd = function(script.fn, queue, jname = NULL, jlabel = NULL, jgroup = NULL
             ## lapply(cmds, function(this_cmd) {system(this_cmd); return(NULL)})
         }
         if (!is.null(qjname)) out_cmd = paste(out_cmd, " --job-name=", jlabel, sep = '')
-        #out_cmd = paste(out_cmd, '-now', ifelse(now, 'y', 'n'))
-        if (!is.null(mc.cores)) out_cmd = paste(out_cmd, ifelse(!is.na(mc.cores), ifelse(mc.cores>1,  paste(" --cpus-per-task=",  mc.cores, sep = ""), ''), ''))
+        ## out_cmd = paste(out_cmd, '-now', ifelse(now, 'y', 'n'))
+        ## khadi Friday, Sep 25, 2020, Week 39, 08:59:16 AM
+        ## wtf... slurm defaults to 2 cores per task if you don't set? changing >1 to >0
+        if (!is.null(mc.cores)) out_cmd = paste(out_cmd, ifelse(!is.na(mc.cores), ifelse(mc.cores>0,  paste(" --cpus-per-task=",  mc.cores, sep = ""), ''), ''))
         out_cmd = paste(out_cmd, script.fn)
         names(out_cmd)= names(script.fn)
         return(out_cmd)
