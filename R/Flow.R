@@ -2630,7 +2630,8 @@ make_chunks = function(vec, max_per_chunk = 100) {
     io_n_val = .Object@runinfo[ix]$io_n
     qprior_val = .Object@runinfo[ix]$qprior
     nice_val = .Object@runinfo[ix]$nice_val
-    if (!is.null(io_c_val) & !is.null(io_n_val) & !is.null(qprior_val)) {
+    time = .Object@runinfo[ix]$time
+    if (!is.null(io_c_val) & !is.null(io_n_val) & !is.null(qprior_val) & !is.null(nice_val) & !is.null(time)) {
         if (any(! .Object@runinfo$io_c %in% seq(0, 3))) {
             message("invalid io_c parameter(s) specified\nMust be integer between 0 and 3")
             halt = TRUE
@@ -2651,13 +2652,18 @@ make_chunks = function(vec, max_per_chunk = 100) {
             stop("invalid parameters specified... reset using valid parameters")
         }
     } else {
-        warning("Flow object may be outdated, setting io_c, io_n, and qprior values to defaults")
+        warning("Flow object may be outdated, setting io_c, io_n, qprior, nice, and time values to defaults")
         io_c_val = 2
         ##        io_n_val = 7
         io_n_val = 4
         qprior_val = 0
         nice_val = 10
         time = '3-00'
+        .Object@runinfo$io_c = io_c_val
+        .Object@runinfo$io_n = io_n_val
+        .Object@runinfo$qprior = qprior_val
+        .Object@runinfo$nice_val = nice_val
+        .Object@runinfo$time = time
     }
     
     ## utility func for instantiation of Job and modifying memory
@@ -2672,8 +2678,8 @@ make_chunks = function(vec, max_per_chunk = 100) {
     .Object@runinfo[, cmd.quiet := '']
     ## .Object@runinfo[ix, cmd := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, '(ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
     ## .Object@runinfo[ix, cmd.quiet := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, 'ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
-    .Object@runinfo[ix, cmd := paste('{ umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('{ echo \"$(date), running in $(pwd) \"; ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), ''), '/usr/bin/time -v ', cmd.og, '; } 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go; exit 0; }',  sep = '')]
-    .Object@runinfo[ix, cmd.quiet := paste('{ umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('echo \"$(date), running in $(pwd) \"; ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go; exit 0; }',  sep = '')]
+    .Object@runinfo[ix, cmd := paste('{ umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('{ echo \"$(date), running in %s \"; ionice -c %s -n %s nice --adjustment=%s ', outdir, io_c_val, io_n_val, nice_val), ''), '/usr/bin/time -v ', cmd.og, '; } 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go; exit 0; }',  sep = '')]
+    .Object@runinfo[ix, cmd.quiet := paste('{ umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('echo \"$(date), running in %s \"; ionice -c %s -n %s nice --adjustment=%s ', outdir, io_c_val, io_n_val, nice_val), ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go; exit 0; }',  sep = '')]
 
     .Object@runinfo$cmd.path = paste(outdir(.Object), '/', names(outdir(.Object)), '.cmd.sh', sep = '')
     
