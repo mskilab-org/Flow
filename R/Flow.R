@@ -1189,23 +1189,25 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
     if (obj_string == ".Object" && tryCatch(exists(obj_string, pf), error = function(e) FALSE)) {
         pf$.Object = new.object
     }
-    
-    assign("tmp_234508972349087_", new.object, envir = pf)
-    assign("tmp_234508972349087_", new.object, envir = globalenv())
-    if (deparse(var[[1]]) == "[") {
-        idx = eval(var[[3]], pf, pf2)
-        if (is.logical(idx)) idx = which(idx)
-        if (is.character(idx))
-            arg2 = paste0('[', mkst(paste0("'", idx, "'")), ']')
-        else
-            arg2 = paste0('[', mkst(idx), ']')
-    } else {
-        arg2 = ""
+
+    if (is.name(call_x)) {
+        assign("tmp_234508972349087_", new.object, envir = pf)
+        assign("tmp_234508972349087_", new.object, envir = globalenv())
+        if (deparse(var[[1]]) == "[") {
+            idx = eval(var[[3]], pf, pf2)
+            if (is.logical(idx)) idx = which(idx)
+            if (is.character(idx))
+                arg2 = paste0('[', mkst(paste0("'", idx, "'")), ']')
+            else
+                arg2 = paste0('[', mkst(idx), ']')
+        } else {
+            arg2 = ""
+        }
+        ## sys.call(sys.nframe() - 2)
+        expr = parse(text = sprintf("%s%s = tmp_234508972349087_", deparse(call_x), arg2))
+        eval(expr, pf)
+        eval(expr, globalenv())
     }
-    ## sys.call(sys.nframe() - 2)
-    expr = parse(text = sprintf("%s%s = tmp_234508972349087_", deparse(call_x), arg2))
-    eval(expr, pf)
-    eval(expr, globalenv())
     suppressWarnings({
         rm(list = "tmp_234508972349087_", envir = pf)
         rm(list = "tmp_234508972349087_", envir = globalenv())
