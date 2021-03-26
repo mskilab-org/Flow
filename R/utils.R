@@ -664,6 +664,11 @@ tailf = function(x, n = NULL, grep = NULL)
 }
 
 
+mkst = function (v, f = "c", po = "(", pc = ")", collapse = ",") 
+{
+    return(paste0(f, po, paste0(v, collapse = collapse), pc))
+}
+
 #' @name reset.job
 #' @title reset.job
 #'
@@ -674,11 +679,15 @@ tailf = function(x, n = NULL, grep = NULL)
 #' @export reset.job
 reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$mem, jb.cores = x@runinfo$cores, jb.time = x@runinfo$time, update_cores = 1, task = NULL) {
     if (!inherits(x, "Job")) stop ("x must be a Flow Job object")
-    if (is.null(task))
-        usetask = Flow::task(x@task)
+    if (is.null(task)) 
+        usetask = x@task
     else if (is.character(task) || inherits(task, "Task"))
         usetask = task
     args = list(...)
+    if (length(args) == 0 || all(lengths(args) == 0)) {
+        message("no change to job")
+        return(x)
+    }
     new.ent = copy(entities(x))
     if (!is.null(i)) {
         jb.mem = replace(x@runinfo$mem, i, jb.mem)
@@ -704,6 +713,25 @@ reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$m
         else
             jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores)
     }
+    var = as.list(match.call())$x
+    if (length(var) > 1) call_x = var[[2]] else call_x = var[[1]]
+    pf = parent.frame(); pf2 = parent.frame(2)
+    assign("tmp_234508972349087_", jb, envir = pf)
+    
+    if (deparse(var[[1]]) == "[") {
+        idx = eval(var[[3]], pf, pf2)
+        if (is.logical(idx)) idx = which(idx)
+        if (is.character(idx))
+            arg2 = paste0('[', mkst(paste0("'", idx, "'")), ']')
+        else
+            arg2 = paste0('[', mkst(idx), ']')
+    } else {
+        arg2 = ""
+    }
+    
+    expr = parse(text = sprintf("%s%s = tmp_234508972349087_", deparse(call_x), arg2))
+    eval(expr, pf)
+    rm(list = "tmp_234508972349087_", envir = pf)
     return(jb)
 }
 

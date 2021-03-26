@@ -26,6 +26,7 @@
 #' @import data.table
 #' @importMethodsFrom data.table key
 #' @import stringr
+#' @import XML
 
 ############################## setting skipNul to TRUE to avoid errors, overwriting the base R functionality for Flow
 readLines = function(con = stdin(), n = -1L , ok = TRUE, warn = TRUE, encoding = "unknown", skipNul = TRUE) {
@@ -629,7 +630,7 @@ setMethod('initialize', 'Job', function(.Object,
                                         qprior = 0,
                                         nice_val = 10,
                                         time = "3-00") {
-    require(stringr)
+    ## require(stringr)
     if (is.null(nice))
         nice = TRUE
 
@@ -1180,14 +1181,46 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
     if (print.status)
         print(table(status(new.object)))
     ## weird R voodoo to modify object in place
-    eval(
-        eval(
-            substitute(
-                expression(object <<- new.object)
-               ,env=parent.frame(1) )
-        )
-    )
+
+    var = as.list(sys.call(1)[[2]])
+    if (length(var) > 1) call_x = var[[2]] else call_x = var[[1]]
+    pf = parent.frame(2); pf2 = parent.frame(3)
+    obj_string = deparse(sys.call(sys.nframe() - 1)[[2]])    
+    if (obj_string == ".Object" && tryCatch(exists(obj_string, pf), error = function(e) FALSE)) {
+        pf$.Object = new.object
+    }
+    
+    assign("tmp_234508972349087_", new.object, envir = pf)
+    assign("tmp_234508972349087_", new.object, envir = globalenv())
+    if (deparse(var[[1]]) == "[") {
+        idx = eval(var[[3]], pf, pf2)
+        if (is.logical(idx)) idx = which(idx)
+        if (is.character(idx))
+            arg2 = paste0('[', mkst(paste0("'", idx, "'")), ']')
+        else
+            arg2 = paste0('[', mkst(idx), ']')
+    } else {
+        arg2 = ""
+    }
+    ## sys.call(sys.nframe() - 2)
+    expr = parse(text = sprintf("%s%s = tmp_234508972349087_", deparse(call_x), arg2))
+    eval(expr, pf)
+    eval(expr, globalenv())
+    suppressWarnings({
+        rm(list = "tmp_234508972349087_", envir = pf)
+        rm(list = "tmp_234508972349087_", envir = globalenv())
+    })
     cat('')
+
+    
+    ## eval(
+    ##     eval(
+    ##         substitute(
+    ##             expression(object <<- new.object)
+    ##            ,env=parent.frame(1) )
+    ##     )
+    ## )
+    ## cat('')
 })
 
 
@@ -1864,7 +1897,7 @@ setGeneric('run', function(.Object, ...) {standardGeneric('run')})
 #' @author Marcin Imielinski
 setMethod('run', 'Job', function(.Object, mc.cores = 1, all = FALSE, quiet = TRUE)
     {
-        require(parallel)
+        ## require(parallel)
 
 
         cmds = cmd(.Object, quiet = quiet, all = all)
@@ -2955,7 +2988,7 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
 #' @author Marcin Imielinski
 xml2task = function(path, module = NULL, out.file = NULL)
     {
-        require(XML)
+        ## require(XML)
 
         tasks = xmlToList(xmlParse(path))
         tasks = tasks[which(names(tasks)=='pipeline-configuration')]

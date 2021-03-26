@@ -27,7 +27,8 @@ Depends:
     data.table,
     igraph,
     stringr,
-    parallel
+    parallel,
+    XML
 Imports:
     data.table
 Suggests:
