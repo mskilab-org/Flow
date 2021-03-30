@@ -627,6 +627,7 @@ setMethod('initialize', 'Job', function(.Object,
                                         io_c = 2,
                                         io_n = 4,
                                         qprior = 0,
+                                        nice_val = 10,
                                         time = "3-00") {
     require(stringr)
     if (is.null(nice))
@@ -870,6 +871,7 @@ setMethod('initialize', 'Job', function(.Object,
     .Object@runinfo[, io_c := io_c]
     .Object@runinfo[, io_n := io_n]
     .Object@runinfo[, qprior := qprior]
+    .Object@runinfo[, nice_val := nice_val]
     .Object@runinfo[, time := time]
 
     ## append time call and input / output redirects to local function calls
@@ -1598,6 +1600,7 @@ setMethod('io_n', 'Job', function(.Object) {
   structure(.Object@runinfo[, io_n], names = .Object@runinfo[[key(.Object@runinfo)]])
 })
 
+
 #' @export
 setGeneric('io_n<-', function(.Object, value) {standardGeneric('io_n<-')})
 
@@ -1651,6 +1654,43 @@ setGeneric('qprior<-', function(.Object, value) {standardGeneric('qprior<-')})
 #' @author Kevin Hadi
 setReplaceMethod('qprior', 'Job', function(.Object, value) {
     .Object@runinfo[, qprior := value]
+    .Object@runinfo = .update_cmd(.Object)
+    return(.Object)
+})
+
+
+#' @name Job-class
+#' @rdname Job-class
+#' @exportMethod nice_val
+#' @export
+setGeneric('nice_val', function(.Object) {standardGeneric('nice_val')})
+
+#' @name nice_val
+#' @title Gets nice value
+#' @description
+#' sets nice value
+#' default is 10
+#'
+#' @exportMethod nice_val
+#' @export
+#' @author Kevin Hadi
+setMethod('nice_val', 'Job', function(.Object) {
+  structure(.Object@runinfo[, nice_val], names = .Object@runinfo[[key(.Object@runinfo)]])
+})
+
+#' @export
+setGeneric('nice_val<-', function(.Object, value) {standardGeneric('nice_val<-')})
+
+#' @name nice_val<-
+#' @title Sets nice value associated with job object
+#' @description
+#' Sets nice_value
+#'
+#' @exportMethod nice_val<-
+#' @export
+#' @author Kevin Hadi
+setReplaceMethod('nice_val', 'Job', function(.Object, value) {
+    .Object@runinfo[, nice_val := value]
     .Object@runinfo = .update_cmd(.Object)
     return(.Object)
 })
@@ -2589,6 +2629,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
     io_c_val = .Object@runinfo[ix]$io_c
     io_n_val = .Object@runinfo[ix]$io_n
     qprior_val = .Object@runinfo[ix]$qprior
+    nice_val = .Object@runinfo[ix]$nice_val
     if (!is.null(io_c_val) & !is.null(io_n_val) & !is.null(qprior_val)) {
         if (any(! .Object@runinfo$io_c %in% seq(0, 3))) {
             message("invalid io_c parameter(s) specified\nMust be integer between 0 and 3")
@@ -2602,6 +2643,10 @@ make_chunks = function(vec, max_per_chunk = 100) {
             message("invalid qprior parameter(s) specified\nMust be integer between -1023 and 1024")
             halt = TRUE
         }
+        if (any(! .Object@runinfo$nice_val %in% seq(-20, 19))) {
+            message("invalid nice value parameter(s) specified\nMust be integer between -20 and 19")
+            halt = TRUE
+        }
         if (halt) {
             stop("invalid parameters specified... reset using valid parameters")
         }
@@ -2611,13 +2656,14 @@ make_chunks = function(vec, max_per_chunk = 100) {
         ##        io_n_val = 7
         io_n_val = 4
         qprior_val = 0
+        nice_val = 10
         time = '3-00'
     }
     
     ## utility func for instantiation of Job and modifying memory
     .cmd2bcmd = function(cmd, outdir, name, ids, queue, mem, cores) bsub_cmd(paste('touch ', outdir, '/started; ', cmd, ';', sep = ''), queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = .jname(outdir, name, ids), jlabel = .jname(outdir, name, ids))
     .cmd2qcmd = function(cmd, outdir, name, ids, queue, mem, cores, now, qprior) qsub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, touch_job_out = TRUE, qprior = qprior)
-    .cmd2scmd = function(cmd, outdir, name, ids, queue, mem, cores, now, time, qprior) ssub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, time = time, qprior = qprior)
+    .cmd2scmd = function(cmd, outdir, name, ids, queue, mem, cores, now, time) ssub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, time = time)
 
     .Object@runinfo[, bcmd := '']
 
@@ -2626,8 +2672,8 @@ make_chunks = function(vec, max_per_chunk = 100) {
     .Object@runinfo[, cmd.quiet := '']
     ## .Object@runinfo[ix, cmd := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, '(ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
     ## .Object@runinfo[ix, cmd.quiet := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, 'ionice -c2 -n7 nice ', ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
-    .Object@runinfo[ix, cmd := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('(ionice -c %s -n %s nice ', io_c_val, io_n_val), ''), '/usr/bin/time -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
-    .Object@runinfo[ix, cmd.quiet := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('ionice -c %s -n %s nice ', io_c_val, io_n_val), ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
+    .Object@runinfo[ix, cmd := paste('{ umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('{ echo \"$(date), running in $(pwd) \"; ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), ''), '/usr/bin/time -v ', cmd.og, '; } 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go; exit 0; }',  sep = '')]
+    .Object@runinfo[ix, cmd.quiet := paste('{ umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('echo \"$(date), running in $(pwd) \"; ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), ''), '/usr/bin/time -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go; exit 0; }',  sep = '')]
 
     .Object@runinfo$cmd.path = paste(outdir(.Object), '/', names(outdir(.Object)), '.cmd.sh', sep = '')
     
@@ -2637,7 +2683,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
 
     .Object@runinfo[, mapply(function(text, path) writeLines(text, path), cmd, cmd.path)] ## writes cmd to path
     .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, qprior = qprior_val)]
-    .Object@runinfo[ix, scmd := .cmd2scmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, time, qprior = qprior_val)]
+    .Object@runinfo[ix, scmd := .cmd2scmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, time)]
 
     return(.Object@runinfo)
 }
