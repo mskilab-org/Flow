@@ -2663,7 +2663,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
     ## utility func for instantiation of Job and modifying memory
     .cmd2bcmd = function(cmd, outdir, name, ids, queue, mem, cores) bsub_cmd(paste('touch ', outdir, '/started; ', cmd, ';', sep = ''), queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = .jname(outdir, name, ids), jlabel = .jname(outdir, name, ids))
     .cmd2qcmd = function(cmd, outdir, name, ids, queue, mem, cores, now, qprior) qsub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, touch_job_out = TRUE, qprior = qprior)
-    .cmd2scmd = function(cmd, outdir, name, ids, queue, mem, cores, now, time) ssub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, time = time)
+    .cmd2scmd = function(cmd, outdir, name, ids, queue, mem, cores, now, time, qprior) ssub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, time = time, qprior = qprior)
 
     .Object@runinfo[, bcmd := '']
 
@@ -2683,7 +2683,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
 
     .Object@runinfo[, mapply(function(text, path) writeLines(text, path), cmd, cmd.path)] ## writes cmd to path
     .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, qprior = qprior_val)]
-    .Object@runinfo[ix, scmd := .cmd2scmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, time)]
+    .Object@runinfo[ix, scmd := .cmd2scmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, time, qprior = qprior_val)]
 
     return(.Object@runinfo)
 }

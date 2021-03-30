@@ -162,7 +162,7 @@ qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup
 #' @param deadline boolean specifies if deadline initiation time used (default = FALSE)
 #' @author Zoran Gajic
 #' @export
-ssub_cmd = function(script.fn, queue, jname = NULL, jlabel = NULL, jgroup = NULL, mem=NULL, group = NULL, cwd = NULL, mc.cores = NULL, deadline = F, now = FALSE, time = "00")
+ssub_cmd = function(script.fn, queue, jname = NULL, jlabel = NULL, jgroup = NULL, mem=NULL, group = NULL, cwd = NULL, mc.cores = NULL, deadline = F, now = FALSE, time = "00", qprior = NULL)
 {
         if (is.null(jname) & is.null(names(script.fn)))
             jname = 'job'
@@ -196,6 +196,7 @@ ssub_cmd = function(script.fn, queue, jname = NULL, jlabel = NULL, jgroup = NULL
         ## khadi Friday, Sep 25, 2020, Week 39, 08:59:16 AM
         ## wtf... slurm defaults to 2 cores per task if you don't set? changing >1 to >0
         if (!is.null(mc.cores)) out_cmd = paste(out_cmd, ifelse(!is.na(mc.cores), ifelse(mc.cores>0,  paste(" --cpus-per-task=",  mc.cores, sep = ""), ''), ''))
+        if (!is.null(qprior)) out_cmd =  paste(out_cmd, ifelse(!is.na(qprior), ifelse(qprior>=0,  paste(" --nice=",  qprior, sep = ""), ''), '')) # set the "nice" value for SLURM
         out_cmd = paste(out_cmd, script.fn)
         names(out_cmd)= names(script.fn)
         return(out_cmd)
