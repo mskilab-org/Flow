@@ -160,6 +160,9 @@ qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup
 #' @param cwd string pathname to current working directory; -cwd "current_working_directory" (default = NULL)
 #' @param mc.cores integer number of cores to use (default = 1)
 #' @param deadline boolean specifies if deadline initiation time used (default = FALSE)
+#' @param now
+#' @param time
+#' @param qprior used for setting the "nice" value for SLURM
 #' @author Zoran Gajic
 #' @export
 ssub_cmd = function(script.fn, queue, jname = NULL, jlabel = NULL, jgroup = NULL, mem=NULL, group = NULL, cwd = NULL, mc.cores = NULL, deadline = F, now = FALSE, time = "00", qprior = NULL)
