@@ -3600,9 +3600,15 @@ Flow = function(
 #' @param x Flow object
 #' @author Marcin Imielinski
 #' @export
-'plot.Flow' = function(x, y, paths.only = FALSE, seed = 42, layout = layout_with_fr)
+'plot.Flow' = function(x, ...)
 {
-  set.seed(42)
+  args = list(...)
+  y = args$y
+  paths.only = args$paths.only = FALSE
+  seed = args$seed = 42
+  layout = args$layout = layout_with_fr
+
+  set.seed(seed)
   nodes = x@nodes
   edges = x@edges
 
