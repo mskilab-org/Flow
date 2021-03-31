@@ -29,7 +29,6 @@ Depends:
     stringr,
     parallel
 Imports:
-    data.table
 Suggests:
     XML,
     testthat
