@@ -426,9 +426,11 @@ parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
 #' @export
 xml2task = function(path, module = NULL, out.file = NULL)
 {
-    require(XML)
+    if (!requireNamespace("XML", quietly = TRUE)) {
+        stop('In order to read xml files you must install the package "XML".')
+    }
 
-    tasks = xmlToList(xmlParse(path))
+    tasks = XML::xmlToList(XML::xmlParse(path))
     tasks = tasks[which(names(tasks)=='pipeline-configuration')]
 
     if (length(tasks)==0){

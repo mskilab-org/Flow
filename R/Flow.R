@@ -2949,7 +2949,7 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
 #' @author Marcin Imielinski
 xml2task = function(path, module = NULL, out.file = NULL)
     {
-        require(XML)
+        requireNamespace(XML)
 
         tasks = xmlToList(xmlParse(path))
         tasks = tasks[which(names(tasks)=='pipeline-configuration')]
