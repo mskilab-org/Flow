@@ -26,7 +26,7 @@ the respective entity in an output table. See illustration below:
   <big><strong>Flow Schema</strong></big>
 </p>
 <p align="center">
-  <img src="Flow_schema.png">
+  <img src="inst/extdata/Flow_schema.png">
 </p>
 
 #   Setting up entities and tasks
