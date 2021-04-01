@@ -114,7 +114,8 @@ setMethod('initialize', 'Module', function(.Object,
 
         return(.Object)
     })
-#' @name Module
+
+#' @name module
 #' @title Class to implement modules, which are standalone pieces of code that expect standard inputs and outputs
 #' @description
 #'
