@@ -4,7 +4,7 @@
 \alias{plot.Flow}
 \title{plot.Flow}
 \usage{
-\method{plot}{Flow}(x, y, paths.only = FALSE, seed = 42, layout = layout_with_fr)
+\method{plot}{Flow}(x, ...)
 }
 \arguments{
 \item{x}{Flow object}

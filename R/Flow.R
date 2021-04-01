@@ -343,7 +343,7 @@ setMethod('initialize', 'Task', function(.Object,
 
 
 
-#' @name Task
+#' @name task
 #' @title Object representing a task, which is a wiring of a module inputs and outputs to specific entity annotations names
 #' @description
 #'
