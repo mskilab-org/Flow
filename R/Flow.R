@@ -3604,9 +3604,12 @@ Flow = function(
 {
   args = list(...)
   y = args$y
-  paths.only = args$paths.only = FALSE
-  seed = args$seed = 42
-  layout = args$layout = layout_with_fr
+  seed = args$seed
+  if (is.null(seed)) seed = 42
+  paths.only = args$paths.only
+  if (is.null(paths.only)) paths.only = FALSE
+  layout = args$layout
+  if (is.null(layout)) layout = layout_with_fr
 
   set.seed(seed)
   nodes = x@nodes
