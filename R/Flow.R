@@ -3835,7 +3835,7 @@ flow.entities = function(entities, nodes, edges, quick = FALSE)
   ready = eval(parse(text = sprintf("merge(emm, inputs, allow = TRUE, by = 'id')[, .(nife = sum(ife)), by = .(%s, taskid, ninputs)]",key(entities))))
   done = eval(parse(text = sprintf("merge(emm, outputs, allow = TRUE, by = 'id')[, .(nofe = sum(ofe)), by = .(%s, taskid, noutputs)]",key(entities))))
   
-  rd = merge(ready, done, by = c('taskid', key(entities)))[, .(ready = sum(ninputs == nife & noutputs == 0),
+  rd = merge(ready, done, by = c('taskid', key(entities)))[, .(ready = sum(ninputs == nife & nofe == 0),
                                                                incomplete = sum(ninputs == nife & nofe > 0 & nofe < noutputs),
                                                                done = sum(ninputs == nife & noutputs == nofe)), keyby = taskid]
 
