@@ -664,7 +664,8 @@ setMethod('initialize', 'Job', function(.Object,
     if (any(duplicated(entities[[data.table::key(entities)]])))
         stop(sprintf('Input entities table has duplicated keys! Check column "%s" of entities table or use a different column as a key', data.table::key(entities)))
 
-    .Object@entities = copy(entities)
+    entities = copy(entities)
+    .Object@entities = entities
 
     tabstring = function(tab, sep = ', ')
         return(paste(names(tab), '(', tab, ')', sep = '', collapse = sep))
@@ -3852,3 +3853,14 @@ flow.entities = function(entities, nodes, edges, quick = FALSE)
   return(nodes)
 }
 
+
+#' @title normalizePath
+#' @description
+#'
+#' Internal version of normalizePath that doesn't dereference symbolic links to the file proper
+#' instead just to the containing directory
+#' 
+normalizePath = function(x)
+{
+  paste0(base::normalizePath(dirname(x)), '/', basename(x))
+}
