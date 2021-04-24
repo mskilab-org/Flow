@@ -38,7 +38,7 @@
 #' @param mem  integer amount of virtual memory/RAM to use via resource requirement arg '-R "res_req"'' (default = NULL)
 #' @param group  string project_name for '-P' (default = NULL)
 #' @param cwd string pathname to current working directory; -cwd "current_working_directory" (default = NULL)
-#' @param mc.cores integer number of cores to use (default = 1) 
+#' @param mc.cores integer number of cores to use (default = 1)
 #' @param deadline boolean specifies if deadline initiation time used (default = FALSE)
 #' @author Marcin Imielinski
 #' @export
@@ -51,23 +51,23 @@ bsub_cmd = function(cmd, queue = NULL, jname = NULL, jlabel = NULL, jgroup = NUL
     if (length(jname) != length(cmd)){
         jname = rep(jname, length(cmd))
     }
-    
+
     if (!is.null(jname)){
-        names(cmd) = dedup(jname)    
+        names(cmd) = dedup(jname)
     }
-                            
+
     qjname = paste( "\"", names(cmd), "\"", sep="" )
     qjout = paste( "\"", names(cmd), ".bsub.out", "\" ", sep="" )
     qjerr = paste( "\"", names(cmd), ".bsub.err", "\" ", sep="" )
     qjrout = paste( "\"", names(cmd), ".R.out", "\" ", sep="" )
     out_cmd = paste( "bsub -o ", qjout, " -e ",  qjerr);
     out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-q ", queue)))
-#    if (!is.null(queue)) out_cmd = ifelse(is.na(queue), '', paste("-q ", queue)) 
-    if (!is.null(group)) out_cmd = paste(out_cmd, " -P ", group) 
+#    if (!is.null(queue)) out_cmd = ifelse(is.na(queue), '', paste("-q ", queue))
+    if (!is.null(group)) out_cmd = paste(out_cmd, " -P ", group)
     if (!is.null(mem)) out_cmd = paste(out_cmd, " -R \"rusage[mem=", mem, "]\" ", sep = "")
-    if (!is.null(jlabel)) out_cmd = paste(out_cmd, " -J ", jlabel ) 
-    if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup)) 
-    if (!is.null(cwd)) out_cmd = paste(out_cmd, " -cwd ", cwd ) 
+    if (!is.null(jlabel)) out_cmd = paste(out_cmd, " -J ", jlabel )
+    if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
+    if (!is.null(cwd)) out_cmd = paste(out_cmd, " -cwd ", cwd )
     if (!is.null(mc.cores)) out_cmd = paste(out_cmd, sprintf(" -n %d,%d -R 'span[hosts=1]'", mc.cores, mc.cores))
     if (deadline){ out_cmd = paste(out_cmd, '-sla DEADLINEsla') }
     out_cmd = paste(out_cmd," \"",  cmd, "\"", sep = "")
@@ -94,43 +94,116 @@ bsub_cmd = function(cmd, queue = NULL, jname = NULL, jlabel = NULL, jgroup = NUL
 #' @param mem  integer amount of virtual memory/RAM to use via resource requirement arg '-R "res_req"'' (default = NULL)
 #' @param group  string project_name for '-P' (default = NULL)
 #' @param cwd string pathname to current working directory; -cwd "current_working_directory" (default = NULL)
-#' @param mc.cores integer number of cores to use (default = 1) 
+#' @param mc.cores integer number of cores to use (default = 1)
 #' @param deadline boolean specifies if deadline initiation time used (default = FALSE)
 #' @author Marcin Imielinski
 #' @export
-qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup = NULL, mem = NULL, group = NULL, cwd = NULL, mc.cores = NULL, deadline = F, now = FALSE)
+qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup = NULL, mem = NULL, group = NULL, cwd = NULL, mc.cores = NULL, deadline = F, now = FALSE, touch_job_out = TRUE, qprior = 0)
 {
     if (is.null(jname) & is.null(names(script.fn))){
         jname = 'job'
     }
-        
+
     if (length(jname) != length(script.fn)){
         jname = rep(jname, length(script.fn))
     }
-        
+
     if (!is.null(jname)){
-        names(script.fn) = dedup(jname)   
-    }  
+        names(script.fn) = dedup(jname)
+    }
 
     qjname = paste( "\"", names(script.fn), "\"", sep="" )
     qjout = paste( "", names(script.fn), ".bsub.out", " " , sep="" )
     qjerr = paste( "", names(script.fn), ".bsub.err", "", sep="" )
     qjrout = paste( "", names(script.fn), ".R.out", "", sep="" )
-    out_cmd = paste("qsub -V -j y -o ", qjout);
+    out_cmd = paste0("qsub -V -j y -p ", qprior, " -o ", qjout)
+    ## out_cmd = sprintf("qsub -V -j y -p %s -o %s ", qprior, qjout)
+    ## out_cmd = paste("qsub -V -j y -o ", qjout);
     out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("-q ", queue)))
     #if (!is.null(queue)) out_cmd = ifelse(is.na(queue), '', paste("-q ", queue))
     if (!is.null(group)) out_cmd = paste(out_cmd, " -P ", group)
     if (!is.null(mem)) out_cmd = paste(out_cmd, " -l h_vmem=", mem, "g", sep = "")
     if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
-    if (!is.null(cwd)) out_cmd = paste(out_cmd, " -wd ", cwd )
+    if (!is.null(cwd)) {
+        current_umask = Sys.umask(mode = NA)
+        out_cmd = paste(out_cmd, " -wd ", cwd )
+        Sys.umask(mode = "0002")
+        base::file.create(trimws(paste0(cwd, "/", qjout)))
+        Sys.umask(mode = current_umask)
+        ## cmds = sprintf("umask 002; touch %s", paste0(cwd, "/", qjout))
+        ## lapply(cmds, function(this_cmd) {system(this_cmd); return(NULL)})
+    }
     if (!is.null(qjname)) out_cmd = paste(out_cmd, " -N ", jlabel)
     out_cmd = paste(out_cmd, '-now', ifelse(now, 'y', 'n'))
-    if (!is.null(mc.cores)) out_cmd = paste(out_cmd, ifelse(!is.na(mc.cores), ifelse(mc.cores > 1,  paste(" -pe smp",  mc.cores), ''), ''))
+    if (!is.null(mc.cores)) out_cmd = paste(out_cmd, ifelse(!is.na(mc.cores), ifelse(mc.cores > 0,  paste(" -pe smp",  mc.cores), ''), ''))
     out_cmd = paste(out_cmd, script.fn)
     names(out_cmd)= names(script.fn)
     return(out_cmd)
 }
 
+
+#' @name ssub_cmd
+#' @title ssub_cmd
+#' @description
+#'
+#' Makes ssub command that wraps shell command "script.fn" to send to queue "queue"
+#' redirecting output / error etc streams to path prefixed by "jname",
+#' optional_args: maximum memory requirements "mem", "jlabel" job label
+#'
+#' @param script.fn string shell command to be submitted via bsub
+#' @param queue string queue destination, specifies destination of the job '-q "destination" ' (default = NULL)
+#' @param jname  string path prefix by 'jname' (default = NULL)
+#' @param jlabel string job name for '-J "job_name" ' (default = NULL)
+#' @param jgroup string job_group_name for '-g "job_group_name" ' (default = NULL)
+#' @param mem  integer amount of virtual memory/RAM to use via resource requirement arg '-R "res_req"'' (default = NULL)
+#' @param group  string project_name for '-P' (default = NULL)
+#' @param cwd string pathname to current working directory; -cwd "current_working_directory" (default = NULL)
+#' @param mc.cores integer number of cores to use (default = 1)
+#' @param deadline boolean specifies if deadline initiation time used (default = FALSE)
+#' @param now
+#' @param time
+#' @param qprior used for setting the "nice" value for SLURM
+#' @author Zoran Gajic
+#' @export
+ssub_cmd = function(script.fn, queue, jname = NULL, jlabel = NULL, jgroup = NULL, mem=NULL, group = NULL, cwd = NULL, mc.cores = NULL, deadline = F, now = FALSE, time = "00", qprior = NULL)
+{
+        if (is.null(jname) & is.null(names(script.fn)))
+            jname = 'job'
+        
+        if (length(jname) != length(script.fn))
+            jname = rep(jname, length(script.fn))
+        
+        if (!is.null(jname))
+            names(script.fn) = dedup(jname)    
+        qjname = paste( "\"", names(script.fn), "\"", sep="" )
+        qjout = paste( "", names(script.fn), ".bsub.out", " " , sep="" )
+        qjerr = paste( "", names(script.fn), ".bsub.err", "", sep="" )
+        qjrout = paste( "", names(script.fn), ".R.out", "", sep="" )                    
+        out_cmd = paste("sbatch --export=ALL --output=", qjout, sep = '');
+        out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste("--partition=", queue)))
+        out_cmd = paste(out_cmd, '--time=',time, ':00:00 ', sep = '') 
+        if (!is.null(mem)) out_cmd = paste(out_cmd, " --mem=", mem, "G", sep = "");
+        #if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
+        ## if (!is.null(cwd)) out_cmd = paste(out_cmd, " --workdir=", cwd , sep = '')
+        if (!is.null(cwd)) {
+            current_umask = Sys.umask(mode = NA)
+            out_cmd = paste0(out_cmd, " --chdir=", cwd)
+            Sys.umask(mode = "0002")
+            base::file.create(trimws(paste0(cwd, "/", qjout)))
+            Sys.umask(mode = current_umask)
+            ## cmds = sprintf("umask 002; touch %s", paste0(cwd, "/", qjout))
+            ## lapply(cmds, function(this_cmd) {system(this_cmd); return(NULL)})
+        }
+        if (!is.null(qjname)) out_cmd = paste(out_cmd, " --job-name=", jlabel, sep = '')
+        ## out_cmd = paste(out_cmd, '-now', ifelse(now, 'y', 'n'))
+        ## khadi Friday, Sep 25, 2020, Week 39, 08:59:16 AM
+        ## wtf... slurm defaults to 2 cores per task if you don't set? changing >1 to >0
+        if (!is.null(mc.cores)) out_cmd = paste(out_cmd, ifelse(!is.na(mc.cores), ifelse(mc.cores>0,  paste(" --cpus-per-task=",  mc.cores, sep = ""), ''), ''))
+        if (!is.null(qprior)) out_cmd =  paste(out_cmd, ifelse(!is.na(qprior), ifelse(qprior>=0,  paste(" --nice=",  qprior, sep = ""), ''), '')) # set the "nice" value for SLURM
+        out_cmd = paste(out_cmd, script.fn)
+        names(out_cmd)= names(script.fn)
+        return(out_cmd)
+    }
 
 
 
@@ -143,18 +216,18 @@ qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup
 #' @param jname string 'jobname' pathanme to completed Job subdirectory
 #' @param detailed boolean "verbose", outputs 'max.swap', 'max.processes', and 'max.threads' (default = FALSE)
 #' @param force boolean force if *out/*err not found (default = FALSE)
-#' @param mc.cores integer number of cores to use (default = 1) 
+#' @param mc.cores integer number of cores to use (default = 1)
 #' @author Marcin Imielinski
 #' @export
 parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
-{     
+{
     dir = file.dir(jname)
     jname = file.name(jname)
 
     input.jname = jname
     jname = gsub('\\.bsub\\.out$', '', gsub('\\.bsub\\.err$', '', jname))
     names(input.jname) = jname
-        
+
     if (length(jname)==0){
         outs = data.frame(jname = NA,
             out.file = NA,
@@ -162,14 +235,14 @@ parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
             exit_flag = NA, term_flag = NA, started = NA, reported = NA, hours_elapsed = NA, max_mem = NA, cpu_time = NA,
             success = NA,
             stringsAsFactors = F)
-    }    
-    else{          
+    }
+    else{
         outs = data.frame(jname = gsub('\\.R$', '', jname),
             out.file = paste(dir,'/', jname, '.bsub.out', sep = ''),
             err.file = paste(dir, '/', jname, '.bsub.err', sep = ''),
             exit_flag = NA, term_flag = NA, started = NA, reported = NA, hours_elapsed = NA, max_mem = NA, cpu_time = NA,
             success = NA,
-            job_type = NA, 
+            job_type = NA,
             stringsAsFactors = F);
     }
 
@@ -177,33 +250,33 @@ parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
     fn.err = paste(dir, jname, '.bsub.err', sep = '')
     fn.report = paste(dir, jname, '.bsub.report', sep = '')
     fn.report.sge = paste(dir, jname, '.bsub.report', sep = '')
-        
+
     mtime = data.table(out = file.info(fn)$mtime, err = file.info(fn.err)$mtime, report = file.info(fn.report)$mtime, report.sge = file.info(fn.report.sge)$mtime)
     mtime[, report := pmax(report, report.sge, na.rm = TRUE)]
 
     ## we can use the report if the report exists and is younger than both the err and out
     ## or if (somehow) the err and out don't exist but the report does
     fn.rep.ex = mtime[ ,ifelse(!is.na(report), ifelse(!is.na(err) | is.na(out), pmin(report>err, report>out, na.rm = TRUE), FALSE), FALSE)] & !force
-        
+
     if (any(fn.rep.ex)){
         outs[fn.rep.ex, ] = do.call(rbind, lapply(fn.report[fn.rep.ex], read.delim, strings = FALSE))[, names(outs)]
     }
-      
+
     ## fn.ex these are the ones we need to parse again
-    fn.ex = (file.exists(fn) | file.exists(fn.err)) & !fn.rep.ex; 
+    fn.ex = (file.exists(fn) | file.exists(fn.err)) & !fn.rep.ex;
 
     if (!any(fn.ex)){
         return(outs)
     }
-        
-    tmp = matrix(unlist(mclapply(which(fn.ex), 
+
+    tmp = matrix(unlist(mclapply(which(fn.ex),
         function(i){
             p = pipe(paste('tail -n 100', fn[i]))
             y = readLines(p);
             close(p)
             p = pipe(paste('head -n 100', fn[i]))
             sge = grep('FLOW', readLines(p), value = TRUE)
-            close(p)                    
+            close(p)
             if (any(grepl('^Sender.*LSF System', y))){   ## LSF job
                 y = split(y, cumsum(grepl('^Sender', y)))
                 y = y[[length(y)]]  ## picks "last" dump from lsf to this out file
@@ -261,7 +334,7 @@ parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
                     ## fail
                     return(rep(as.character(NA), 10))
                 }
-                ix = ix[length(ix)] ### only get the last instance                            
+                ix = ix[length(ix)] ### only get the last instance
                 y = grep('\t.*', y[ix:length(y)][-1], value = TRUE)
                 tmp = strsplit(y, '[\\:\t]')
                 keyval = structure(str_trim(sapply(tmp, function(x) if (length(x)>2) x[[3]] else NA)),
@@ -274,9 +347,9 @@ parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
                     as.numeric(gsub('\\%', '', keyval['Percent of CPU this job got']))/100, NA))
             }
     }, mc.cores = mc.cores)), ncol = 10, byrow = T)
- 
+
     colnames(tmp) = c('job.type', 'exit.flag', 'term.flag', 'started', 'reported', 'cpu.time', 'max.memory', 'max.swap', 'max.cpu', 'max.thr')
-        
+
     .parse.mem = function(mem){
         ix = !is.na(mem)
         out.mem = rep(NA, length(mem))
@@ -287,16 +360,16 @@ parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
             tmp.mem.units = sapply(tmp, function(x) x[2])
             out.mem[ix] = ifelse(is.na(tmp.mem.units), tmp.mem/1e6/4, ## assume time output, which is in kbytes * 4
                                    ifelse(tmp.mem.units == 'MB', tmp.mem/1e3,
-                                          ifelse(tmp.mem.units == 'KB', tmp.mem/1e6, 
+                                          ifelse(tmp.mem.units == 'KB', tmp.mem/1e6,
                                                  tmp.mem)))
           }
-        return(out.mem)                
+        return(out.mem)
     }
 
     ## normalize to GB
     TIME.FORMAT1 = '%a %b %d %H:%M:%S %Y';
     TIME.FORMAT2 = '%Y-%m-%d %H:%M:%S';
-        
+
     outs$job_type[fn.ex] = tmp[, 'job.type']
     outs$exit_flag[fn.ex] = tmp[, 'exit.flag']
     outs$term_flag[fn.ex] = tmp[, 'term.flag']
@@ -312,7 +385,7 @@ parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
 
     if (detailed){
         outs$max_swap[fn.ex] = tmp[, 'max.swap']
-        outs$max_processes[fn.ex] = tmp[, 'max.processes']      
+        outs$max_processes[fn.ex] = tmp[, 'max.processes']
         outs$max_threads[fn.ex] = tmp[, 'max.threads']
     }
 
@@ -324,9 +397,9 @@ parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
     for (i in which(fn.ex)){
         write.table(outs[i, ], fn.report[i], sep = '\t', quote = F, row.names = FALSE)
     }
-    
+
     outs = as.data.table(outs)
-  
+
     if (!is.null(input.jname)){
       outs = outs[, key := input.jname[jname]]
     }
@@ -336,13 +409,13 @@ parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
 
     setkey(outs, 'key')
 
-    return(outs)  
+    return(outs)
 }
 
 
 
 
-#' @name xml2task 
+#' @name xml2task
 #' @title Makes a best attempt to convert a firehose xml task configuration into a Task object or .task file
 #' @description
 #'
@@ -356,34 +429,36 @@ parse.info = function(jname, detailed = FALSE, force = FALSE, mc.cores = 1)
 #' @export
 xml2task = function(path, module = NULL, out.file = NULL)
 {
-    require(XML)
-        
-    tasks = xmlToList(xmlParse(path))
+    if (!requireNamespace("XML", quietly = TRUE)) {
+        stop('In order to read xml files you must install the package "XML".')
+    }
+
+    tasks = XML::xmlToList(XML::xmlParse(path))
     tasks = tasks[which(names(tasks)=='pipeline-configuration')]
 
     if (length(tasks)==0){
         stop('No pipeline configurations found in this xml file .. check file')
     }
- 
+
     out = lapply(tasks, function(task.config){
         if (!is.null(module)){
             if (!is(module, 'Module')){
                 module = Module(module)
             }
-        }           
+        }
 
         out = NULL
         if (!is.null(task.config$outputs)){
             if (length(task.config$outputs)>0){
-                outputs = as.data.table(do.call('rrbind', lapply(task.config$outputs, function(x) as.data.frame(rbind(unlist(x))))))        
+                outputs = as.data.table(do.call('rrbind', lapply(task.config$outputs, function(x) as.data.frame(rbind(unlist(x))))))
 
                 setnames(outputs, gsub('\\-', '_', names(outputs)))
 
-                outs = outputs[, {list(list(FlowOutput(name = target_annotation_type_name, pattern= paste(expression, '.*', extension, "$", sep = ''))))}, 
+                outs = outputs[, {list(list(FlowOutput(name = target_annotation_type_name, pattern= paste(expression, '.*', extension, "$", sep = ''))))},
                     keyby = target_annotation_type_name]
             }
         }
-                
+
         arg = NULL
 
         if (!is.null(task.config$parameter)){
@@ -394,7 +469,7 @@ xml2task = function(path, module = NULL, out.file = NULL)
                 if (is.null(params$"default_value")){
                     params$"default_value" = NA
                 }
-                
+
                 arg = params[, {if (mode == 'FlowLiteral'){
                                     list(list(FlowLiteral(name = name, arg = expression, path = file.exists(expression))))
                                 }
@@ -427,9 +502,9 @@ xml2task = function(path, module = NULL, out.file = NULL)
             warning('Warning: No module provided as input so just dumping mock task .task file to stdout')
             out = paste('#', task.config$"name", task.config$"task-id")
             out = c(out, '/path/to/module/directory')
-                        
+
             if (length(arg)>0){
-                out = c(out, paste('input\t', arg[[1]],'\t', 
+                out = c(out, paste('input\t', arg[[1]],'\t',
                     ifelse(sapply(arg[[2]], is, 'FlowLiteral'), '"', ''),
                     sapply(arg[[2]], function(x) x@arg),
                     ifelse(sapply(arg[[2]], is, 'FlowLiteral'), '"', ''),
@@ -442,7 +517,7 @@ xml2task = function(path, module = NULL, out.file = NULL)
             if (length(outs)>0){
                 out = c(out,paste('output\t',
                     sapply(outs[[2]], function(x) x@name), '\t',
-                    sapply(outs[[2]], function(x) x@pattern)))  
+                    sapply(outs[[2]], function(x) x@pattern)))
             }
 
             out = c(out, '')
@@ -452,7 +527,7 @@ xml2task = function(path, module = NULL, out.file = NULL)
             else{
                 writeLines(out, out.file)
             }
-            
+
             return(NULL)
         }
     })
@@ -462,17 +537,17 @@ xml2task = function(path, module = NULL, out.file = NULL)
     }
     else{
         if (length(out)==1){
-            out = out[[1]] 
-        }  
+            out = out[[1]]
+        }
         return(out)
     }
-    
+
 }
 
 
 
 
-#' @name file.name 
+#' @name file.name
 #' @title file.name
 #' @description
 #'
@@ -525,7 +600,7 @@ dedup = function(x, suffix = '.')
   udup.suffices = lapply(udup.ix, function(y) c('', paste(suffix, 2:length(y), sep = '')))
   out = x;
   out[unlist(udup.ix)] = paste(out[unlist(udup.ix)], unlist(udup.suffices), sep = '');
-  return(out)  
+  return(out)
 }
 
 
@@ -591,9 +666,101 @@ tailf = function(x, n = NULL, grep = NULL)
     }
 
     ## execute command
-    system(x)  
+    system(x)
 }
 
 
+#' @name reset.job
+#' @title reset.job
+#'
+#' Reset a job with different params
+#'
+#' @return A Flow job object
+#' @author Kevin Hadi
+#' @export reset.job
+reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$mem, jb.cores = x@runinfo$cores, jb.time = x@runinfo$time, update_cores = 1, task = NULL) {
+    if (!inherits(x, "Job")) stop ("x must be a Flow Job object")
+    if (is.null(task))
+        usetask = Flow::task(x@task)
+    else if (is.character(task) || inherits(task, "Task"))
+        usetask = task
+    args = list(...)
+    new.ent = copy(entities(x))
+    if (!is.null(i)) {
+        jb.mem = replace(x@runinfo$mem, i, jb.mem)
+        jb.cores = replace(x@runinfo$cores, i, jb.cores)
+    }
+    tsk = viewtask(usetask)
+    ## if (!all(names(args) %in% colnames(new.ent)))
+    if (!all(names(args) %in% colnames(new.ent)) && !names(args) %in% viewtask(usetask)$V2)
+        stop("adding additional column to entities... this function is just for resetting with new arguments")
+    for (j in seq_along(args))
+    {
+        data.table::set(new.ent, i = i, j = names(args)[j], value = args[[j]])
+    }
+    these.forms = formals(body(findMethods("initialize")$Job@.Data)[[2]][[3]])
+    if ("time" %in% names(these.forms)) {
+        if ("update_cores" %in% names(these.forms))
+            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores, update_cores = update_cores)
+        else
+            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores)
+    } else {
+        if ("update_cores" %in% names(these.forms))
+            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores, update_cores = update_cores)
+        else
+            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores)
+    }
+    return(jb)
+}
 
 
+#' @name silent
+#' @title run expression without any printed output
+#'
+#' execute expression without any output to console.
+#' silent({var = function_that_has_explicit_print(...)})
+#' 
+#'
+#' @author Kevin Hadi
+#' @param ... an expression
+#' @return NULL
+#' @export
+silent = function(this_expr, this_env = parent.frame()) {
+    eval(expr = {capture.output(
+            capture.output(... = this_expr,
+                           file = "/dev/null",
+                           type = c("output")),
+            file = "/dev/null",
+            type = "message")
+    }, envir = this_env)
+    invisible()
+}
+
+#' or Flow Task object
+#'
+#'
+#' @author Kevin Hadi
+#' @return A Flow job object
+#' @export
+viewtask = function(jb, arglst = c("name", "arg", "default")) {
+    lst.emptychar2na = function(x) {
+        x[!nzchar(x)] = NA_character_
+        x
+    }
+    lst.zerochar2empty = function(x) {
+        x[x == "character(0)"] = list("")
+        x
+    }
+    ifun = function(x, arglst = arglst) {
+        
+        unlist(lst.emptychar2na(lst.zerochar2empty(lapply(arglst, function(y)
+            tryCatch((slot(x, y)), error = function(e) NA_character_)))))
+    }
+    if (inherits(jb, "Job"))
+        obj = jb@task
+    else if (inherits(jb, "Task"))
+        obj = jb
+    else if (inherits(jb, "character"))
+        obj = Task(jb)
+    as.data.table(data.table::transpose(lapply(obj@args, ifun, arglst = arglst)))
+}

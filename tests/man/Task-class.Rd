@@ -5,7 +5,7 @@
 \alias{Task-class}
 \title{S4 class for \code{Task}}
 \description{
-Class \code{Task} defines an task configuration object that is built from a firehose module with a 
+Class \code{Task} defines an task configuration object that is built from a firehose module with a
 hydrant.deploy file, and can be run locally or on the farm on annotations provided in a
 data.table
 }

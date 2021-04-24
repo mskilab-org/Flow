@@ -3,18 +3,9 @@
 \docType{class}
 \name{Job-class}
 \alias{Job-class}
-\alias{Job-class}
 \alias{[<-}
 \alias{[,Job-class}
-\alias{Job-class}
-\alias{Job-class}
-\alias{Job-class}
-\alias{Job-class}
-\alias{Job-class}
-\alias{Job-class}
 \alias{runinfo}
-\alias{[,Job-class}
-\alias{Job-class}
 \alias{merge}
 \alias{merge,Job-class}
 \title{Class representing a set of jobs, each which is the combination of a Task and entity (i.e. a sample, pair, or set)}
@@ -28,6 +19,16 @@ module(.Object)
 task(.Object)
 
 mem(.Object)
+
+time(.Object)
+
+io_c(.Object)
+
+io_n(.Object)
+
+qprior(.Object)
+
+nice_val(.Object)
 
 queue(.Object)
 
@@ -60,8 +61,8 @@ S4 class for \code{Job}
 Class \code{Job} defines a set of nrow(entities) firehose jobs "myjobs" which is an instantiation of an Task combined with
 one or more rows of an (keyed) annotation data.table entities.  An Job is created from an Task + data.table of annotations, and (optional)
 output directory (otherwise made default).   Once created, several things can be done with an Job:  It's local command line tasks
-can be extracted with cmd(myjobs), it's bsub tasks can be extracted with bcmd(myjobs). These can be dumped to a file or executed 
-directory from R via a system command on the cmd(), bcmd(), qcmd() output, or run with run(myjobs),  brun(myjobs), qrun(myjobs)...  
+can be extracted with cmd(myjobs), it's bsub tasks can be extracted with bcmd(myjobs). These can be dumped to a file or executed
+directory from R via a system command on the cmd(), bcmd(), qcmd() output, or run with run(myjobs),  brun(myjobs), qrun(myjobs)...
 
 Once jobs are running / completing the status of jobs can be checked with update(.Object).
 In this case the timestamp of each output will be updated and the relevant annotations will be
@@ -74,8 +75,8 @@ object.
 
 getting output data.table associated with Job object
 
-As jobs complete, one may want to update a "master" data.table with the outputs of Jobs.  This can 
-be useful for manual running of larger workflows to which a given task contributes. 
+As jobs complete, one may want to update a "master" data.table with the outputs of Jobs.  This can
+be useful for manual running of larger workflows to which a given task contributes.
 
 #@exportMethod merge
 }
@@ -92,7 +93,7 @@ Merge Job output annotations with data.table
   \item{runinfo}{keyed data.table with length(.Object) rows containing columns
            $outdir = output directory for each job
            $queue = character specifying the queue on which this job should be run
-           $mem = numeric specifying G of max memory to run this job with 
+           $mem = numeric specifying G of max memory to run this job with
            $cmd = command line to execute job locally
            $bcmd = command line to submit job to farm
            $status = character that is either "completed", "ready", "not ready", or "outdated" if time

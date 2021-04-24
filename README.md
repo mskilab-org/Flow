@@ -21,9 +21,13 @@ set of entities, which correspond to keyed table of entity-specific
 annotations (e.g. bam_file_wgs, seg_file, etc). Once a job completes, one
 or more output annotations (i.e. paths to output files) are attached to
 the respective entity in an output table. See illustration below:
-   
-![Flow Schema](Flow_schema.png)
 
+<p align="center">
+  <big><strong>Flow Schema</strong></big>
+</p>
+<p align="center">
+  <img src="inst/extdata/Flow_schema.png">
+</p>
 
 #   Setting up entities and tasks
 
@@ -115,7 +119,7 @@ In this file, put one line:
     normal_bam } ${ error_rate } ${ panel_of_normals } ${ variant_mask }
 
 All this file needs is a single line prefaced by "command:" (everything
-else is ignored). In this example, that lin contains a call to
+else is ignored). In this example, that line contains a call to
 dummyscript.sh and some placeholder variables that are the module
 inputs. The module inputs are specified using the syntax: `${ INPUTNAME
 }` (spaces included).
