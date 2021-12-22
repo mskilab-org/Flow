@@ -2138,8 +2138,10 @@ setGeneric('srun', function(.Object, ...) {standardGeneric('srun')})
 #' @exportMethod srun
 #' @export
 #' @param mc.cores Number of parallel cores to run jobs with (=1)
+#' @param all (logical) Run all jobs, even completed ones (default FALSE)
+#' @param sleep (numeric) time to pause between job submissions, in seconds (default 0)
 #' @author Marcin Imielinski, Zoran Gajic
-setMethod('srun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
+setMethod('srun', 'Job', function(.Object, mc.cores = 1, all = FALSE, sleep = 0)
     {
         Slurmize(.Object)
         ####################
@@ -2165,7 +2167,7 @@ setMethod('srun', 'Job', function(.Object, mc.cores = 1, all = FALSE)
             ## } else {
                 ## p = pipe(x); out = readLines(p); close(p); return(out)
             ## })
-            p = pipe(x); out = readLines(p); close(p); return(out)
+            p = pipe(x); out = readLines(p); close(p); Sys.sleep(sleep); return(out)
         })
         ## res = lapply(scmds, function(x) {
         ##     try2({
