@@ -673,6 +673,8 @@ setMethod('initialize', 'Job', function(.Object,
     entities = copy(entities)
     .Object@entities = entities
 
+    if (any(grepl('\\/', entities[[data.table::key(entities)]])))
+        stop(sprintf('Input entity table is malformed -> at least one entry in the primary key column "%s" has a forward or backslash, please fix and re-try instantiating Job object', data.table::key(entities)))
 
     tabstring = function(tab, sep = ', ')
         return(paste(names(tab), '(', tab, ')', sep = '', collapse = sep))
@@ -2461,7 +2463,7 @@ setMethod('sjobs', 'Job', function(.Object)
         fn.jids = sapply(outdir(.Object), function(x) paste(x, 'slurm.jobid', sep = '/'))
         ix = file.exists(fn.jids)
         out1 = out2 = NULL
-        nms = unlist(strsplit(c("username,groupname,state,name,jobid,associd", "timelimit,timeused,submittime,starttime,endtime,eligibletime,minmemory,numcpus,numnodes,priority,nice,reason,reboot"), split = ","))
+        nms = unlist(strsplit(c("username,groupname,partition,state,name,jobid,associd", "timelimit,timeused,submittime,starttime,endtime,eligibletime,minmemory,numcpus,numnodes,priority,nice,reason,reboot"), split = ","))
         ## nms = c('jobid','prior','ntckt','name','user','project','department','state','cpu','mem','io','tckts','ovrts','otckt','ftckt','stckt','share','queue','slots')
 #        nms = c('jobid', 'prior', 'name', 'user', 'state', 'start.sumit.at', 'queue', 'slots', 'taskid')
         out = runinfo(.Object)[, key(.Object), with = FALSE]
