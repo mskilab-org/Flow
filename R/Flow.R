@@ -621,6 +621,7 @@ setMethod('initialize', 'Job', function(.Object,
                                         nice = NULL,
                                         mem = NULL,
                                         cores = 1,
+                                        check.stamps = TRUE, 
                                         now = FALSE,
                                         mock = FALSE,
                                         update_cores = 1,
@@ -733,7 +734,7 @@ setMethod('initialize', 'Job', function(.Object,
 ### but this (false positive outdating) is less dangerous than false-negative outdating
 ### ie if we thought that the task was up to date but in fact inputs have changed.
         if (!mock)
-            cat('Noting time stamps of inputs\n')
+            cat('Vetting inputs\n')
         for (this.arg in names(ann.args))
         {
             this.ann = ann.args[[this.arg]]@arg
@@ -761,7 +762,8 @@ setMethod('initialize', 'Job', function(.Object,
                 if (is.numeric(entities[[this.ann]]))
                     stop(sprintf('Numeric annotation %s provided as path argument %s to task - check task configuration or entities table', this.ann, this.arg))
 
-                .Object@stamps[, eval(this.arg) := as.character(file.info(ifelse(is.na(entities[[this.ann]]), '', entities[[this.ann]]))$mtime)]
+                if (check.stamps)
+                  .Object@stamps[, eval(this.arg) := as.character(file.info(ifelse(is.na(entities[[this.ann]]), '', entities[[this.ann]]))$mtime)]
                                         #                                 if (!mock)
                                         #                                     print(this.arg)
 
@@ -816,6 +818,7 @@ setMethod('initialize', 'Job', function(.Object,
                     if (any(fenix <- is.na(.Object@inputs[[this.arg]])))
                         .Object@inputs[[this.arg]][fenix] = default(ann.args[[this.arg]])
 
+              if (check.stamps)
                 .Object@stamps[, eval(this.arg) := ifelse(!is.na(.Object@inputs[[this.arg]]), as.character(Sys.time()), NA)]
             }
         }
@@ -828,7 +831,7 @@ setMethod('initialize', 'Job', function(.Object,
 
         for (this.arg in names(lit.args))
         {
-            if (.Object@task@args[[this.arg]]@path)
+            if (.Object@task@args[[this.arg]]@path & check.stamps)
                 .Object@stamps[,
                                eval(this.arg) :=
                                    as.character(file.info(lit.args[[this.arg]])$mtime)]
@@ -985,10 +988,11 @@ Job = function(
     mock = FALSE,
     update_cores = 1,
     parse_recursive = FALSE,
+    check.stamps = FALSE, 
     time = "3-00",
     ...) {
     new('Job', task = task, entities = entities, rootdir = rootdir,
-        queue = queue, nice = nice, mem = mem, cores = cores, mock = mock, update_cores = update_cores, parse_recursive = parse_recursive, time = time, ...)
+        queue = queue, nice = nice, mem = mem, check.stamps = check.stamps, cores = cores, mock = mock, update_cores = update_cores, parse_recursive = parse_recursive, time = time, ...)
 }
 
 
@@ -1094,7 +1098,7 @@ setGeneric('update', function(object, ...) {
 #' @exportMethod update
 #' @export
 #' @author Marcin Imielinski
-setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, cache.object = TRUE, print.status = TRUE, parse_recursive = FALSE, io_c = 2, io_n = 4, qprior = 0) {
+setMethod('update', 'Job', function(object, check.inputs = TRUE, check.stamps = FALSE, mc.cores = 1, cache.object = TRUE, print.status = TRUE, parse_recursive = FALSE, io_c = 2, io_n = 4, qprior = 0) {
     ## for every output, apply regexp in files of outdir to search for files
     status.info = rep('', length(object))
     status = rep('ready', length(object))
@@ -1200,9 +1204,11 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, mc.cores = 1, c
                     fn[nchar(fn)==0] = NA ## NA out blank paths
                     nfiles = sum(!is.na(fn))
                     cat('\tfor', this.arg, sprintf('(%s files)', nfiles), '\n')
-                    fe = file.exists(fn)
+                    ufn = unique(fn)
+                    ufe = file.exists(ufn)
+                    fe = ufe[match(fn, ufn)]
                     old.date = as.POSIXct(new.object@stamps[[this.arg]])
-                    if (any(fe))
+                    if (any(fe) & check.stamps)
                     {
                         if (any(ix<-is.na(old.date))) ## if for some reason blank, set to some time in the far future
                             old.date[ix] = Sys.time()+5e9

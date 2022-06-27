@@ -29,6 +29,7 @@ Job(
   mock = FALSE,
   update_cores = 1,
   parse_recursive = FALSE,
+  check.stamps = FALSE,
   time = "3-00",
   ...
 )
