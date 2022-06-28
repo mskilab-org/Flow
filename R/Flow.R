@@ -988,7 +988,7 @@ Job = function(
     mock = FALSE,
     update_cores = 1,
     parse_recursive = FALSE,
-    check.stamps = FALSE, 
+    check.stamps = TRUE, 
     time = "3-00",
     ...) {
     new('Job', task = task, entities = entities, rootdir = rootdir,
@@ -3970,3 +3970,21 @@ normalizePath = function(x)
 {
   paste0(base::normalizePath(dirname(x)), '/', basename(x))
 }
+
+
+#' @title sniff
+#' @description
+#'
+#' Sniffs in directory containing file for a Job.rds object and readRDS that object
+#' 
+#' @author Marcin Imielinski
+#' @export 
+sniff = function(x)
+{
+  fn = x %>% dirname %>% dirr('Job.rds$')
+  if (length(fn))
+    readRDS(fn[1])
+  else
+    NULL
+}
+
