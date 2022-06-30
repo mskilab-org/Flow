@@ -180,7 +180,7 @@ ssub_cmd = function(script.fn, queue, jname = NULL, jlabel = NULL, jgroup = NULL
         qjerr = paste( "", names(script.fn), ".bsub.err", "", sep="" )
         qjrout = paste( "", names(script.fn), ".R.out", "", sep="" )                    
         out_cmd = paste("sbatch --export=ALL --output=", qjout, sep = '');
-        out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste0("--partition=", queue)))
+        out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste0("-p ", queue, ' -q ', queue)))
         out_cmd = paste(out_cmd, paste0('--time=', time, ':00:00 '))
         if (!is.null(mem)) out_cmd = paste(out_cmd, " --mem=", mem, "G", sep = "");
         #if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))

@@ -10,6 +10,7 @@ other things to assess job status.  Once finished, it caches results to the .rds
 \S4method{update}{Job}(
   object,
   check.inputs = TRUE,
+  check.stamps = FALSE,
   mc.cores = 1,
   cache.object = TRUE,
   print.status = TRUE,
