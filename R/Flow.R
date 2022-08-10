@@ -618,6 +618,7 @@ setMethod('initialize', 'Job', function(.Object,
                                         entities = NULL, ## keyed data.table, key will determine id of outgoing jobs, columns of table used to populate task
                                         rootdir = './Flow/',
                                         queue = as.character(NA),
+                                        qos = as.character(NA), 
                                         nice = NULL,
                                         mem = NULL,
                                         cores = 1,
@@ -903,7 +904,11 @@ setMethod('initialize', 'Job', function(.Object,
 
     setkeyv(.Object@stamps, data.table::key(entities))
 
+    if (is.null(qos))
+        qos = as.character(NA)
+    
     .Object@runinfo[, queue := queue]
+    .Object@runinfo[, qos := qos]
     .Object@runinfo[, mem := ifelse(is.na(mem), task@mem, mem)]
     .Object@runinfo[, nice := nice]
     .Object@runinfo[, cores := cores]
@@ -982,6 +987,7 @@ Job = function(
     entities, ## keyed data.table, key will determine id of outgoing jobs, columns of table used to populate task
     rootdir = './Flow/',
     queue = as.character(NA),
+    qos = as.character(NA),
     mem = NULL,
     nice = NULL,
     cores = 1,
@@ -992,7 +998,7 @@ Job = function(
     time = "3-00",
     ...) {
     new('Job', task = task, entities = entities, rootdir = rootdir,
-        queue = queue, nice = nice, mem = mem, check.stamps = check.stamps, cores = cores, mock = mock, update_cores = update_cores, parse_recursive = parse_recursive, time = time, ...)
+        queue = queue, qos = qos, nice = nice, mem = mem, check.stamps = check.stamps, cores = cores, mock = mock, update_cores = update_cores, parse_recursive = parse_recursive, time = time, ...)
 }
 
 
@@ -1039,7 +1045,7 @@ setMethod('c', 'Job', function(x, ...)
         setkeyv(runinfo, ukey)
         setkeyv(stamps, ukey)
 
-        return(Job(obj[[1]]@task, entities = entities, rootdir = urootdir[1], queue = runinfo$queue, mem = runinfo$mem, nice = runinfo$nice, cores = runinfo$cores, now = runinfo$now, mock = TRUE))
+        return(Job(obj[[1]]@task, entities = entities, rootdir = urootdir[1], queue = runinfo$queue, qos = runinfo$qos, mem = runinfo$mem, nice = runinfo$nice, cores = runinfo$cores, now = runinfo$now, mock = TRUE))
     })
 
 #' @name purge
@@ -1789,6 +1795,49 @@ setMethod('queue', 'Job', function(.Object)
     })
 
 
+
+#' @name Job-class
+#' @rdname Job-class
+#' @exportMethod qos
+#' @export
+setGeneric('qos', function(.Object) {standardGeneric('qos')})
+
+#' @name queue
+#' @title Gets queue or partition associated with the jobs in the Job object
+#' @description
+#' Getting SLURM  qos associated with Job object
+#'
+#' @exportMethod qos
+#' @export
+#' @author Marcin Imielinski
+setMethod('qos', 'Job', function(.Object)
+{
+    if (is.null(.Object@runinfo$qos))
+        .Object@runinfo$qos = as.character(NA)
+    structure(.Object@runinfo[, qos], names = .Object@runinfo[[data.table::key(.Object@runinfo)]])
+})
+
+
+#' @export
+setGeneric('qos<-', function(.Object, value) {standardGeneric('qos<-')})
+
+#' @name qos<-
+#' @title Sets qos associated with the jobs in the Job object
+#' @description
+#' Setting LSF / SGE qos associated with Job object
+#'
+#' @exportMethod qos<-
+#' @export
+#' @author Marcin Imielinski
+setReplaceMethod('qos', 'Job', function(.Object, value)
+{
+        .Object@runinfo[, qos := value]
+        .Object@runinfo = .update_cmd(.Object)
+        return(.Object)
+})
+
+
+
 #' @export
 setGeneric('queue<-', function(.Object, value) {standardGeneric('queue<-')})
 
@@ -2493,7 +2542,6 @@ setMethod('sjobs', 'Job', function(.Object)
           names(tmp) = nms
           tab = do.call(data.table, tmp)          
           tab$state = factor(tab$state, unique(c(tab$state, 'RUNNING'))) %>% relevel('RUNNING')
-          
           ## iix = lengths(tab)<=length(nms) & lengths(tab)>14 ? not sure what this is for
           if (nrow(tab)>0)
           {
@@ -2772,7 +2820,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
     ## utility func for instantiation of Job and modifying memory
     .cmd2bcmd = function(cmd, outdir, name, ids, queue, mem, cores) bsub_cmd(paste('touch ', outdir, '/started; ', cmd, ';', sep = ''), queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = .jname(outdir, name, ids), jlabel = .jname(outdir, name, ids))
     .cmd2qcmd = function(cmd, outdir, name, ids, queue, mem, cores, now, qprior) qsub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, touch_job_out = TRUE, qprior = qprior)
-    .cmd2scmd = function(cmd, outdir, name, ids, queue, mem, cores, now, time, qprior) ssub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, time = time, qprior = qprior)
+    .cmd2scmd = function(cmd, outdir, name, ids, qos, queue, mem, cores, now, time, qprior) ssub_cmd(cmd, queue = queue, qos = qos, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, time = time, qprior = qprior)
 
     .Object@runinfo[, bcmd := '']
 
@@ -2801,7 +2849,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
 
     .Object@runinfo[, mapply(function(text, path) writeLines(text, path), cmd, cmd.path)] ## writes cmd to path
     .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, qprior = qprior_val)]
-    .Object@runinfo[ix, scmd := .cmd2scmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, time, qprior = qprior_val)]
+    .Object@runinfo[ix, scmd := .cmd2scmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue = queue, mem = mem, cores = cores, qos = qos, now = now, time = time, qprior = qprior_val)]
 
     return(.Object@runinfo)
 }
@@ -2890,7 +2938,9 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
             replines = trimws(unlist(lapply(make_chunks(fn.report[fn.rep.ex], 500), iter.fun))) ## breaks if you do >500 at a time
             ## replines = trimws(system2("wc", c(fn.report[fn.rep.ex], "-l"), stdout = TRUE)) ## report can be empty, testing for this
             fn.rep.ex[fn.rep.ex] = fn.rep.ex[fn.rep.ex] & (tstrsplit(replines, "\\s+")[[1]] > 1)
-            outs[fn.rep.ex, ] = do.call(rbind, lapply(fn.report[fn.rep.ex], read.delim, strings = FALSE))[, names(outs)]
+            tmp = do.call(rbind, lapply(fn.report[fn.rep.ex], read.delim, strings = FALSE))[, names(outs)] %>% as.data.table %>% unique(by = 'jname')
+            setkey(tmp, jname)
+            outs[fn.rep.ex, ] = tmp[.(outs$jname[fn.rep.ex]), ]
         }
 
         ## fn.ex these are the ones we need to parse again
@@ -3021,7 +3071,7 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
         outs$reported[fn.ex] = ifelse(outs$job_type[fn.ex]%in% c('lsf','sge'),
                         as.character(as.POSIXct(strptime(tmp[, 'reported'], TIME.FORMAT1))),
                         as.character(as.POSIXct(strptime(tmp[, 'reported'], TIME.FORMAT2))))
-        outs$hours_elapsed = as.numeric(as.POSIXct(outs$reported)-as.POSIXct(outs$started), units = 'hours')
+        outs$hours_elapsed = suppressWarnings(as.numeric(as.POSIXct(outs$reported)-as.POSIXct(outs$started), units = 'hours'))
         outs$cpu_time[fn.ex] = suppressWarnings(as.numeric(tmp[, 'cpu.time']))
         outs$max_mem[fn.ex] = ifelse(outs$job_type[fn.ex] == 'sge', as.numeric(tmp[, 'max.memory']), .parse.mem(tmp[, 'max.memory']))
 
