@@ -22,6 +22,4 @@ more(x, grep = NULL, pipe = FALSE)
 }
 \author{
 Marcin Imielinski
-
-Marcin Imielinski
 }

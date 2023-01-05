@@ -24,6 +24,4 @@ to a .task file
 }
 \author{
 Marcin Imielinski
-
-Marcin Imielinski
 }

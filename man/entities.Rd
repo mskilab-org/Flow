@@ -15,6 +15,4 @@ returns original keyed data.table of entities associated with this Flow object
 }
 \author{
 Marcin Imielinski
-
-Marcin Imielinski
 }

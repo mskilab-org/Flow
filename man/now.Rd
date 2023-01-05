@@ -7,7 +7,7 @@
 \S4method{now}{Job}(.Object)
 }
 \description{
-
+Toggles whether to force jobs to run now
 }
 \author{
 Marcin Imielinski

@@ -22,6 +22,4 @@ tailf(x, n = NULL, grep = NULL)
 }
 \author{
 Marcin Imielinski
-
-Marcin Imielinski
 }
