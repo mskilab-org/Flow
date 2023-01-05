@@ -2821,7 +2821,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
 
 .jname = function(outdir, name, ids) paste(outdir, '/', name, '.', ids, sep = '')
 
-.update_cmd = function(.Object, ...) {
+.update_cmd = function(.Object, qos = NULL, ...) {
     ix = which(status(.Object) != 'not ready')
     halt = FALSE
     ## testing for invalid args
