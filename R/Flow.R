@@ -1897,7 +1897,45 @@ setReplaceMethod('cores', 'Job', function(.Object, value)
                      return(.Object)
                  })
 
+#' @name Job-class
+#' @rdname Job-class
+#' @exportMethod gres
+#' @export
+setGeneric('gres', function(.Object) {standardGeneric('gres')})
 
+#' @name gres
+#' @title Gets queue or partition associated with the jobs in the Job object
+#' @description
+#' Getting SLURM  gres associated with Job object
+#'
+#' @exportMethod gres
+#' @export
+#' @author Marcin Imielinski
+setMethod('gres', 'Job', function(.Object)
+{
+    if (is.null(.Object@runinfo$gres))
+        .Object@runinfo$gres = as.character(NA)
+    structure(.Object@runinfo[, gres], names = .Object@runinfo[[data.table::key(.Object@runinfo)]])
+})
+
+
+#' @export
+setGeneric('gres<-', function(.Object, value) {standardGeneric('gres<-')})
+
+#' @name gres<-
+#' @title Sets qos associated with the jobs in the Job object
+#' @description
+#' Setting LSF / SGE qos associated with Job object
+#'
+#' @exportMethod gres<-
+#' @export
+#' @author Marcin Imielinski
+setReplaceMethod('gres', 'Job', function(.Object, value)
+{
+        .Object@runinfo[, gres := value]
+        .Object@runinfo = .update_cmd(.Object)
+        return(.Object)
+})
 
 
 #' @name Job-class
