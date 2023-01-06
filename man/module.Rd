@@ -39,6 +39,4 @@ specific files out of the Job output directory and attach their paths to the res
 }
 \author{
 Marcin Imielinski
-
-Marcin Imielinski
 }

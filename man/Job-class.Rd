@@ -32,7 +32,11 @@ nice_val(.Object)
 
 queue(.Object)
 
+qos(.Object)
+
 cores(.Object)
+
+gres(.Object)
 
 now(.Object)
 
@@ -109,9 +113,5 @@ Merge Job output annotations with data.table
 }
 
 \author{
-Marcin Imielinski
-
-Marcin Imielinski
-
 Marcin Imielinski
 }

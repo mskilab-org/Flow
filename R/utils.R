@@ -165,7 +165,7 @@ qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup
 #' @param qprior used for setting the "nice" value for SLURM
 #' @author Zoran Gajic
 #' @export
-ssub_cmd = function(script.fn, queue, qos = NULL, jname = NULL, jlabel = NULL, jgroup = NULL, mem=NULL, group = NULL, cwd = NULL, mc.cores = NULL, deadline = F, now = FALSE, time = "00", qprior = NULL)
+ssub_cmd = function(script.fn, queue, qos = NULL, jname = NULL, jlabel = NULL, jgroup = NULL, mem=NULL, group = NULL, cwd = NULL, mc.cores = NULL, deadline = F, now = FALSE, time = "00", qprior = NULL, gres = NULL)
 {
         if (is.null(jname) & is.null(names(script.fn)))
             jname = 'job'
@@ -175,6 +175,9 @@ ssub_cmd = function(script.fn, queue, qos = NULL, jname = NULL, jlabel = NULL, j
 
         if (is.null(qos))
             qos = as.character(NA)
+
+        if (is.null(gres))
+            gres = as.character(NA)
         
         if (!is.null(jname))
             names(script.fn) = dedup(jname)    
@@ -185,6 +188,7 @@ ssub_cmd = function(script.fn, queue, qos = NULL, jname = NULL, jlabel = NULL, j
         out_cmd = paste("sbatch --export=ALL --output=", qjout, sep = '');
         out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste0("-p ", queue)))
         out_cmd = paste(out_cmd, ifelse(is.na(qos), '', paste0("-q ", qos)))
+        out_cmd = paste(out_cmd, ifelse(is.na(gres), "", paste0("--gres=", gres)))
         out_cmd = paste(out_cmd, paste0('--time=', time, ':00:00 '))
         if (!is.null(mem)) out_cmd = paste(out_cmd, " --mem=", mem, "G", sep = "");
         #if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))

@@ -618,7 +618,8 @@ setMethod('initialize', 'Job', function(.Object,
                                         entities = NULL, ## keyed data.table, key will determine id of outgoing jobs, columns of table used to populate task
                                         rootdir = './Flow/',
                                         queue = as.character(NA),
-                                        qos = as.character(NA), 
+                                        qos = as.character(NA),
+                                        gres = as.character(NA),
                                         nice = NULL,
                                         mem = NULL,
                                         cores = 1,
@@ -915,6 +916,7 @@ setMethod('initialize', 'Job', function(.Object,
     .Object@runinfo[, io_c := io_c]
     .Object@runinfo[, io_n := io_n]
     .Object@runinfo[, qprior := qprior]
+    .Object@runinfo[, gres := gres]
     .Object@runinfo[, nice_val := nice_val]
     .Object@runinfo[, time := time]
 
@@ -1895,7 +1897,45 @@ setReplaceMethod('cores', 'Job', function(.Object, value)
                      return(.Object)
                  })
 
+#' @name Job-class
+#' @rdname Job-class
+#' @exportMethod gres
+#' @export
+setGeneric('gres', function(.Object) {standardGeneric('gres')})
 
+#' @name gres
+#' @title Gets queue or partition associated with the jobs in the Job object
+#' @description
+#' Getting SLURM  gres associated with Job object
+#'
+#' @exportMethod gres
+#' @export
+#' @author Marcin Imielinski
+setMethod('gres', 'Job', function(.Object)
+{
+    if (is.null(.Object@runinfo$gres))
+        .Object@runinfo$gres = as.character(NA)
+    structure(.Object@runinfo[, gres], names = .Object@runinfo[[data.table::key(.Object@runinfo)]])
+})
+
+
+#' @export
+setGeneric('gres<-', function(.Object, value) {standardGeneric('gres<-')})
+
+#' @name gres<-
+#' @title Sets qos associated with the jobs in the Job object
+#' @description
+#' Setting LSF / SGE qos associated with Job object
+#'
+#' @exportMethod gres<-
+#' @export
+#' @author Marcin Imielinski
+setReplaceMethod('gres', 'Job', function(.Object, value)
+{
+        .Object@runinfo[, gres := value]
+        .Object@runinfo = .update_cmd(.Object)
+        return(.Object)
+})
 
 
 #' @name Job-class
@@ -2822,7 +2862,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
     ## utility func for instantiation of Job and modifying memory
     .cmd2bcmd = function(cmd, outdir, name, ids, queue, mem, cores) bsub_cmd(paste('touch ', outdir, '/started; ', cmd, ';', sep = ''), queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = .jname(outdir, name, ids), jlabel = .jname(outdir, name, ids))
     .cmd2qcmd = function(cmd, outdir, name, ids, queue, mem, cores, now, qprior) qsub_cmd(cmd, queue = queue, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, touch_job_out = TRUE, qprior = qprior)
-    .cmd2scmd = function(cmd, outdir, name, ids, qos, queue, mem, cores, now, time, qprior) ssub_cmd(cmd, queue = queue, qos = qos, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, time = time, qprior = qprior)
+    .cmd2scmd = function(cmd, outdir, name, ids, qos, queue, mem, cores, now, time, qprior, gres) ssub_cmd(cmd, queue = queue, qos = qos, mem = mem, mc.cores = cores, cwd = outdir, jname = paste('job', name, ids, sep = '.'), jlabel = paste('job', name, ids, sep = '.'), now = now, time = time, qprior = qprior, gres = gres)
 
     .Object@runinfo[, bcmd := '']
 
@@ -2851,7 +2891,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
 
     .Object@runinfo[, mapply(function(text, path) writeLines(text, path), cmd, cmd.path)] ## writes cmd to path
     .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, qprior = qprior_val)]
-    .Object@runinfo[ix, scmd := .cmd2scmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue = queue, mem = mem, cores = cores, qos = qos, now = now, time = time, qprior = qprior_val)]
+    .Object@runinfo[ix, scmd := .cmd2scmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue = queue, mem = mem, cores = cores, qos = qos, now = now, time = time, qprior = qprior_val, gres = gres)]
 
     return(.Object@runinfo)
 }

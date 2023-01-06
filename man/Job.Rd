@@ -23,6 +23,7 @@ Job(
   entities,
   rootdir = "./Flow/",
   queue = as.character(NA),
+  qos = as.character(NA),
   mem = NULL,
   nice = NULL,
   cores = 1,

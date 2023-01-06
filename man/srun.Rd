@@ -4,10 +4,14 @@
 \alias{srun}
 \title{Runs jobs on Slurm}
 \usage{
-\S4method{srun}{Job}(.Object, mc.cores = 1, all = FALSE)
+\S4method{srun}{Job}(.Object, mc.cores = 1, all = FALSE, sleep = 0)
 }
 \arguments{
 \item{mc.cores}{Number of parallel cores to run jobs with (=1)}
+
+\item{all}{(logical) Run all jobs, even completed ones (default FALSE)}
+
+\item{sleep}{(numeric) time to pause between job submissions, in seconds (default 0)}
 }
 \description{
 Runs jobs on Slurm
