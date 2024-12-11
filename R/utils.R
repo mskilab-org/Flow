@@ -185,11 +185,13 @@ ssub_cmd = function(script.fn, queue, qos = NULL, jname = NULL, jlabel = NULL, j
         qjout = paste( "", names(script.fn), ".bsub.out", " " , sep="" )
         qjerr = paste( "", names(script.fn), ".bsub.err", "", sep="" )
         qjrout = paste( "", names(script.fn), ".R.out", "", sep="" )                    
-        out_cmd = paste("sbatch --export=ALL --output=", qjout, sep = '');
+        out_cmd = paste("sbatch --export=ALL --output=", qjout, " --error=", qjerr, sep = '');
         out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste0("-p ", queue)))
         out_cmd = paste(out_cmd, ifelse(is.na(qos), '', paste0("-q ", qos)))
         out_cmd = paste(out_cmd, ifelse(is.na(gres), "", paste0("--gres=", gres)))
-        out_cmd = paste(out_cmd, paste0('--time=', time, ':00:00 '))
+        timestring = paste("--time=", time, ":00:00 ", sep = "")
+        if (any(grepl(":", time))) timestring = paste("--time=", time, " ", sep = "")
+        out_cmd = paste(out_cmd, timestring)
         if (!is.null(mem)) out_cmd = paste(out_cmd, " --mem=", mem, "G", sep = "");
         #if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
         ## if (!is.null(cwd)) out_cmd = paste(out_cmd, " --workdir=", cwd , sep = '')
