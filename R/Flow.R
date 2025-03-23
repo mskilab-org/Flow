@@ -1392,7 +1392,7 @@ setMethod('refresh', 'Job', function(object, verbose = TRUE)
 #' @exportMethod [
 #' @export
 #' @author Marcin Imielinski
-setMethod('[', 'Job', function(x, i, id = FALSE)
+setMethod('[', 'Job', function(x, i, j, id = FALSE, drop = FALSE)
 {
   if (is.character(id))
   {
