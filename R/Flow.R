@@ -90,7 +90,8 @@ setMethod('initialize', 'Module', function(.Object,
 
         return(.Object)
     })
-#' @name Module
+
+#' @name module
 #' @title Class to implement modules, which are standalone pieces of code that expect standard inputs and outputs
 #' @description
 #'
@@ -319,7 +320,7 @@ setMethod('initialize', 'Task', function(.Object,
 
 
 
-#' @name Task
+#' @name task
 #' @title Object representing a task, which is a wiring of a module inputs and outputs to specific entity annotations names
 #' @description
 #'
@@ -639,7 +640,8 @@ setMethod('initialize', 'Job', function(.Object,
     if (any(duplicated(entities[[data.table::key(entities)]])))
         stop(sprintf('Input entities table has duplicated keys! Check column "%s" of entities table or use a different column as a key', data.table::key(entities)))
 
-    .Object@entities = copy(entities)
+    entities = copy(entities)
+    .Object@entities = entities
 
     tabstring = function(tab, sep = ', ')
         return(paste(names(tab), '(', tab, ')', sep = '', collapse = sep))
@@ -2925,7 +2927,7 @@ setMethod('report', 'Job', function(.Object, mc.cores = 1, force = FALSE)
 #' @author Marcin Imielinski
 xml2task = function(path, module = NULL, out.file = NULL)
     {
-        require(XML)
+        requireNamespace(XML)
 
         tasks = xmlToList(xmlParse(path))
         tasks = tasks[which(names(tasks)=='pipeline-configuration')]
@@ -3576,9 +3578,18 @@ Flow = function(
 #' @param x Flow object
 #' @author Marcin Imielinski
 #' @export
-'plot.Flow' = function(x, y, paths.only = FALSE, seed = 42, layout = layout_with_fr)
+'plot.Flow' = function(x, ...)
 {
-  set.seed(42)
+  args = list(...)
+  y = args$y
+  seed = args$seed
+  if (is.null(seed)) seed = 42
+  paths.only = args$paths.only
+  if (is.null(paths.only)) paths.only = FALSE
+  layout = args$layout
+  if (is.null(layout)) layout = layout_with_fr
+
+  set.seed(seed)
   nodes = x@nodes
   edges = x@edges
 
@@ -3801,7 +3812,7 @@ flow.entities = function(entities, nodes, edges, quick = FALSE)
   ready = eval(parse(text = sprintf("merge(emm, inputs, allow = TRUE, by = 'id')[, .(nife = sum(ife)), by = .(%s, taskid, ninputs)]",key(entities))))
   done = eval(parse(text = sprintf("merge(emm, outputs, allow = TRUE, by = 'id')[, .(nofe = sum(ofe)), by = .(%s, taskid, noutputs)]",key(entities))))
   
-  rd = merge(ready, done, by = c('taskid', key(entities)))[, .(ready = sum(ninputs == nife & noutputs == 0),
+  rd = merge(ready, done, by = c('taskid', key(entities)))[, .(ready = sum(ninputs == nife & nofe == 0),
                                                                incomplete = sum(ninputs == nife & nofe > 0 & nofe < noutputs),
                                                                done = sum(ninputs == nife & noutputs == nofe)), keyby = taskid]
 
@@ -3818,3 +3829,14 @@ flow.entities = function(entities, nodes, edges, quick = FALSE)
   return(nodes)
 }
 
+
+#' @title normalizePath
+#' @description
+#'
+#' Internal version of normalizePath that doesn't dereference symbolic links to the file proper
+#' instead just to the containing directory
+#' 
+normalizePath = function(x)
+{
+  paste0(base::normalizePath(dirname(x)), '/', basename(x))
+}

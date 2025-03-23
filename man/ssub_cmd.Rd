@@ -16,7 +16,8 @@ ssub_cmd(
   mc.cores = NULL,
   deadline = F,
   now = FALSE,
-  time = "00"
+  time = "00",
+  qprior = NULL
 )
 }
 \arguments{
@@ -39,6 +40,8 @@ ssub_cmd(
 \item{mc.cores}{integer number of cores to use (default = 1)}
 
 \item{deadline}{boolean specifies if deadline initiation time used (default = FALSE)}
+
+\item{qprior}{used for setting the "nice" value for SLURM}
 }
 \description{
 Makes ssub command that wraps shell command "script.fn" to send to queue "queue"
