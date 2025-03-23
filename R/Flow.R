@@ -1,32 +1,3 @@
-##############################################################################
-## Marcin Imielinski
-##
-## Weill Cornell Medicine
-## mai9037@med.cornell.edu
-##
-## New York Genome Center
-## mimielinski@nygenome.org
-##
-
-## This program is free software: you can redistribute it and/or modify it
-## under the terms of the GNU Lesser General Public License as published by
-## the Free Software Foundation, either version 3 of the License, or
-## (at your option) any later version.
-
-## This program is distributed in the hope that it will be useful,
-## but WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-## GNU General Public License for more details.
-
-## You should have received a copy of the GNU Lesser General Public License
-## along with this program.  If not, see <http://www.gnu.org/licenses/>.
-###############################################################################
-
-#' @import parallel
-#' @import data.table
-#' @importMethodsFrom data.table key
-#' @import stringr
-
 ############################## setting skipNul to TRUE to avoid errors, overwriting the base R functionality for Flow
 readLines = function(con = stdin(), n = -1L , ok = TRUE, warn = TRUE, encoding = "unknown", skipNul = TRUE) {
     base::readLines(con = con, n = n, ok = ok, warn = warn, encoding = encoding, skipNul = skipNul)
@@ -50,11 +21,12 @@ readLines = function(con = stdin(), n = -1L , ok = TRUE, warn = TRUE, encoding =
 #'
 #' @exportClass Module
 #' @author Marcin Imielinski
-setClass('Module', representation(sourcedir = 'character', name = "character", cmd = 'character', args = 'vector', stamp = 'character'))
+setClass('Module', representation(sourcedir = 'character', name = "character", cmd = 'character', args = 'vector', stamp = 'character', shell = "sh"))
 
 setMethod('initialize', 'Module', function(.Object,
                                              path, # path to module
-                                             name = NULL ## default is
+                                             name = NULL, ## default is
+                                             shell = "sh"
                                              )
     {
         if (!file.exists(path))
@@ -80,6 +52,10 @@ setMethod('initialize', 'Module', function(.Object,
         if (!grepl('sh', cmd))
             warning('Module command does not begin with "sh" - make sure that this is not a scatter gather command, which is not currently supported')
 
+        deploy_shell = sub("^([0-9a-zA-Z\\-_]+) .*", "\\1", cmd)
+        if (deploy_shell != shell) {
+            cmd = gsub("^([0-9a-zA-Z\\-_]+) ", paste(shell, " ", sep = ""), cmd)
+        }
 
         ## need to replace $(\\w+ .* FEATURE_NAME) with just the internal and extract the FEATURE_NAME
         pattern = '\\$\\{[a-z\\,]*( [^\\}]*)? (\\S+)\\s*\\}';
@@ -235,7 +211,7 @@ setMethod('initialize', 'Task', function(.Object,
                 if (!file.exists(modfn))
                     stop(paste('Module path', modfn,  'pointed to by this task config file does not exist.  Check the path and read format spec belwow:\n', errstr))
 
-                .Object@module  = Module(modfn)
+                .Object@module  = Module(modfn, ...)
                 .Object@path = module
                 .Object@libdir  = .Object@module@sourcedir
                 .Object@mem  = as.numeric(mem)
@@ -628,13 +604,13 @@ setMethod('initialize', 'Job', function(.Object,
                                         io_n = 4,
                                         qprior = 0,
                                         nice_val = 10,
-                                        time = "3-00") {
-    require(stringr)
+                                        time = "3-00",
+                                        shell = "sh") {
     if (is.null(nice))
         nice = TRUE
 
     if (is.character(task)) ##
-        task = Task(task)
+        task = Task(task, shell = shell)
     else if (!is(task, 'Task'))
         stop('Job must be instantiated from Task object or .fhtask file')
 
