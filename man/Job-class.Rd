@@ -12,7 +12,7 @@
 \usage{
 update(object, ...)
 
-\S4method{[}{Job}(x, i, id = FALSE) <- value
+\S4method{[}{Job}(x, i, j, id = FALSE, ...) <- value
 
 module(.Object)
 
@@ -109,9 +109,5 @@ Merge Job output annotations with data.table
 }
 
 \author{
-Marcin Imielinski
-
-Marcin Imielinski
-
 Marcin Imielinski
 }

@@ -66,6 +66,4 @@ output  snowman_germline_indel_vcf      .*DATECODE.germline.indel.vcf
 }
 \author{
 Marcin Imielinski
-
-Marcin Imielinski
 }

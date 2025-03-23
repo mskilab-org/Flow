@@ -15,6 +15,4 @@ returns vector of entity ids associated with this Job objedct
 }
 \author{
 Marcin Imielinskix
-
-Marcin Imielinskix
 }

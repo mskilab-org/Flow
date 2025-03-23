@@ -4,7 +4,7 @@
 \alias{[}
 \title{caches .rds copy of job object to standard location (TASK.NAME.rds in Job output root directory)}
 \usage{
-\S4method{[}{Job}(x, i, id = FALSE)
+\S4method{[}{Job}(x, i, j, id = FALSE, ..., drop = FALSE)
 }
 \description{
 Subsetting Job object, can use index or character.  If character will act as a grep
