@@ -5,9 +5,13 @@
 \title{Gets queue associated with the jobs in the Job object}
 \usage{
 \S4method{queue}{Job}(.Object)
+
+\S4method{qos}{Job}(.Object)
 }
 \description{
 Getting LSF / SGE queue associated with Job object
+
+Getting SLURM  qos associated with Job object
 }
 \author{
 Marcin Imielinski

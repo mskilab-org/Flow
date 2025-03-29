@@ -23,12 +23,14 @@ Job(
   entities,
   rootdir = "./Flow/",
   queue = as.character(NA),
+  qos = as.character(NA),
   mem = NULL,
   nice = NULL,
   cores = 1,
   mock = FALSE,
   update_cores = 1,
   parse_recursive = FALSE,
+  check.stamps = TRUE,
   time = "3-00",
   ...
 )

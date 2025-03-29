@@ -32,7 +32,11 @@ nice_val(.Object)
 
 queue(.Object)
 
+qos(.Object)
+
 cores(.Object)
+
+gres(.Object)
 
 now(.Object)
 

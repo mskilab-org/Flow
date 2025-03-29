@@ -7,6 +7,7 @@
 ssub_cmd(
   script.fn,
   queue,
+  qos = NULL,
   jname = NULL,
   jlabel = NULL,
   jgroup = NULL,
@@ -17,7 +18,8 @@ ssub_cmd(
   deadline = F,
   now = FALSE,
   time = "00",
-  qprior = NULL
+  qprior = NULL,
+  gres = NULL
 )
 }
 \arguments{
