@@ -27,11 +27,13 @@ Depends:
     data.table,
     igraph,
     stringr,
-    parallel
+    parallel,
+    glue
 Imports:
 Suggests:
     XML,
     testthat
 License: GPL v3.0
 LazyData: true
+Encoding: UTF-8
 RoxygenNote: 7.3.2

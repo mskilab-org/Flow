@@ -1,3 +1,13 @@
+#' Default shell command
+#'
+#' Shell command that executes the script
+#'
+#' This is an added command that will enforce the flow command to run from a clean slate.
+#' I.e. no environmental variables inherited from submitted user profile. This ensures,
+#' whether running locally or on slurm, that any environment variables get inherited from user's
+#' bash profile.
+DEFAULT_EXEC_CMD="/usr/bin/env -i"
+
 ############################## setting skipNul to TRUE to avoid errors, overwriting the base R functionality for Flow
 readLines = function(con = stdin(), n = -1L , ok = TRUE, warn = TRUE, encoding = "unknown", skipNul = TRUE) {
     base::readLines(con = con, n = n, ok = ok, warn = warn, encoding = encoding, skipNul = skipNul)
@@ -21,12 +31,14 @@ readLines = function(con = stdin(), n = -1L , ok = TRUE, warn = TRUE, encoding =
 #'
 #' @exportClass Module
 #' @author Marcin Imielinski
-setClass('Module', representation(sourcedir = 'character', name = "character", cmd = 'character', args = 'vector', stamp = 'character', shell = "sh"))
+setClass('Module', representation(sourcedir = 'character', name = "character", cmd = 'character', args = 'vector', stamp = 'character', shell = "character", force_shell = "logical", force_profile = "logical"))
 
 setMethod('initialize', 'Module', function(.Object,
                                              path, # path to module
                                              name = NULL, ## default is
-                                             shell = "sh"
+                                             shell = "sh",
+                                             force_shell = FALSE,
+                                             force_profile = FALSE
                                              )
     {
         if (!file.exists(path))
@@ -51,11 +63,46 @@ setMethod('initialize', 'Module', function(.Object,
 
         if (!grepl('sh', cmd))
             warning('Module command does not begin with "sh" - make sure that this is not a scatter gather command, which is not currently supported')
-
-        deploy_shell = sub("^([0-9a-zA-Z\\-_]+) .*", "\\1", cmd)
-        if (deploy_shell != shell) {
-            cmd = gsub("^([0-9a-zA-Z\\-_]+) ", paste(shell, " ", sep = ""), cmd)
+        
+        ## Piecing apart the sh run.sh bla bla command.
+        deploy_shell = sub("^([0-9a-zA-Z\\-_./]+) (.*)", "\\1", cmd)
+        is_first_deploy_a_shell_executable = !grepl("\\.([a-zA-Z0-9])$", deploy_shell) ## in other words, is there no extension?
+        run_cmd = cmd
+        if (is_first_deploy_a_shell_executable) {
+            run_cmd = sub("^([0-9a-zA-Z\\-_./]+) (.*)", "\\2", cmd)
+        } else {
+            deploy_shell = "" 
         }
+        
+        if (identical(force_shell, TRUE)) {
+            deploy_shell = shell
+        }
+        exec_cmd = ""
+        exec_profile_cmd = ""
+        redo_sh = ""
+        if (identical(force_profile, TRUE)) {
+            exec_cmd = DEFAULT_EXEC_CMD
+            # exec_profile_cmd = "{ [ -e <libdir>/profile ] && . <libdir>/profile; } && "
+            # path_to_flow_wrapper = system.file(package = "Flow", "extdata", "flow_wrapper.sh")
+            mktemp_sh = 'export run_wrap_sh=$(export TMPDIR=./ && mktemp -t run.XXXXXXXXXX.sh) && '
+            redo_sh = paste(
+                sep = "",
+                mktemp_sh, 
+                # 'printf "$(cat ', path_to_flow_wrapper, ')\n',
+                'printf ',
+                '\\"[ -e <libdir>/profile ] && . <libdir>/profile\n',
+                run_cmd, '\\" > ${run_wrap_sh} &&'
+            )
+            run_cmd = "${run_wrap_sh}"
+        }
+        cmd = paste(
+            redo_sh,
+            exec_cmd, 
+            deploy_shell, 
+            # exec_profile_cmd, 
+            run_cmd
+        )
+        cmd = base::trimws(cmd)
 
         ## need to replace $(\\w+ .* FEATURE_NAME) with just the internal and extract the FEATURE_NAME
         pattern = '\\$\\{[a-z\\,]*( [^\\}]*)? (\\S+)\\s*\\}';
@@ -609,12 +656,14 @@ setMethod('initialize', 'Job', function(.Object,
                                         qprior = 0,
                                         nice_val = 10,
                                         time = "3-00",
-                                        shell = "sh") {
+                                        shell = "sh",
+                                        force_shell = FALSE,
+                                        force_profile = FALSE) {
     if (is.null(nice))
         nice = TRUE
 
     if (is.character(task)) ##
-        task = Task(task, shell = shell)
+        task = Task(task, shell = shell, force_shell = force_shell, force_profile = force_profile)
     else if (!is(task, 'Task'))
         stop('Job must be instantiated from Task object or .fhtask file')
 
@@ -1043,16 +1092,9 @@ setMethod('purge', 'Job', function(object, check.inputs = TRUE, mc.cores = 1)
         cat('About to remove all files and directories associated with this Job object in', paste(object@rootdir, task(object)@name, sep = '/'), '\nGiving you a moment to think ... ')
         Sys.sleep(5)
         cat('OK here we go .. \n')
-        ## mclapply(outdir(object), function(x) system(paste('rm -r', x)), mc.cores = mc.cores)
-        ## base::unlink(outdir(object), recursive = TRUE)
-        ## mclapply(outdir(object), function(x) system(paste('rm -r', x)), mc.cores = mc.cores)
         mclapply(outdir(object), function(x) system2("rm", args = c("-rf", grep('cmd\\.sh$', dir(x, full.names = T), value = T, invert = T))), mc.cores = mc.cores)
         cat('Regenerating fresh output directories\n')
-        ## withr::with_options(new = list(warn = 1), code = {
-        ##     mclapply(outdir(object), function(x) base::dir.create(x, mode = "0775"), mc.cores = mc.cores)
-        ## })
         suppressWarnings(mclapply(outdir(object), function(x) base::dir.create(x, mode = "0775"), mc.cores = mc.cores))
-        ## mclapply(outdir(object), function(x) system(paste('mkdir -p', x)), mc.cores = mc.cores)
         current_umask = Sys.umask(mode = NA)
         on.exit(Sys.umask(mode = current_umask))
         Sys.umask(mode = "0002")
@@ -2797,6 +2839,12 @@ make_chunks = function(vec, max_per_chunk = 100) {
 
 .jname = function(outdir, name, ids) paste(outdir, '/', name, '.', ids, sep = '')
 
+#' Create Flow command
+#' 
+#' Instantiates flow command 
+#' 
+#' Flow command is instantiated with parameters
+#'  and accessed via Flow::cmd().
 .update_cmd = function(.Object, qos = NULL, ...) {
     ix = which(status(.Object) != 'not ready')
     halt = FALSE
@@ -2853,11 +2901,45 @@ make_chunks = function(vec, max_per_chunk = 100) {
     else
         warning('time not found in path, Flow may not run correctly')
     
-       
-    ## .Object@runinfo[ix, cmd := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, '(ionice -c2 -n7 nice ', ''), '`which time` -v ', cmd.og, ' ) 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
-    ## .Object@runinfo[ix, cmd.quiet := paste('umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, 'ionice -c2 -n7 nice ', ''), '`which time` -v ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go',  sep = '')]
-    .Object@runinfo[ix, cmd := paste('{ umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('{ echo \"$(date), running in $(pwd) \"; ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), ''), time.cmd, ' ', cmd.og, '; } 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go; exit 0; }',  sep = '')]
-    .Object@runinfo[ix, cmd.quiet := paste('{ umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('echo \"$(date), running in $(pwd) \"; ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), ''), time.cmd, ' ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go; exit 0; }',  sep = '')]
+    # .Object@runinfo[ix, cmd := paste('{ umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('{ echo \"$(date), running in $(pwd) \"; ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), ''), time.cmd, ' ', cmd.og, '; } 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go; exit 0; }',  sep = '')]
+    .Object@runinfo[ix, cmd := paste(
+        'umask u=rwx,g=rwx,o=rx && ', 
+        'flow_go=$( pwd ) && ', 
+        'cd ',  outdir, ' && ',
+        'touch ', outdir, '/started && ',
+        'printf "Date: %s\nHost: %s\npwd: %s\n\n" "$(date)" "$(hostname)" "$(pwd)" && ',
+        "{ ",
+        ifelse(
+            nice, 
+            sprintf('ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), 
+            ''
+        ), 
+        time.cmd, ' bash -c \'', cmd.og, '\' ',
+        '; } ', 
+        '2>&1 | tee ', stdout, ' && ',
+        'cp ', stdout, ' ', stderr, ' && ',
+        'cd ${flow_go} && ', 
+        'exit 0 || { exit 1; }',  sep = ''
+    )]
+    # .Object@runinfo[ix, cmd.quiet := paste('{ umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('echo \"$(date), running in $(pwd) \"; ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), ''), time.cmd, ' ', cmd.og, ' &> ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go; exit 0; }',  sep = '')]
+    .Object@runinfo[ix, cmd.quiet := paste(
+        'umask u=rwx,g=rwx,o=rx && ',
+        'flow_go=$( pwd ) && ', 
+        'cd ', outdir, ' && ', 
+        'touch ', outdir, '/started && ',
+        'printf "Date: %s\nHost: %s\nPwd: %s" "$(date)" "$(hostname)" "$(pwd)" && ',
+        '{ ',
+        ifelse(
+            nice, 
+            sprintf('ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), 
+            ''
+        ), 
+        time.cmd, ' bash -c \'', cmd.og, '\' ',
+        '; } &> ', stdout, ' && ',
+        'cp ', stdout, ' ', stderr, ' && ', 
+        'cd ${flow_go} && ',
+        'exit 0 || { exit 1; }',  sep = ''
+    )]
 
     .Object@runinfo$cmd.path = paste(outdir(.Object), '/', names(outdir(.Object)), '.cmd.sh', sep = '')
     

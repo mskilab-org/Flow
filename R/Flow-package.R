@@ -25,5 +25,6 @@
 #' @import parallel
 #' @import data.table
 #' @import stringr
-#' @import stringr
+#' @import stringi
+#' @importFrom glue glue
 "_PACKAGE"
