@@ -90,8 +90,8 @@ setMethod('initialize', 'Module', function(.Object,
                 mktemp_sh, 
                 # 'printf "$(cat ', path_to_flow_wrapper, ')\n',
                 'printf ',
-                '\\"[ -e <libdir>/profile ] && . <libdir>/profile\n',
-                run_cmd, '\\" > ${run_wrap_sh} &&'
+                '\"[ -e <libdir>/profile ] && . <libdir>/profile\n',
+                run_cmd, '\" > ${run_wrap_sh} &&'
             )
             run_cmd = "${run_wrap_sh}"
         }
