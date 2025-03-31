@@ -6,7 +6,22 @@
 #' I.e. no environmental variables inherited from submitted user profile. This ensures,
 #' whether running locally or on slurm, that any environment variables get inherited from user's
 #' bash profile.
-DEFAULT_EXEC_CMD="/usr/bin/env -i"
+ENV_STRING=paste(
+    '/usr/bin/env -i',
+    '$(test "${HOME+set}" = set && printf %s "HOME=${HOME}")', 
+    '$(test "${TERM+set}" = set && printf %s "TERM=${TERM}")',
+    '$(test "${SHELL+set}" = set && printf %s "SHELL=${SHELL}")',
+    '$(test "${DISPLAY+set}" = set && printf %s "DISPLAY=${DISPLAY}")',
+    '$(test "${LANG+set}" = set && printf %s "LANG=${LANG}")',
+    '$(test "${LANG+set}" = set && printf %s "LC_ALL=${LANG}")',
+    '$(test "${LC_COLLATE+set}" = set && printf %s "LC_COLLATE=${LC_COLLATE}")',
+    '$(test "${TMP+set}" = set && printf %s "TMP=${TMP}")',
+    '$(test "${TMPDIR+set}" = set && printf %s "TMPDIR=${TMPDIR}")', 
+    '$(test "${SSH_AUTH_SOCK+set}" = set && printf %s "SSH_AUTH_SOCK=${SSH_AUTH_SOCK}")',
+    ' ',
+    sep = " "
+)
+     
 
 ############################## setting skipNul to TRUE to avoid errors, overwriting the base R functionality for Flow
 readLines = function(con = stdin(), n = -1L , ok = TRUE, warn = TRUE, encoding = "unknown", skipNul = TRUE) {
@@ -81,24 +96,23 @@ setMethod('initialize', 'Module', function(.Object,
         exec_profile_cmd = ""
         redo_sh = ""
         # if (identical(force_profile, TRUE)) {
-            # exec_cmd = DEFAULT_EXEC_CMD
+            # exec_cmd = '/usr/bin/env '
             
-            # exec_profile_cmd = "{ [ -e <libdir>/profile ] && . <libdir>/profile; }; "
-            # run_cmd = paste(
-            #     "{ [ -e <libdir>/profile ] && . <libdir>/profile; };",
-            #     run_cmd
-            # )
+        #     exec_profile_cmd = "{ [ -e <libdir>/profile ] && . <libdir>/profile; }; "
+        #     run_cmd = paste(
+        #         "_____REPLACE_WITH_PROFILE_____",
+        #         run_cmd
+        #     )
 
-            # mktemp_sh = 'export run_wrap_sh=$(export TMPDIR=./ && mktemp -t run_wrap.XXXXXXXXXX.sh) && '
-            # redo_sh = paste(
-            #     sep = "",
-            #     mktemp_sh, 
-            #     # 'printf "$(cat ', path_to_flow_wrapper, ')\n',
-            #     'printf ',
-            #     '\"[ -e <libdir>/profile ] && . <libdir>/profile\n',
-            #     run_cmd, '\" > ${run_wrap_sh} &&'
-            # )
-            # run_cmd = "${run_wrap_sh}"
+        #     mktemp_sh = 'export run_wrap_sh=$(export TMPDIR=./ && mktemp -t run_wrap.XXXXXXXXXX.sh) && '
+        #     redo_sh = paste(
+        #         sep = "",
+        #         mktemp_sh, 
+        #         'printf ',
+        #         '\"[ -e <libdir>/profile ] && . <libdir>/profile\n',
+        #         run_cmd, '\" > ${run_wrap_sh} &&'
+        #     )
+        #     run_cmd = "${run_wrap_sh}"
         # }
         cmd = paste(
             redo_sh,
@@ -142,6 +156,8 @@ setMethod('initialize', 'Module', function(.Object,
         .Object@force_shell = force_shell
         .Object@force_profile = force_profile
         .Object@shell = shell
+
+        # system2("chmod", c("-R", "u=rwx,g=rwx,o=rx", .Object@sourcedir))
         
 
         return(.Object)
@@ -1109,6 +1125,7 @@ setMethod('initialize', 'Job', function(.Object,
                                         #                cat('Refreshing object from', path, '\n')
         .Object = readRDS(path)[ids, id = TRUE]
     }
+
     return(.Object)
 })
 
@@ -3049,7 +3066,8 @@ make_chunks = function(vec, max_per_chunk = 100) {
     exec_cmd = ''
     if (do_force_profile || is_any_profile_present) {
         libdir = .Object@task@libdir
-        exec_cmd = '/usr/bin/env -i'
+        # exec_cmd = '/usr/bin/env -i HOME=${HOME}'
+        exec_cmd = Flow:::ENV_STRING
     }
     .Object@runinfo[ix, cmd := paste(
         'umask u=rwx,g=rwx,o=rx && ', 
