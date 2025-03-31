@@ -680,6 +680,54 @@ tailf = function(x, n = NULL, grep = NULL)
 }
 
 
+deparse1 = function (expr, collapse = " ", width.cutoff = 500L, ...) {
+    base::paste(base::deparse(expr, width.cutoff, ...), collapse = collapse)
+}
+
+
+#' get S4 Slot
+#' 
+#' Simple function that returns NULL if slot not present
+#' instead of erroring out
+#' 
+#' @export
+getslot = function(object, name, default = NULL) {
+    suppressWarnings({
+        is_character = tryCatch(is.character(name), error = function(e) FALSE)
+        is_symbol_name = tryCatch(is.symbol(name), error = function(e) FALSE)
+        is_symbol_substitute_name = tryCatch(is.symbol(substitute(name)), error = function(e) FALSE)
+        is_to_be_deparsed = is_symbol_name || is_symbol_substitute_name
+    })
+    if (is_character) {
+        nm = name
+    }
+    if (is_to_be_deparsed) {
+        if (is_symbol_substitute_name) nm = substitute(name)
+        nm = deparse1(nm)
+    }
+    ## Note object can be NULL
+    if (!methods::.hasSlot(object, nm)) return(default)
+    return(methods::slot(object, nm))
+}
+
+#' Get chain of S4 methods
+#' 
+#' Function that goes through the chain of arguments and returns a default
+#' instead of erroring out
+#' 
+#' @export
+getslotchain = function(object, ..., default = NULL) {
+    args = match.call(expand.dots = FALSE)$...
+    out_object = object
+    for (arg in args) {
+        out_object = getslot(out_object, as.character(arg), default = default)
+    }
+    return(out_object)
+}
+
+`%@%` = getslot
+
+
 #' @name reset.job
 #' @title reset.job
 #'
@@ -688,38 +736,88 @@ tailf = function(x, n = NULL, grep = NULL)
 #' @return A Flow job object
 #' @author Kevin Hadi
 #' @export reset.job
-reset.job = function(x, ..., i = NULL, rootdir = x@rootdir, jb.mem = x@runinfo$mem, jb.cores = x@runinfo$cores, jb.time = x@runinfo$time, update_cores = 1, task = NULL) {
+reset.job = function(x, delete_cache = FALSE, ..., i = NULL, rootdir, jb.mem, jb.cores, jb.time, update_cores = 1, task = NULL, shell, force_shell, force_profile) {
+    if (missing(jb.time))
+        jb.time = base::get0("time", as.environment(x@runinfo), ifnotfound = "24:00:00")
+    
+    if (missing(jb.mem))
+        jb.mem = base::get0("mem", as.environment(x@runinfo), ifnotfound = 16)
+    
+    if (missing(jb.cores))
+        jb.cores = base::get0("cores", as.environment(x@runinfo), ifnotfound = 1L)
+
+    if (missing(rootdir)) 
+        rootdir = x@rootdir
+    
+    if (missing(force_shell)) {
+        force_shell = getslotchain(x, task, module, force_shell, default = TRUE)
+    }
+
+    if (missing(force_shell)) {
+        force_shell = getslotchain(x, task, module, force_shell, default = TRUE)
+    }
+
+
+    
     if (!inherits(x, "Job")) stop ("x must be a Flow Job object")
+
     if (is.null(task))
         usetask = Flow::task(x@task)
     else if (is.character(task) || inherits(task, "Task"))
         usetask = task
+    
     args = list(...)
     new.ent = copy(entities(x))
+    
     if (!is.null(i)) {
         jb.mem = replace(x@runinfo$mem, i, jb.mem)
         jb.cores = replace(x@runinfo$cores, i, jb.cores)
     }
-    tsk = viewtask(usetask)
+
+    getslot()
+
+    tbl_task = viewtask(usetask)
     ## if (!all(names(args) %in% colnames(new.ent)))
-    if (!all(names(args) %in% colnames(new.ent)) && !names(args) %in% viewtask(usetask)$V2)
+    if (!all(names(args) %in% colnames(new.ent)) && !names(args) %in% tbl_task$V2)
         stop("adding additional column to entities... this function is just for resetting with new arguments")
-    for (j in seq_along(args))
-    {
+    
+    for (j in seq_along(args)) {
         data.table::set(new.ent, i = i, j = names(args)[j], value = args[[j]])
     }
     these.forms = formals(body(findMethods("initialize")$Job@.Data)[[2]][[3]])
-    if ("time" %in% names(these.forms)) {
-        if ("update_cores" %in% names(these.forms))
-            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores, update_cores = update_cores)
-        else
-            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores)
-    } else {
-        if ("update_cores" %in% names(these.forms))
-            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores, update_cores = update_cores)
-        else
-            jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores)
+
+    path_to_cache = Flow::getcache(x)
+
+    if (delete_cache) {
+        message("DELETING PATH TO .RDS:")
+        message(path_to_cache)
+        system2("rm", c("-f", path_to_cache))
     }
+
+    jb = Job(
+        task = usetask, 
+        entities = new.ent, 
+        rootdir = rootdir, 
+        mem = jb.mem, 
+        time = jb.time, 
+        cores = jb.cores, 
+        update_cores = update_cores,
+        shell = shell,
+        force_shell = force_shell,
+        force_profile = force_profile
+    )
+
+    # if ("time" %in% names(these.forms)) {
+    #     if ("update_cores" %in% names(these.forms))
+    #         jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores, update_cores = update_cores)
+    #     else
+    #         jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, time = jb.time, cores = jb.cores)
+    # } else {
+    #     if ("update_cores" %in% names(these.forms))
+    #         jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores, update_cores = update_cores)
+    #     else
+    #         jb = Job(usetask, new.ent, rootdir = rootdir, mem = jb.mem, cores = jb.cores)
+    # }
     return(jb)
 }
 
@@ -773,4 +871,17 @@ viewtask = function(jb, arglst = c("name", "arg", "default")) {
     else if (inherits(jb, "character"))
         obj = Task(jb)
     as.data.table(data.table::transpose(lapply(obj@args, ifun, arglst = arglst)))
+}
+
+
+#' getcache
+#'
+#' Get the path of a Flow job object's cache.
+#'
+#' @return A character
+#' @export
+getcache = function(object) {
+      path = paste(object@rootdir, "/", task(object)@name,
+                   ".rds", sep = "")
+      return(path)
 }

@@ -141,6 +141,7 @@ setMethod('initialize', 'Module', function(.Object,
         
         .Object@force_shell = force_shell
         .Object@force_profile = force_profile
+        .Object@shell = shell
         
 
         return(.Object)

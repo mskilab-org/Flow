@@ -8,14 +8,18 @@ Reset a job with different params}
 \usage{
 reset.job(
   x,
+  delete_cache = FALSE,
   ...,
   i = NULL,
-  rootdir = x@rootdir,
-  jb.mem = x@runinfo$mem,
-  jb.cores = x@runinfo$cores,
-  jb.time = x@runinfo$time,
+  rootdir,
+  jb.mem,
+  jb.cores,
+  jb.time,
   update_cores = 1,
-  task = NULL
+  task = NULL,
+  shell,
+  force_shell,
+  force_profile
 )
 }
 \value{
