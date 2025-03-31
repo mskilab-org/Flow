@@ -3076,7 +3076,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
         'flow_go=$( pwd ) && ', 
         'cd ', outdir, ' && ', 
         'touch ', outdir, '/started && ',
-        'printf "Date: %s\nHost: %s\nPwd: %s" "$(date)" "$(hostname)" "$(pwd)" && ',
+        'printf "Date: %s\nHost: %s\npwd: %s\n\n" "$(date)" "$(hostname)" "$(pwd)" && ',
         '{ ',
         ifelse(
             nice, 
