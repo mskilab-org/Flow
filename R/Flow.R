@@ -3066,7 +3066,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
         '; } ', 
         '2>&1 | tee ', stdout, ' && ',
         'cp ', stdout, ' ', stderr, ' && ',
-        'rm -f ./run_wrap.*.sh && ',
+        # 'rm -f ./run_wrap.*.sh && ',
         'cd ${flow_go} && ', 
         'exit 0 || { exit 1; }',  sep = ''
     )]
@@ -3086,7 +3086,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
         time.cmd, ' ', exec_cmd, ' bash -c \'', '{ ', profile, ' ', cmd.og, '; }', '\' ',
         '; } &> ', stdout, ' && ',
         'cp ', stdout, ' ', stderr, ' && ', 
-        'rm -f ./run_wrap.*.sh && ',
+        # 'rm -f ./run_wrap.*.sh && ',
         'cd ${flow_go} && ',
         'exit 0 || { exit 1; }',  sep = ''
     )]
