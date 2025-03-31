@@ -736,7 +736,7 @@ getslotchain = function(object, ..., default = NULL) {
 #' @return A Flow job object
 #' @author Kevin Hadi
 #' @export reset.job
-reset.job = function(x, delete_cache = FALSE, ..., i = NULL, rootdir, jb.mem, jb.cores, jb.time, update_cores = 1, task = NULL, shell, force_shell, force_profile) {
+reset.job = function(x, delete_cache = FALSE, ..., i = NULL, rootdir, jb.mem, jb.cores, jb.time, update_cores = 1, shell, force_shell, force_profile, task = NULL) {
     if (missing(jb.time))
         jb.time = base::get0("time", as.environment(x@runinfo), ifnotfound = "24:00:00")
     
@@ -750,19 +750,21 @@ reset.job = function(x, delete_cache = FALSE, ..., i = NULL, rootdir, jb.mem, jb
         rootdir = x@rootdir
     
     if (missing(force_shell)) {
-        force_shell = getslotchain(x, task, module, force_shell, default = TRUE)
+        force_shell = Flow::getslotchain(x, task, module, force_shell, default = TRUE)
     }
 
+    if (missing(force_profile)) {
+        force_profile = Flow::getslotchain(x, task, module, force_profile, default = TRUE)
+    }
+    
     if (missing(force_shell)) {
-        force_shell = getslotchain(x, task, module, force_shell, default = TRUE)
+        shell = Flow::getslotchain(x, task, module, shell, default = "bash")
     }
-
-
     
     if (!inherits(x, "Job")) stop ("x must be a Flow Job object")
 
     if (is.null(task))
-        usetask = Flow::task(x@task)
+        usetask = x@task
     else if (is.character(task) || inherits(task, "Task"))
         usetask = task
     
@@ -773,8 +775,6 @@ reset.job = function(x, delete_cache = FALSE, ..., i = NULL, rootdir, jb.mem, jb
         jb.mem = replace(x@runinfo$mem, i, jb.mem)
         jb.cores = replace(x@runinfo$cores, i, jb.cores)
     }
-
-    getslot()
 
     tbl_task = viewtask(usetask)
     ## if (!all(names(args) %in% colnames(new.ent)))

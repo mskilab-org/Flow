@@ -16,10 +16,10 @@ reset.job(
   jb.cores,
   jb.time,
   update_cores = 1,
-  task = NULL,
   shell,
   force_shell,
-  force_profile
+  force_profile,
+  task = NULL
 )
 }
 \value{
