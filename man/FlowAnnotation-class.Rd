@@ -9,10 +9,3 @@ Class \code{FlowAnnotation} is a simple container for storing arguments to Task 
 used when initializing a task config.
 S4 class for \code{FlowAnnotation}
 }
-\section{Slots}{
-
-\describe{
-  \item{arg}{scalar character argument that will be interpreted literally}
-}
-}
-

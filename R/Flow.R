@@ -73,33 +73,37 @@ setMethod('initialize', 'Module', function(.Object,
         } else {
             deploy_shell = "" 
         }
-        
         if (identical(force_shell, TRUE)) {
+
             deploy_shell = shell
         }
         exec_cmd = ""
         exec_profile_cmd = ""
         redo_sh = ""
-        if (identical(force_profile, TRUE)) {
-            exec_cmd = DEFAULT_EXEC_CMD
-            # exec_profile_cmd = "{ [ -e <libdir>/profile ] && . <libdir>/profile; } && "
-            # path_to_flow_wrapper = system.file(package = "Flow", "extdata", "flow_wrapper.sh")
-            mktemp_sh = 'export run_wrap_sh=$(export TMPDIR=./ && mktemp -t run.XXXXXXXXXX.sh) && '
-            redo_sh = paste(
-                sep = "",
-                mktemp_sh, 
-                # 'printf "$(cat ', path_to_flow_wrapper, ')\n',
-                'printf ',
-                '\"[ -e <libdir>/profile ] && . <libdir>/profile\n',
-                run_cmd, '\" > ${run_wrap_sh} &&'
-            )
-            run_cmd = "${run_wrap_sh}"
-        }
+        # if (identical(force_profile, TRUE)) {
+            # exec_cmd = DEFAULT_EXEC_CMD
+            
+            # exec_profile_cmd = "{ [ -e <libdir>/profile ] && . <libdir>/profile; }; "
+            # run_cmd = paste(
+            #     "{ [ -e <libdir>/profile ] && . <libdir>/profile; };",
+            #     run_cmd
+            # )
+
+            # mktemp_sh = 'export run_wrap_sh=$(export TMPDIR=./ && mktemp -t run_wrap.XXXXXXXXXX.sh) && '
+            # redo_sh = paste(
+            #     sep = "",
+            #     mktemp_sh, 
+            #     # 'printf "$(cat ', path_to_flow_wrapper, ')\n',
+            #     'printf ',
+            #     '\"[ -e <libdir>/profile ] && . <libdir>/profile\n',
+            #     run_cmd, '\" > ${run_wrap_sh} &&'
+            # )
+            # run_cmd = "${run_wrap_sh}"
+        # }
         cmd = paste(
             redo_sh,
             exec_cmd, 
             deploy_shell, 
-            # exec_profile_cmd, 
             run_cmd
         )
         cmd = base::trimws(cmd)
@@ -134,6 +138,10 @@ setMethod('initialize', 'Module', function(.Object,
             .Object@name = file.name(gsub('\\/+$', '', file.dir(path)))
         else
             .Object@name = name
+        
+        .Object@force_shell = force_shell
+        .Object@force_profile = force_profile
+        
 
         return(.Object)
     })
@@ -189,6 +197,8 @@ setMethod('as.character', 'Module', function(x, ...)
     })
 
 
+setClassUnion("nullOrList", c("NULL", "list"))
+
 #' S4 class for \code{Task}
 #'
 #' Class \code{Task} defines an task configuration object that is built from a firehose module with a
@@ -211,7 +221,7 @@ setMethod('as.character', 'Module', function(x, ...)
 #' @rdname Task-class
 #' @exportClass Task
 #' @export
-setClass('Task', representation(name = 'character', path = 'character', module = 'Module', mem = 'numeric', libdir = 'character', args = 'list', stamp = "character", outputs = "list"))
+setClass('Task', representation(name = 'character', path = 'character', module = 'Module', mem = 'numeric', libdir = 'character', args = 'list', stamp = "character", outputs = "list", profiles = 'nullOrList'))
 
 
 #' @export
@@ -222,148 +232,171 @@ setMethod('initialize', 'Task', function(.Object,
                                            libdir = NULL,
                                            output = NULL, ## FlowOutput object or list of FlowOutput objects
                                            ... ## arguments to the module, and their values are either FlowLiteral or FlowAnnotation.  Can also be a scalar character in which case interpreted as an annotation name
-                                           )
-    {
-        module = config
+                                           ) {
+    module = config
 
-        if (is.character(module)) ## interpret as path
-            {
-                errstr = 'First non-#-commented line of task config file must be path to module directory with .deploy file, and remaining lines must consist of three or more tab delimited columns.  \nThe first column is in each line specifies whether that line is either input or output (with the corresponding text),  \nThe second column is a module argument name (if input) or an output annotation name (if output).  \nIf the line is an input, the third column is an unquoted string specifying an annotation name or a quoted string specifying a literal.  \nIf the line is an output, the third column is a bare string specifying a regex which tells Flow where to find the file to attach to the annotation\nFor inputs, an optional fourth column can specify whether it is a "path" or "value".  For input annotations an optional 5th column can specify default values'
-                if (!file.exists(module))
-                    stop(paste('module file', module, 'does not exist'))
+    if (is.character(module)) { ## interpret as path
+        errstr = 'First non-#-commented line of task config file must be path to module directory with .deploy file, and remaining lines must consist of three or more tab delimited columns.  \nThe first column is in each line specifies whether that line is either input or output (with the corresponding text),  \nThe second column is a module argument name (if input) or an output annotation name (if output).  \nIf the line is an input, the third column is an unquoted string specifying an annotation name or a quoted string specifying a literal.  \nIf the line is an output, the third column is a bare string specifying a regex which tells Flow where to find the file to attach to the annotation\nFor inputs, an optional fourth column can specify whether it is a "path" or "value".  For input annotations an optional 5th column can specify default values'
+        if (!file.exists(module))
+            stop(paste('module file', module, 'does not exist'))
 
-                lines = strsplit(grep('\\S+',
-                    grep('^#', readLines(module), invert = TRUE, value = TRUE),
-                    value = TRUE), '(\\s*\t\\s*)|(\\s\\s+)')
-                lens = unlist(lapply(lines, length))
-                if (lens[1] != 1)
-                    stop(paste('Error reading .task task config file:\n', errstr))
+        lines = strsplit(
+            grep(
+                '\\S+', 
+                grep('^#', readLines(module), invert = TRUE, value = TRUE),
+            value = TRUE
+            ), 
+            '(\\s*\t\\s*)|(\\s\\s+)'
+        )
+        lens = unlist(lapply(lines, length))
+        if (lens[1] != 1)
+            stop(paste('Error reading .task task config file:\n', errstr))
 
-                if (length(lens)>1)
-                    if (!all(lens[-1]>=3))
-                        stop(paste('Error reading module file:\n', errstr))
+        if (length(lens)>1)
+            if (!all(lens[-1]>=2))
+                stop(paste('Error reading module file:\n', errstr))
 
-                modfn = str_trim(lines[[1]])
-                lines = lines[-1]
+        modfn = stringr::str_trim(lines[[1]])
+        lines = lines[-1]
 
-                if (length(lines)>0)
-                    {
-                        tmp = unlist(lapply(lines, function(x) x[1]))
-                        ltype =ifelse(grepl('input', tmp, ignore.case = TRUE), 'input',
-                            ifelse(grepl('output', tmp, ignore.case = TRUE), 'output', 'other'))
+        if (length(lines)>0) {
+            tmp = unlist(lapply(lines, function(x) x[1]))
+            is_input = grepl('input', tmp, ignore.case = TRUE)
+            is_output = grepl('output', tmp, ignore.case = TRUE)
+            is_profile = grepl('profile', tmp, ignore.case = TRUE)
+            ltype = ifelse(
+                is_input, 'input',
+                ifelse(is_output, 'output', 
+                ifelse(is_profile, 'profile', 'other'))
+            )
 
-                        if (any(ltype=='other'))
-                            stop(paste('Some input / output lines have invalid first column:\n', errstr))
+            if (any(ltype=='other'))
+                stop(paste('Some input / output lines have invalid first column:\n', errstr))
+        }
+
+        if (!file.exists(modfn))
+            stop(paste('Module path', modfn,  'pointed to by this task config file does not exist.  Check the path and read format spec belwow:\n', errstr))
+
+        .Object@module  = Module(modfn, ...)
+        .Object@path = module
+        .Object@libdir  = .Object@module@sourcedir
+        .Object@mem  = as.numeric(mem)
+
+        name = gsub('\\.task$', '', file.name(module))
+
+        tmp.args = NULL
+        output = NULL
+        profile = NULL
+
+        if (length(lines)>0) {
+            lqre = '^\\s*[\\"\\\']'
+            rqre = '[\\"\\\']\\s*$'
+            .gsub = function(x) gsub(rqre, '', gsub(lqre, '', x))
+            if (any(ltype == 'input')) {
+                tmp.args = lapply(lines[ltype=='input'], function(x, nm) {
+                    if (grepl(lqre, x[3]) | grepl(rqre, x[3])) {
+                        path = ifelse(is.na(x[4]), FALSE,
+                            ifelse(grepl('(true)|(path)', x[4], ignore.case = TRUE), TRUE, FALSE))
+                        FlowLiteral(x[2], .gsub(x[3]), path)
+                    } else if (suppressWarnings(!is.na(as.numeric(x[[3]])))) {
+                        FlowLiteral(x[2], x[3], FALSE)
+                    } else {
+                        path = ifelse(is.na(x[4]), TRUE,
+                            ifelse(grepl('(false)|(val)', x[4], ignore.case = TRUE), FALSE, TRUE))
+
+                        default = NA
+                        if (!is.na(x[5]))
+                            default = gsub(rqre, '', gsub(lqre, '', x[5]))
+                        FlowAnnotation(x[2], x[[3]], path, default)
                     }
-
-                if (!file.exists(modfn))
-                    stop(paste('Module path', modfn,  'pointed to by this task config file does not exist.  Check the path and read format spec belwow:\n', errstr))
-
-                .Object@module  = Module(modfn, ...)
-                .Object@path = module
-                .Object@libdir  = .Object@module@sourcedir
-                .Object@mem  = as.numeric(mem)
-
-                name = gsub('\\.task$', '', file.name(module))
-
-                tmp.args = NULL
-                output = NULL
-
-                if (length(lines)>0)
-                {
-                        lqre = '^\\s*[\\"\\\']'
-                        rqre = '[\\"\\\']\\s*$'
-                        .gsub = function(x) gsub(rqre, '', gsub(lqre, '', x))
-                        if (any(ltype == 'input'))
-                            {
-                                tmp.args = lapply(lines[ltype=='input'], function(x, nm)
-                                    {
-                                        if (grepl(lqre, x[3]) | grepl(rqre, x[3]))
-                                            {
-                                                path = ifelse(is.na(x[4]), FALSE,
-                                                    ifelse(grepl('(true)|(path)', x[4], ignore.case = TRUE), TRUE, FALSE))
-                                                FlowLiteral(x[2], .gsub(x[3]), path)
-                                            }
-                                        else if (suppressWarnings(!is.na(as.numeric(x[[3]]))))
-                                            {
-                                                FlowLiteral(x[2], x[3], FALSE)
-                                            }
-                                        else
-                                            {
-                                                path = ifelse(is.na(x[4]), TRUE,
-                                                    ifelse(grepl('(false)|(val)', x[4], ignore.case = TRUE), FALSE, TRUE))
-
-                                                default = NA
-                                                if (!is.na(x[5]))
-                                                    default = gsub(rqre, '', gsub(lqre, '', x[5]))
-                                                FlowAnnotation(x[2], x[[3]], path, default)
-                                            }
-                                    })
-                            }
-
-                        names(tmp.args) = unlist(lapply(lines[ltype=='input'], function(x) x[2]))
-
-                        if (any(ltype == 'output'))
-                           output = lapply(lines[ltype=='output'], function(x) FlowOutput(x[2], .gsub(x[3])))
-                    }
-            }
-        else            {
-                .Object@module = module
-
-                if (is.null(libdir))
-                    libdir = module@sourcedir
-
-                .Object@libdir = libdir
-                .Object@mem = as.numeric(mem)
-
-                if (is.na(.Object@mem))
-                    stop('Must provide numeric value for default mem')
-
-                tmp.args = list(...)
+                })
             }
 
-        if (is.null(name))
-            name = .Object@module@name
+            names(tmp.args) = unlist(lapply(lines[ltype=='input'], function(x) x[2]))
 
-        .Object@args = lapply(tmp.args, function(arg)
-            {
-                if (arg@name == 'job.spec.memory' & is(arg, 'FlowLiteral'))
-                    {
-                        is.num = suppressWarnings(!is.na(as.numeric(arg@arg)))
-                        if (is.num)
-                            .Object@mem <<- as.numeric(arg@arg)
+            if (any(ltype == 'output'))
+                output = lapply(lines[ltype=='output'], function(x) FlowOutput(x[2], .gsub(x[3])))
+            
+            ## profile is an arbitrary field entry in the task file.
+            if (any(ltype == "profile")) {
+                line_profile = lines[ltype == "profile"]
+                if (length(line_profile) > 1) stop("Task file should have no more than 1 tab delimited line containing profile entries")
+                ## FIXME: Processing as list unnecessarily.
+                ## This should always just be one FlowAnnotation object
+                profile = lapply(line_profile, function(x) {
+                    num_elements = length(x)
+                    are_remaining_elements_all_paths = all(grepl("/", x[-1]))
+                    is_second_element_not_a_path = ! grepl("/", x[2])
+                    is_third_element_a_path = num_elements == 3 && grepl("/", x[3])
+                    is_fourth_element_a_path = num_elements > 3 && grepl("/", x[4])
+                    name_out = "profile"
+                    default_path = NA_character_
+                    if (num_elements == 2 && are_remaining_elements_all_paths)  {
+                        remaining_profile_paths = list(x[-1])
+                        arg_out = remaining_profile_paths
+                        is_path = FALSE
+                    } else if (is_second_element_not_a_path && is_third_element_a_path) {
+                        arg_out = x[2]
+                        is_path = TRUE
+                        default_path = x[3]
                     }
-                else if (!(arg@name %in% .Object@module@args))
-                    warning(paste(arg@name, 'is not an argument to', .Object@module@name))
+                    return(FlowAnnotation(name = name_out, arg = arg_out, path = is_path, default = default_path))
+                })
+            }
+        }
+    } else {
+        .Object@module = module
+
+        if (is.null(libdir))
+            libdir = module@sourcedir
+
+        .Object@libdir = libdir
+        .Object@mem = as.numeric(mem)
+
+        if (is.na(.Object@mem))
+            stop('Must provide numeric value for default mem')
+
+        tmp.args = list(...)
+    }
+
+    if (is.null(name))
+        name = .Object@module@name
+
+    # tmp.args are parsed inputs from task file.
+    .Object@args = lapply(tmp.args, function(arg) {
+        if (arg@name == 'job.spec.memory' & is(arg, 'FlowLiteral')) {
+            is.num = suppressWarnings(!is.na(as.numeric(arg@arg)))
+            if (is.num)
+                .Object@mem <<- as.numeric(arg@arg)
+        } else if (!(arg@name %in% .Object@module@args))
+            warning(paste(arg@name, 'is not an argument to', .Object@module@name))
 
 
-                if (is(arg, 'character'))
-                    {
-                        if (length(arg)>1)
-                            stop('argument must be length 1 character vector or FlowAnnotation / FlowLiteral objects')
-                        arg = FlowAnnotation(arg)
-                    }
+        if (is(arg, 'character')) {
+            if (length(arg)>1)
+                stop('argument must be length 1 character vector or FlowAnnotation / FlowLiteral objects')
+            arg = FlowAnnotation(arg)
+        }
+        return(arg)
+    })
+    names(.Object@args) = names(tmp.args)
 
+    if (length(missing <- setdiff(.Object@module@args, names(.Object@args)))>0)
+        stop(sprintf('These module arguments are not specified in the provided task configuration:\n%s\nplease fix ...', paste(missing, collapse = ', ')))
 
-                return(arg)
-            })
-        names(.Object@args) = names(tmp.args)
+    if (!is.list(output))
+        output = list(output)
 
-        if (length(missing <- setdiff(.Object@module@args, names(.Object@args)))>0)
-            stop(sprintf('These module arguments are not specified in the provided task configuration:\n%s\nplease fix ...', paste(missing, collapse = ', ')))
+    if (!all(unlist(lapply(output, is.null)) | unlist(lapply(output, is, 'FlowOutput'))))
+        stop('output arg must be FlowOutput, list of FlowOutput objects, or NULL')
 
-          if (!is.list(output))
-              output = list(output)
+    .Object@outputs = output
+    .Object@name = name
+    .Object@profiles = profile
 
-          if (!all(unlist(lapply(output, is.null)) | unlist(lapply(output, is, 'FlowOutput'))))
-              stop('output arg must be FlowOutput, list of FlowOutput objects, or NULL')
-
-          .Object@outputs = output
-          .Object@name = name
-
-
-          return(.Object)
-     })
+    return(.Object)
+    }
+)
 
 
 
@@ -514,13 +547,15 @@ FlowLiteral = function(...) new('FlowLiteral', ...)
 #' S4 class for \code{FlowAnnotation}
 #'
 
+setClassUnion("characterOrList", c("character", "list"))
+
 #' @section Slots:
 #' \describe{
 #'   \item{arg}{scalar character argument that will be interpreted literally}
 #' }
 #' @exportClass FlowAnnotation
 #' @export
-setClass('FlowAnnotation', representation(name = 'character', arg = 'character', path = 'logical', default = 'character'))
+setClass('FlowAnnotation', representation(name = 'character', arg = 'characterOrList', path = 'logical', default = 'character'))
 
 setMethod('initialize', 'FlowAnnotation', function(.Object,
                                                  name, # argument name
@@ -658,7 +693,8 @@ setMethod('initialize', 'Job', function(.Object,
                                         time = "3-00",
                                         shell = "sh",
                                         force_shell = FALSE,
-                                        force_profile = FALSE) {
+                                        force_profile = FALSE
+                                        ) {
     if (is.null(nice))
         nice = TRUE
 
@@ -754,12 +790,12 @@ setMethod('initialize', 'Job', function(.Object,
 
     if (length(ann.args)>0)
     {
-### of course we are noting timestamps <now>
-### the inputs may be modified between now and run time
-### in which case the task output may appear to be falsely outdated
-### when we check in the future ..
-### but this (false positive outdating) is less dangerous than false-negative outdating
-### ie if we thought that the task was up to date but in fact inputs have changed.
+    ### of course we are noting timestamps <now>
+    ### the inputs may be modified between now and run time
+    ### in which case the task output may appear to be falsely outdated
+    ### when we check in the future ..
+    ### but this (false positive outdating) is less dangerous than false-negative outdating
+    ### ie if we thought that the task was up to date but in fact inputs have changed.
         if (!mock)
             cat('Vetting inputs\n')
         for (this.arg in names(ann.args))
@@ -867,15 +903,138 @@ setMethod('initialize', 'Job', function(.Object,
         }
     }
 
+    ## Instantiate initial command for each row in entities table.
+    ## The actual shell command that is run is parsed via .update_cmd below.
+    .Object@runinfo[, cmd.og := unlist(lapply(1:nrow(entities), function(this.entity)
+    {
+        this.cmd = str_replace_all(module@cmd, stringr::fixed('<libdir>'), task@libdir)
+        for (k in 1:length(task@args))
+        {
+            this.arg = names(task@args)[[k]]
+            this.val = .Object@inputs[this.entity, ][[gsub('\\-', '.', names(task@args)[k])]]
+            if (is.na(this.val))
+                this.val = ''
+            this.cmd = str_replace_all(this.cmd, stringr::fixed(paste('<', this.arg, '>', sep = '')), this.val)
+        }
+        ## final cmd with all placeholders replaced
+        return(this.cmd)
+    }))]
+
+    if (is.null(mem))
+        mem = NA
+
+    if (!is.null(mem))
+        mem = cbind(1:nrow(entities), mem)[,2]
+
+    setkeyv(.Object@stamps, data.table::key(entities))
+
+    if (is.null(qos))
+        qos = as.character(NA)
+
+    ## Parsing profile entry from task
+    ## Should just be length one
+    ## Task file should never have more than one
+    profiles = task@profiles[[1]]
+    is_profiles_null = is.null(profiles)
+    profile_args = NULL
+    profile_default = NULL
+    is_profile_path = FALSE
+    if (!is.null(profiles)) {
+        profile_args = profiles@arg
+        profile_default = profiles@default
+        is_profile_path = profiles@path
+    }
+    if (NROW(profile_default) == 0) profile_default = NA_character_
+    is_profile_arg_paths = is.list(profile_args)
+    is_profile_arg_possibly_colname = NROW(profile_args) == 1 && is.character(profile_args)
+    is_profile_arg_an_entities_column = !is.list(profile_args) && identical(is_profile_path, TRUE)
+    if (is_profile_arg_paths) {
+        profile_cmd = ""
+        ## Do some pre-parsing here, because this would just be the one set of profiles for all runinfo entries
+        profile_args = unlist(profile_args)
+        if (any(!file.exists(profile_args))) stop("Provided task file contains profile paths that do not exist.")
+        profile_args = profile_args[file.exists(profile_args)]
+        profile_args = normalizePath(profile_args)
+        if (NROW(profile_args) > 0) {
+            ## FIXME: consider just removing the shell conditional
+            ## and just be brave at this point.. we've already tested if there's no profile.
+            ## Keeping guard for now.
+            profile_cmd = paste(
+                glue::glue('{{ [ -e {profile_args} ] && . {profile_args}; }}'),
+                collapse = "; "
+            )
+        }
+        .Object@runinfo$profile = as.character(profile_cmd)
+    } else if (is_profile_arg_an_entities_column && is_profile_arg_possibly_colname) {
+        profile_from_entities = as.character(get0(
+            profiles@arg,
+            as.environment(entities),
+            ifnotfound = rep_len(NA_character_, NROW(entities))
+        ))
+        is_profile_nonexistent = !file.exists(profile_from_entities)
+        is_profile_dev_null = identical(profile_from_entities, base::nullfile())
+        is_profile_empty = file.size(profile_from_entities) == 0
+        profile_from_entities = ifelse(
+            is_profile_nonexistent | is_profile_dev_null | is_profile_empty,
+            profile_default,
+            profile_from_entities
+        )
+        profile_cmd = as.character(glue::glue('{{ [ -e {profile_from_entities} ] && . {profile_from_entities}; }}; '))
+        .Object@runinfo$profile = profile_cmd
+        ## if (check.stamps) {
+        ##     profile_mtimes = data.table(as.character(file.mtime(profile_from_entities)))
+        ##     names(profile_mtimes) = "profile"
+        ##     .Object@stamps = cbind(.Object@stamps, profile_mtimes)
+        ## }
+    } else if (is.null(profiles)) {
+        ## profile is "" means no profile was provided.. this has 
+        .Object@runinfo$profile = "" 
+        if (force_profile) {
+            ## If we're here, no profile was set in the task file, but user wants to enforce a profile.
+            message("'force_profile' set to enforce environment, searching for profile paths")
+            message("Checking libdir for path named 'profile'")
+            message("Checking environment variable R_FLOW_PROFILE for profile path")
+            libdir = task@libdir
+            libdir_path_to_profile = as.character(glue::glue('{libdir}/profile'))
+            is_libdir_profile_existent = file.exists(libdir_path_to_profile)
+            global_path_to_profile = Sys.getenv("R_FLOW_PROFILE")
+            is_global_profile_existent = file.exists(global_path_to_profile)
+            if (is_libdir_profile_existent) {
+                message(glue::glue('{libdir_path_to_profile}: libdir profile path found!'))
+                profilepath_to_instantiate = libdir_path_to_profile
+            } else if (is_global_profile_existent) {
+                message(glue::glue('{global_path_to_profile}: global profile path found!'))
+                profilepath_to_instantiate = libdir_path_to_profile
+            } else {
+                stop("No global or libdir profile path found!")
+            }
+            profile_cmd = as.character(glue::glue('{{ [ -e {profilepath_to_instantiate} ] && . {profilepath_to_instantiate}; }}; '))
+            .Object@runinfo$profile = profile_cmd
+        }
+    } else {
+        stop("What is going on with the profile object?")
+    }
+    
     if (ncol(.Object@stamps)>1) ## this should basically always be true
     {
         cols = setdiff(names(.Object@stamps), data.table::key(.Object))
         ready.mat = is.na(as.matrix(.Object@stamps[, cols, with = FALSE]))
-        .Object@runinfo$status = ifelse(rowSums(ready.mat)>0, 'not ready', 'ready')
+        profile_paths = .Object@runinfo$profile
+        is_profile_na_or_empty = is.na(profile_paths) | nchar(profile_paths) == 0
+        ready.mat = cbind(ready.mat, profile = is_profile_na_or_empty)
+        .Object@runinfo$status = ifelse(
+            rowSums(ready.mat)>0, 'not ready', 'ready'
+        )
         .Object@runinfo$status.info = ''
-        if (any(ix <- .Object@runinfo$status != 'ready'))
-            .Object@runinfo$status.info[ix] = apply(ready.mat[ix, , drop = FALSE], 1,
-                                                    function(x) paste(paste(colnames(ready.mat)[x], collapse = ','), 'not ready'))
+        ix <- .Object@runinfo$status != 'ready'
+        if (any(ix)) {
+            status.info = apply(
+                ready.mat[ix, , drop = FALSE],
+                1,
+                function(x) paste(paste(colnames(ready.mat)[x], collapse = ','), 'not ready')
+            )
+            .Object@runinfo$status.info[ix] = status.info
+        }
 
         if (any(ix <- nchar(.Object@runinfo$status.info)>1))
             warning(sprintf('missing annotations resulting causing %s jobs to be not ready.\n Breakdown of detailed statuses (with # entities with each specific status):\n\t%s',
@@ -905,33 +1064,6 @@ setMethod('initialize', 'Job', function(.Object,
         })
                                         #                system(paste('mkdir -p', paste(.Object@runinfo$outdir, collapse = ' ')))
     }
-
-    ## instantiate commands for each row in entities table
-    .Object@runinfo[, cmd.og := unlist(lapply(1:nrow(entities), function(this.entity)
-    {
-        this.cmd = str_replace_all(module@cmd, stringr::fixed('<libdir>'), task@libdir)
-        for (k in 1:length(task@args))
-        {
-            this.arg = names(task@args)[[k]]
-            this.val = .Object@inputs[this.entity, ][[gsub('\\-', '.', names(task@args)[k])]]
-            if (is.na(this.val))
-                this.val = ''
-            this.cmd = str_replace_all(this.cmd, stringr::fixed(paste('<', this.arg, '>', sep = '')), this.val)
-        }
-        ## final cmd with all placeholders replaced
-        return(this.cmd)
-    }))]
-
-    if (is.null(mem))
-        mem = NA
-
-    if (!is.null(mem))
-        mem = cbind(1:nrow(entities), mem)[,2]
-
-    setkeyv(.Object@stamps, data.table::key(entities))
-
-    if (is.null(qos))
-        qos = as.character(NA)
     
     .Object@runinfo[, queue := queue]
     .Object@runinfo[, qos := qos]
@@ -950,8 +1082,6 @@ setMethod('initialize', 'Job', function(.Object,
     .Object@runinfo[, stdout := paste(outdir, '/',  task@name, '.', entities[[data.table::key(entities)]], '.bsub.out', sep = '')]
 
     .Object@runinfo[, jname := .jname(outdir, task@name, entities[[data.table::key(entities)]])]
-
-                                        #        if (!mock)
     .Object@runinfo = .update_cmd(.Object) ## updates BCMD / CMD
 
 
@@ -1259,7 +1389,10 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, check.stamps = 
             status.info = paste(status.info, apply(outdated, 1,
                                                    function(x) if (length(which(x))>0) paste('Updates in', paste(colnames(outdated)[which(x)], collapse = ', '))
                                                                else ''))
-            notready = rowSums(is.na(outdated))>0
+            notready = (
+                rowSums(is.na(outdated))>0 
+                | is.na(new.object@runinfo$profile) # TODO: test if this is valid.
+            )
             if (any(notready))
             {
                 status[notready] = 'not ready'
@@ -2846,6 +2979,13 @@ make_chunks = function(vec, max_per_chunk = 100) {
 #' Flow command is instantiated with parameters
 #'  and accessed via Flow::cmd().
 .update_cmd = function(.Object, qos = NULL, ...) {
+    module = .Object@task@module
+    libdir = .Object@task@libdir
+    ## libdir = module@sourcedir
+    do_force_profile = module@force_profile
+    is_any_profile_present = any(nzchar(.Object@runinfo$profile))
+    do_force_shell = module@force_shell
+
     ix = which(status(.Object) != 'not ready')
     halt = FALSE
     ## testing for invalid args
@@ -2902,6 +3042,13 @@ make_chunks = function(vec, max_per_chunk = 100) {
         warning('time not found in path, Flow may not run correctly')
     
     # .Object@runinfo[ix, cmd := paste('{ umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('{ echo \"$(date), running in $(pwd) \"; ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), ''), time.cmd, ' ', cmd.og, '; } 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go; exit 0; }',  sep = '')]
+
+    profile = "" ## May not be necessary.
+    exec_cmd = ''
+    if (do_force_profile) {
+        libdir = .Object@task@libdir
+        exec_cmd = '/usr/bin/env -i'
+    }
     .Object@runinfo[ix, cmd := paste(
         'umask u=rwx,g=rwx,o=rx && ', 
         'flow_go=$( pwd ) && ', 
@@ -2914,10 +3061,11 @@ make_chunks = function(vec, max_per_chunk = 100) {
             sprintf('ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), 
             ''
         ), 
-        time.cmd, ' bash -c \'', cmd.og, '\' ',
+        time.cmd, ' ', exec_cmd, ' bash -c \'', '{ ', profile, ' ', cmd.og, '; }', '\' ',
         '; } ', 
         '2>&1 | tee ', stdout, ' && ',
         'cp ', stdout, ' ', stderr, ' && ',
+        'rm -f ./run_wrap.*.sh && ',
         'cd ${flow_go} && ', 
         'exit 0 || { exit 1; }',  sep = ''
     )]
@@ -2934,9 +3082,10 @@ make_chunks = function(vec, max_per_chunk = 100) {
             sprintf('ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), 
             ''
         ), 
-        time.cmd, ' bash -c \'', cmd.og, '\' ',
+        time.cmd, ' ', exec_cmd, ' bash -c \'', '{ ', profile, ' ', cmd.og, '; }', '\' ',
         '; } &> ', stdout, ' && ',
         'cp ', stdout, ' ', stderr, ' && ', 
+        'rm -f ./run_wrap.*.sh && ',
         'cd ${flow_go} && ',
         'exit 0 || { exit 1; }',  sep = ''
     )]
