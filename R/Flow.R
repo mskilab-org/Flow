@@ -2982,8 +2982,9 @@ make_chunks = function(vec, max_per_chunk = 100) {
     module = .Object@task@module
     libdir = .Object@task@libdir
     ## libdir = module@sourcedir
-    do_force_profile = module@force_profile
-    is_any_profile_present = any(nzchar(.Object@runinfo$profile))
+    do_force_profile = identical(module@force_profile, TRUE)
+    profile_paths = .Object@runinfo$profile
+    is_any_profile_present = any(nzchar(profile_paths) & !is.na(profile_paths))
     do_force_shell = module@force_shell
 
     ix = which(status(.Object) != 'not ready')
@@ -3045,7 +3046,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
 
     profile = "" ## May not be necessary.
     exec_cmd = ''
-    if (do_force_profile) {
+    if (do_force_profile || is_any_profile_present) {
         libdir = .Object@task@libdir
         exec_cmd = '/usr/bin/env -i'
     }
