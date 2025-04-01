@@ -1024,38 +1024,49 @@ setMethod('initialize', 'Job', function(.Object,
     } else if (is.null(profiles)) {
         ## If profiles is NULL that means no profile was provided.
         ## set the profile runinfo param to empty string.
-        .Object@runinfo$profile = ""
-        if (force_profile) {
+        empty_profile = ""
+        .Object@runinfo$profile = empty_profile
+        libdir = task@libdir
+        path_to_task = getslot(task, path, default = NULL)
+        libdir_path_to_profile = as.character(glue::glue('{libdir}/profile'))
+        is_libdir_profile_existent = file.exists(libdir_path_to_profile)
+        global_path_to_profile = Sys.getenv("R_FLOW_PROFILE")
+        is_global_profile_existent = nzchar(global_path_to_profile) && file.exists(global_path_to_profile)
+        is_any_profile_present = is_libdir_profile_existent || is_global_profile_existent
+        if (force_profile || is_any_profile_present) {
             ## If we're here, no profile was set in the task file, but user wants to enforce a profile.
-            libdir = task@libdir
             message("\n")
-            message("'force_profile' set to TRUE, i.e. enforce environment, searching for profile paths")
-            message("No entries starting with 'profile' were found in original task")
-            path_to_task = getslot(task, path, default = NULL)
-            if (!is.null(path_to_task)) {
-                message("See: ", path_to_task)
-            }
-            message("\nThese are the given task inputs/outputs: ")
-            print(task)
-            message("\n")
+            if (force_profile) message("'force_profile' set to TRUE, i.e. enforce environment, searching for profile paths")
+
             message("Checking ", libdir, ' for path named "profile"')
             message("Checking environment variable R_FLOW_PROFILE for profile path")
-            libdir_path_to_profile = as.character(glue::glue('{libdir}/profile'))
-            is_libdir_profile_existent = file.exists(libdir_path_to_profile)
-            global_path_to_profile = Sys.getenv("R_FLOW_PROFILE")
-            is_global_profile_existent = file.exists(global_path_to_profile)
+
+            message("\nNo entries starting with 'profile' were found in original task\n")
+            if (!is.null(path_to_task)) {
+                message("See: ", path_to_task, "\n")
+            } else {
+                message("\n\nThese are the given task inputs/outputs: ")
+                print(task)
+                message("\n\n")
+            }
+
+            profile_cmd = empty_profile
+            profilepath_to_instantiate = NULL
             if (is_libdir_profile_existent) {
-                message(glue::glue('{libdir_path_to_profile}: libdir profile path found!'))
+                message(glue::glue('{libdir_path_to_profile}: libdir profile path found!'), "\n")
                 profilepath_to_instantiate = libdir_path_to_profile
             } else if (is_global_profile_existent) {
-                message(glue::glue('{global_path_to_profile}: global profile path found!'))
-                profilepath_to_instantiate = libdir_path_to_profile
-            } else {
+                message(glue::glue('{global_path_to_profile}: global profile path found!'), "\n")
+                profilepath_to_instantiate = global_path_to_profile
+            } else if (force_profile) {
                 stop("No global or libdir profile path found!")
             }
-            message("\n")
-            profile_cmd = as.character(glue::glue('{{ [ -e {profilepath_to_instantiate} ] && . {profilepath_to_instantiate}; }}; '))
+            
+            if (!is.null(profilepath_to_instantiate)) {
+                profile_cmd = as.character(glue::glue('{{ [ -e {profilepath_to_instantiate} ] && . {profilepath_to_instantiate}; }}; '))
+            }
             .Object@runinfo$profile = profile_cmd
+
         }
     } else {
         stop("What is going on with the profile object?")
@@ -3035,7 +3046,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
     module = .Object@task@module
     libdir = .Object@task@libdir
     do_force_profile = identical(
-        getslot(module, force_profile, default = FALSE),
+        getslot(module, foroce_profile, default = FALSE),
         TRUE
     )
     profile_paths = get0("profile", as.environment(.Object@runinfo), ifnotfound = NULL)
@@ -3156,7 +3167,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
     
     # .Object@runinfo[ix, cmd := paste('{ umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('{ echo \"$(date), running in $(pwd) \"; ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), ''), time.cmd, ' ', cmd.og, '; } 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go; exit 0; }',  sep = '')]
 
-    profile = "" ## May not be necessary.
+    # profile = "" ## May not be necessary.
     exec_cmd = ''
     
     if (do_force_profile || is_any_profile_present) {
