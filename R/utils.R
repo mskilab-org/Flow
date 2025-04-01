@@ -163,57 +163,58 @@ qsub_cmd = function(script.fn, queue = NULL, jname = NULL, jlabel = NULL, jgroup
 #' @param now
 #' @param time
 #' @param qprior used for setting the "nice" value for SLURM
+#' @param gres Sets gres value
 #' @author Zoran Gajic
 #' @export
 ssub_cmd = function(script.fn, queue, qos = NULL, jname = NULL, jlabel = NULL, jgroup = NULL, mem=NULL, group = NULL, cwd = NULL, mc.cores = NULL, deadline = F, now = FALSE, time = "00", qprior = NULL, gres = NULL)
 {
-        if (is.null(jname) & is.null(names(script.fn)))
-            jname = 'job'
-        
-        if (length(jname) != length(script.fn))
-            jname = rep(jname, length(script.fn))
+    if (is.null(jname) & is.null(names(script.fn)))
+        jname = 'job'
+    
+    if (length(jname) != length(script.fn))
+        jname = rep(jname, length(script.fn))
 
-        if (is.null(qos))
-            qos = as.character(NA)
+    if (is.null(qos))
+        qos = as.character(NA)
 
-        if (is.null(gres))
-            gres = as.character(NA)
-        
-        if (!is.null(jname))
-            names(script.fn) = dedup(jname)    
-        qjname = paste( "\"", names(script.fn), "\"", sep="" )
-        qjout = paste( "", names(script.fn), ".bsub.out", " " , sep="" )
-        qjerr = paste( "", names(script.fn), ".bsub.err", "", sep="" )
-        qjrout = paste( "", names(script.fn), ".R.out", "", sep="" )                    
-        out_cmd = paste("sbatch --export=ALL --output=", qjout, " --error=", qjerr, sep = '');
-        out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste0("-p ", queue)))
-        out_cmd = paste(out_cmd, ifelse(is.na(qos), '', paste0("-q ", qos)))
-        out_cmd = paste(out_cmd, ifelse(is.na(gres), "", paste0("--gres=", gres)))
-        timestring = paste("--time=", time, ":00:00 ", sep = "")
-        if (any(grepl(":", time))) timestring = paste("--time=", time, " ", sep = "")
-        out_cmd = paste(out_cmd, timestring)
-        if (!is.null(mem)) out_cmd = paste(out_cmd, " --mem=", mem, "G", sep = "");
-        #if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
-        ## if (!is.null(cwd)) out_cmd = paste(out_cmd, " --workdir=", cwd , sep = '')
-        if (!is.null(cwd)) {
-            current_umask = Sys.umask(mode = NA)
-            out_cmd = paste0(out_cmd, " --chdir=", cwd)
-            Sys.umask(mode = "0002")
-            base::file.create(trimws(paste0(cwd, "/", qjout)))
-            Sys.umask(mode = current_umask)
-            ## cmds = sprintf("umask 002; touch %s", paste0(cwd, "/", qjout))
-            ## lapply(cmds, function(this_cmd) {system(this_cmd); return(NULL)})
-        }
-        if (!is.null(qjname)) out_cmd = paste(out_cmd, " --job-name=", jlabel, sep = '')
-        ## out_cmd = paste(out_cmd, '-now', ifelse(now, 'y', 'n'))
-        ## khadi Friday, Sep 25, 2020, Week 39, 08:59:16 AM
-        ## wtf... slurm defaults to 2 cores per task if you don't set? changing >1 to >0
-        if (!is.null(mc.cores)) out_cmd = paste(out_cmd, ifelse(!is.na(mc.cores), ifelse(mc.cores>0,  paste(" --cpus-per-task=",  mc.cores, sep = ""), ''), ''))
-        if (!is.null(qprior)) out_cmd =  paste(out_cmd, ifelse(!is.na(qprior), ifelse(qprior>=0,  paste(" --nice=",  qprior, sep = ""), ''), '')) # set the "nice" value for SLURM
-        out_cmd = paste(out_cmd, script.fn)
-        names(out_cmd)= names(script.fn)
-        return(out_cmd)
+    if (is.null(gres))
+        gres = as.character(NA)
+    
+    if (!is.null(jname))
+        names(script.fn) = dedup(jname)    
+    qjname = paste( "\"", names(script.fn), "\"", sep="" )
+    qjout = paste( "", names(script.fn), ".bsub.out", " " , sep="" )
+    qjerr = paste( "", names(script.fn), ".bsub.err", "", sep="" )
+    qjrout = paste( "", names(script.fn), ".R.out", "", sep="" )                    
+    out_cmd = paste("sbatch --export=ALL --output=", qjout, " --error=", qjerr, sep = '');
+    out_cmd = paste(out_cmd, ifelse(is.na(queue), '', paste0("-p ", queue)))
+    out_cmd = paste(out_cmd, ifelse(is.na(qos), '', paste0("-q ", qos)))
+    out_cmd = paste(out_cmd, ifelse(is.na(gres), "", paste0("--gres=", gres)))
+    timestring = paste("--time=", time, ":00:00 ", sep = "")
+    if (any(grepl(":", time))) timestring = paste("--time=", time, " ", sep = "")
+    out_cmd = paste(out_cmd, timestring)
+    if (!is.null(mem)) out_cmd = paste(out_cmd, " --mem=", mem, "G", sep = "");
+    #if (!is.null(jgroup)) out_cmd = paste(out_cmd, " -g ", sub('^\\/*', '/', jgroup))
+    ## if (!is.null(cwd)) out_cmd = paste(out_cmd, " --workdir=", cwd , sep = '')
+    if (!is.null(cwd)) {
+        current_umask = Sys.umask(mode = NA)
+        out_cmd = paste0(out_cmd, " --chdir=", cwd)
+        Sys.umask(mode = "0002")
+        base::file.create(trimws(paste0(cwd, "/", qjout)))
+        Sys.umask(mode = current_umask)
+        ## cmds = sprintf("umask 002; touch %s", paste0(cwd, "/", qjout))
+        ## lapply(cmds, function(this_cmd) {system(this_cmd); return(NULL)})
     }
+    if (!is.null(qjname)) out_cmd = paste(out_cmd, " --job-name=", jlabel, sep = '')
+    ## out_cmd = paste(out_cmd, '-now', ifelse(now, 'y', 'n'))
+    ## khadi Friday, Sep 25, 2020, Week 39, 08:59:16 AM
+    ## wtf... slurm defaults to 2 cores per task if you don't set? changing >1 to >0
+    if (!is.null(mc.cores)) out_cmd = paste(out_cmd, ifelse(!is.na(mc.cores), ifelse(mc.cores>0,  paste(" --cpus-per-task=",  mc.cores, sep = ""), ''), ''))
+    if (!is.null(qprior)) out_cmd =  paste(out_cmd, ifelse(!is.na(qprior), ifelse(qprior>=0,  paste(" --nice=",  qprior, sep = ""), ''), '')) # set the "nice" value for SLURM
+    out_cmd = paste(out_cmd, script.fn)
+    names(out_cmd)= names(script.fn)
+    return(out_cmd)
+}
 
 
 
@@ -757,15 +758,24 @@ reset.job = function(x, delete_cache = FALSE, ..., i = NULL, rootdir, jb.mem, jb
         force_profile = Flow::getslotchain(x, task, module, force_profile, default = TRUE)
     }
     
-    if (missing(force_shell)) {
+    if (missing(shell)) {
         shell = Flow::getslotchain(x, task, module, shell, default = "bash")
     }
     
     if (!inherits(x, "Job")) stop ("x must be a Flow Job object")
 
-    if (is.null(task))
+    if (is.null(task)) {
         usetask = x@task
-    else if (is.character(task) || inherits(task, "Task"))
+        ## empty_profile_slot = list(FlowAnnotation(name = "profile", arg = list(), path = FALSE, default = NA_character_))
+        empty_profile_slot = NULL
+        ## If profiles is not present - it's NULL
+        profiles = getslotchain(usetask, profiles, default = empty_profile_slot)
+        usetask@profiles = profiles
+        usetask@module@shell = shell
+        ## usetask@module@force_shell = getslotchain(usetask, module, shell, default = force_shell)
+        usetask@module@force_shell = force_shell
+        usetask@module@force_profile = force_profile
+    } else if (is.character(task) || inherits(task, "Task"))
         usetask = task
     
     args = list(...)

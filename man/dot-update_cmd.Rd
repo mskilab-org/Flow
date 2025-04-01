@@ -4,7 +4,7 @@
 \alias{.update_cmd}
 \title{Create Flow command}
 \usage{
-.update_cmd(.Object, qos = NULL, ...)
+.update_cmd(.Object, ...)
 }
 \description{
 Instantiates flow command

@@ -21,6 +21,22 @@ ENV_STRING=paste(
     ' ',
     sep = " "
 )
+
+#' Cleanup cmd
+#' 
+#' Cleaning up cmd.og in Job\@runinfo
+#' 
+#' For backwards compatibility requires that single quotes in cmd.og are converted to '"'"'
+#' because of bash -c '{ run_cmd ... }' implementation.
+convert_single_quotes_in_cmd = function(cmd_original) {
+    shell_single_quote_escape = "'\"'\"'"
+    cmd_mod = gsub(shell_single_quote_escape, "'", cmd_original, perl = TRUE)
+    cmd_mod = gsub("'{2,}", "'", cmd_mod, perl = TRUE)
+    cmd_mod = gsub("'", shell_single_quote_escape, cmd_mod, perl = TRUE)
+    return(cmd_mod)
+}   
+
+
      
 
 ############################## setting skipNul to TRUE to avoid errors, overwriting the base R functionality for Flow
@@ -692,9 +708,9 @@ setMethod('initialize', 'Job', function(.Object,
                                         ##this can also just be an .task config file
                                         entities = NULL, ## keyed data.table, key will determine id of outgoing jobs, columns of table used to populate task
                                         rootdir = './Flow/',
-                                        queue = as.character(NA),
-                                        qos = as.character(NA),
-                                        gres = as.character(NA),
+                                        queue = NA_character_,
+                                        qos = NA_character_,
+                                        gres = NA_character_,
                                         nice = NULL,
                                         mem = NULL,
                                         cores = 1,
@@ -712,7 +728,7 @@ setMethod('initialize', 'Job', function(.Object,
                                         force_shell = FALSE,
                                         force_profile = FALSE
                                         ) {
-    if (is.null(nice))
+    if (is.null(nice) || !((identical(nice, TRUE) || identical(nice, FALSE))))
         nice = TRUE
 
     if (is.character(task)) ##
@@ -936,6 +952,8 @@ setMethod('initialize', 'Job', function(.Object,
         ## final cmd with all placeholders replaced
         return(this.cmd)
     }))]
+    .Object@runinfo[, cmd.og := convert_single_quotes_in_cmd(cmd.og)]
+
 
     if (is.null(mem))
         mem = NA
@@ -945,8 +963,8 @@ setMethod('initialize', 'Job', function(.Object,
 
     setkeyv(.Object@stamps, data.table::key(entities))
 
-    if (is.null(qos))
-        qos = as.character(NA)
+    if (is.null(qos) || !is.character(qos))
+        qos = NA_character_
 
     ## Parsing profile entry from task
     ## Should just be length one
@@ -1008,10 +1026,12 @@ setMethod('initialize', 'Job', function(.Object,
         .Object@runinfo$profile = "" 
         if (force_profile) {
             ## If we're here, no profile was set in the task file, but user wants to enforce a profile.
-            message("'force_profile' set to enforce environment, searching for profile paths")
-            message("Checking libdir for path named 'profile'")
-            message("Checking environment variable R_FLOW_PROFILE for profile path")
             libdir = task@libdir
+            message("\n\n")
+            message("'force_profile' set to TRUE, i.e. enforce environment, searching for profile paths")
+            message("No entries starting with 'profile' were found in task file: ", task@path)
+            message("Checking ", libdir, ' for path named "profile"')
+            message("Checking environment variable R_FLOW_PROFILE for profile path")
             libdir_path_to_profile = as.character(glue::glue('{libdir}/profile'))
             is_libdir_profile_existent = file.exists(libdir_path_to_profile)
             global_path_to_profile = Sys.getenv("R_FLOW_PROFILE")
@@ -1025,6 +1045,7 @@ setMethod('initialize', 'Job', function(.Object,
             } else {
                 stop("No global or libdir profile path found!")
             }
+            message("\n\n")
             profile_cmd = as.character(glue::glue('{{ [ -e {profilepath_to_instantiate} ] && . {profilepath_to_instantiate}; }}; '))
             .Object@runinfo$profile = profile_cmd
         }
@@ -1161,19 +1182,24 @@ Job = function(
     task, ##Task wrapping around an Module expecting literal and annotation arguments
     entities, ## keyed data.table, key will determine id of outgoing jobs, columns of table used to populate task
     rootdir = './Flow/',
-    queue = as.character(NA),
-    qos = as.character(NA),
-    mem = NULL,
+    queue = NA_character_,
+    qos = NA_character_,
+    gres = NA_character_,
+    mem = NA_character_,
     nice = NULL,
+    nice_val = 10,
     cores = 1,
     mock = FALSE,
     update_cores = 1,
     parse_recursive = FALSE,
     check.stamps = TRUE, 
+    io_c = 2,
+    io_n = 4,
+    qprior = 0,
     time = "3-00",
     ...) {
     new('Job', task = task, entities = entities, rootdir = rootdir,
-        queue = queue, qos = qos, nice = nice, mem = mem, check.stamps = check.stamps, cores = cores, mock = mock, update_cores = update_cores, parse_recursive = parse_recursive, time = time, ...)
+        queue = queue, qos = qos, nice = nice, nice_val = nice_val, mem = mem, check.stamps = check.stamps, cores = cores, mock = mock, update_cores = update_cores, parse_recursive = parse_recursive, io_c = io_c, io_n = io_n, qprior = qprior, gres = gres, time = time, ...)
 }
 
 
@@ -1407,6 +1433,7 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, check.stamps = 
             status.info = paste(status.info, apply(outdated, 1,
                                                    function(x) if (length(which(x))>0) paste('Updates in', paste(colnames(outdated)[which(x)], collapse = ', '))
                                                                else ''))
+
             notready = (
                 rowSums(is.na(outdated))>0 
                 | is.na(new.object@runinfo$profile) # TODO: test if this is valid.
@@ -2996,50 +3023,109 @@ make_chunks = function(vec, max_per_chunk = 100) {
 #' 
 #' Flow command is instantiated with parameters
 #'  and accessed via Flow::cmd().
-.update_cmd = function(.Object, qos = NULL, ...) {
+.update_cmd = function(.Object, ...) {
     module = .Object@task@module
     libdir = .Object@task@libdir
-    ## libdir = module@sourcedir
-    do_force_profile = identical(module@force_profile, TRUE)
-    profile_paths = .Object@runinfo$profile
-    is_any_profile_present = any(nzchar(profile_paths) & !is.na(profile_paths))
-    do_force_shell = module@force_shell
+    do_force_profile = identical(
+        getslot(module, force_profile, default = FALSE),
+        TRUE
+    )
+    profile_paths = get0("profile", as.environment(.Object@runinfo), ifnotfound = NULL)
+    is_any_profile_present = !is.null(profile_paths) && any(nzchar(profile_paths) & !is.na(profile_paths))
+    do_force_shell = identical(
+        getslot(module, force_shell, default = FALSE),
+        TRUE
+    )   
 
     ix = which(status(.Object) != 'not ready')
+    ## Because we are instantiating commands with bash -c '{ run_stuff '-Y path_to_fasta'}'
+    ## Will need to convert single quotes in the command to ones that work in
+    ## nested single quotes:
+    ## bash -c '{ run_stuff '"'"'-Y path_to_fasta'"'"'}'
+    ## this pattern ensures that single quoted commmands (see snowman, are backwards compatible).
+    .Object@runinfo[ix, cmd.og := convert_single_quotes_in_cmd(cmd.og)]
+
     halt = FALSE
     ## testing for invalid args
-    io_c_val = .Object@runinfo[ix]$io_c
-    io_n_val = .Object@runinfo[ix]$io_n
-    qprior_val = .Object@runinfo[ix]$qprior
-    nice_val = .Object@runinfo[ix]$nice_val
-    if (!is.null(io_c_val) & !is.null(io_n_val) & !is.null(qprior_val)) {
-        if (any(! .Object@runinfo$io_c %in% seq(0, 3))) {
+    runinfo_params_check = c("io_c", "io_n", "qprior", "nice", "nice_val", "gres", "time", "qos")
+    list_runinfo_params = mget(
+        runinfo_params_check, 
+        as.environment(.Object@runinfo[ix]), 
+        ifnotfound = rep_len(list(NULL), length(runinfo_params_check))
+    )
+    io_c_val = list_runinfo_params$io_c
+    io_n_val = list_runinfo_params$io_n
+    qprior_val = list_runinfo_params$qprior
+    nice_lgl_val = list_runinfo_params$nice
+    nice_val_val = list_runinfo_params$nice_val
+    gres_val = list_runinfo_params$gres
+    time_val = list_runinfo_params$time
+    qos_val = list_runinfo_params$qos
+    if (
+        !is.null(io_c_val)
+        && !is.null(io_n_val) 
+        && !is.null(qprior_val)
+        && !is.null(nice_lgl_val)
+        && !is.null(nice_val_val)
+        && !is.null(gres_val)
+        && !is.null(time_val)
+        && !is.null(qos_val)
+    ) {
+        if (any(! io_c_val %in% seq(0, 3))) {
             message("invalid io_c parameter(s) specified\nMust be integer between 0 and 3")
             halt = TRUE
         }
-        if (any(! .Object@runinfo$io_n %in% seq(0, 7))) {
+        if (any(! io_n_val %in% seq(0, 7))) {
             message("invalid io_n parameter(s) specified\nMust be integer between 0 and 7")
             halt = TRUE
         }
-        if (any(! .Object@runinfo$qprior %in% seq(-1023, 1024))) {
+        if (any(! qprior_val %in% seq(-1023, 1024))) {
             message("invalid qprior parameter(s) specified\nMust be integer between -1023 and 1024")
             halt = TRUE
         }
-        if (any(! .Object@runinfo$nice_val %in% seq(-20, 19))) {
+        if (any(! nice_lgl_val %in% c(TRUE, FALSE))) {
+            message("invalid nice value parameter(s) specified\nMust be TRUE or FALSE")
+            halt = TRUE
+        }
+        if (any(! nice_val_val %in% seq(-20, 19))) {
             message("invalid nice value parameter(s) specified\nMust be integer between -20 and 19")
+            halt = TRUE
+        }
+        if (!all( is.na(gres_val) | grepl("gpu:", gres_val))) {
+            message("invalid gres value parameter(s) specified\nMust be NA or a string requesting 'gpu:'")
+            halt = TRUE
+        }
+        if (!(all(is.na(qos_val)) || all(is.character(qos_val)))) {
+            message("invalid qos value parameter(s) specified\nMust be NA or a string requesting slurm QoS queue")
             halt = TRUE
         }
         if (halt) {
             stop("invalid parameters specified... reset using valid parameters")
         }
     } else {
-        warning("Flow object may be outdated, setting io_c, io_n, and qprior values to defaults")
-        io_c_val = 2
-        ##        io_n_val = 7
-        io_n_val = 4
-        qprior_val = 0
-        nice_val = 10
-        time = '3-00'
+        warnmsg = glue::glue(
+            "Flow object may be outdated, setting ", paste(runinfo_params_check, collapse = ", "), " values to defaults."
+        )
+        message(warnmsg)
+        default_runinfo_values = list(
+            io_c = 2,
+            io_n = 4,
+            qprior = 0,
+            nice = TRUE,
+            nice_val = 10,
+            gres = NA_character_,
+            time = '3-00',
+            qos = NA_character_
+        )
+        for (i in 1:NROW(default_runinfo_values)) {
+            name_val_pair = default_runinfo_values[i]
+            data.table::set(
+                .Object@runinfo,
+                i = ix,
+                j = names(name_val_pair),
+                value = name_val_pair[[1]]
+            )
+        }
     }
     
     ## utility func for instantiation of Job and modifying memory
@@ -3064,9 +3150,9 @@ make_chunks = function(vec, max_per_chunk = 100) {
 
     profile = "" ## May not be necessary.
     exec_cmd = ''
+    
     if (do_force_profile || is_any_profile_present) {
         libdir = .Object@task@libdir
-        # exec_cmd = '/usr/bin/env -i HOME=${HOME}'
         exec_cmd = Flow:::ENV_STRING
     }
     .Object@runinfo[ix, cmd := paste(
@@ -3078,7 +3164,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
         "{ ",
         ifelse(
             nice, 
-            sprintf('ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), 
+            sprintf('ionice -c %s -n %s nice --adjustment=%s ', io_c, io_n, nice_val), 
             ''
         ), 
         time.cmd, ' ', exec_cmd, ' bash -c \'', '{ ', profile, ' ', cmd.og, '; }', '\' ',
@@ -3099,7 +3185,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
         '{ ',
         ifelse(
             nice, 
-            sprintf('ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), 
+            sprintf('ionice -c %s -n %s nice --adjustment=%s ', io_c, io_n, nice_val), 
             ''
         ), 
         time.cmd, ' ', exec_cmd, ' bash -c \'', '{ ', profile, ' ', cmd.og, '; }', '\' ',
@@ -3117,8 +3203,8 @@ make_chunks = function(vec, max_per_chunk = 100) {
                                         #        .Object@runinfo[, mapply(function(text, path) writeLines(text, path), paste('echo "FLOW.SGE.JOBID=$JOB_ID"; cd ', outdir, ';touch ', outdir, '/started; ~/Software/time/time -v ', cmd.og, '; cp ', stdout, ' ', stderr, sep = ''), cmd.path)] ## writes cmd to path
 
     .Object@runinfo[, mapply(function(text, path) writeLines(text, path), cmd, cmd.path)] ## writes cmd to path
-    .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, qprior = qprior_val)]
-    .Object@runinfo[ix, scmd := .cmd2scmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue = queue, mem = mem, cores = cores, qos = qos, now = now, time = time, qprior = qprior_val, gres = gres)]
+    .Object@runinfo[ix, qcmd := .cmd2qcmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue, mem, cores, now = now, qprior = qprior)]
+    .Object@runinfo[ix, scmd := .cmd2scmd(cmd.path, outdir, .Object@task@name, ids(.Object)[ix], queue = queue, mem = mem, cores = cores, qos = qos, now = now, time = time, qprior = qprior, gres = gres)]
 
     return(.Object@runinfo)
 }

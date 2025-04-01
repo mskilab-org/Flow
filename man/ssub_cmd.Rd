@@ -44,6 +44,8 @@ ssub_cmd(
 \item{deadline}{boolean specifies if deadline initiation time used (default = FALSE)}
 
 \item{qprior}{used for setting the "nice" value for SLURM}
+
+\item{gres}{Sets gres value}
 }
 \description{
 Makes ssub command that wraps shell command "script.fn" to send to queue "queue"
