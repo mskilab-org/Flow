@@ -1022,14 +1022,22 @@ setMethod('initialize', 'Job', function(.Object,
         ##     .Object@stamps = cbind(.Object@stamps, profile_mtimes)
         ## }
     } else if (is.null(profiles)) {
-        ## profile is "" means no profile was provided.. this has 
-        .Object@runinfo$profile = "" 
+        ## If profiles is NULL that means no profile was provided.
+        ## set the profile runinfo param to empty string.
+        .Object@runinfo$profile = ""
         if (force_profile) {
             ## If we're here, no profile was set in the task file, but user wants to enforce a profile.
             libdir = task@libdir
-            message("\n\n")
+            message("\n")
             message("'force_profile' set to TRUE, i.e. enforce environment, searching for profile paths")
-            message("No entries starting with 'profile' were found in task file: ", task@path)
+            message("No entries starting with 'profile' were found in original task")
+            path_to_task = getslot(task, path, default = NULL)
+            if (!is.null(path_to_task)) {
+                message("See: ", path_to_task)
+            }
+            message("\nThese are the given task inputs/outputs: ")
+            print(task)
+            message("\n")
             message("Checking ", libdir, ' for path named "profile"')
             message("Checking environment variable R_FLOW_PROFILE for profile path")
             libdir_path_to_profile = as.character(glue::glue('{libdir}/profile'))
@@ -1045,7 +1053,7 @@ setMethod('initialize', 'Job', function(.Object,
             } else {
                 stop("No global or libdir profile path found!")
             }
-            message("\n\n")
+            message("\n")
             profile_cmd = as.character(glue::glue('{{ [ -e {profilepath_to_instantiate} ] && . {profilepath_to_instantiate}; }}; '))
             .Object@runinfo$profile = profile_cmd
         }
