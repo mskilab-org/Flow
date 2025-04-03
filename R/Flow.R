@@ -3167,7 +3167,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
     
     # .Object@runinfo[ix, cmd := paste('{ umask 002; flow_go=$( pwd ); cd ', outdir, ';touch ', outdir, '/started; ', ifelse(nice, sprintf('{ echo \"$(date), running in $(pwd) \"; ionice -c %s -n %s nice --adjustment=%s ', io_c_val, io_n_val, nice_val), ''), time.cmd, ' ', cmd.og, '; } 2>&1 | tee ', stdout, '; cp ', stdout, ' ', stderr, ';cd $flow_go; exit 0; }',  sep = '')]
 
-    # profile = "" ## May not be necessary.
+    profile = "" ## May not be necessary.
     exec_cmd = ''
     
     if (do_force_profile || is_any_profile_present) {
