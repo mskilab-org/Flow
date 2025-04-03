@@ -2518,8 +2518,8 @@ setMethod("Slurmize", "Job", function(.Object)
     sapply(c(1:length(paths)), function(x){
         fConn <- file(paths[x], 'r+')
         Lines <- readLines(fConn)
-        if(!("#!/bin/sh" %in% Lines)){
-            writeLines(paste("#!/bin/sh", Lines, sep = "\n"),con = fConn)
+        if (!any(grepl("^#!/bin/sh", Lines))) {
+            writeLines(c("#!/bin/sh", Lines),con = fConn)
         }
         close(fConn)
     })
@@ -3183,7 +3183,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
         'flow_go=$( pwd ) && ', 
         'cd ',  outdir, ' && ',
         'touch ', outdir, '/started && ',
-        'printf "Date: %s\nHost: %s\npwd: %s\n\n" "$(date)" "$(hostname)" "$(pwd)" && ',
+        'printf \'Date: %s\nHost: %s\npwd: %s\n\n\' "$(date)" "$(hostname)" "$(pwd)" && ',
         "{ ",
         ifelse(
             nice, 
@@ -3204,7 +3204,7 @@ make_chunks = function(vec, max_per_chunk = 100) {
         'flow_go=$( pwd ) && ', 
         'cd ', outdir, ' && ', 
         'touch ', outdir, '/started && ',
-        'printf "Date: %s\nHost: %s\npwd: %s\n\n" "$(date)" "$(hostname)" "$(pwd)" && ',
+        'printf \'Date: %s\nHost: %s\npwd: %s\n\n" "$(date)\' "$(hostname)" "$(pwd)" && ',
         '{ ',
         ifelse(
             nice, 
