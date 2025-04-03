@@ -1452,10 +1452,14 @@ setMethod('update', 'Job', function(object, check.inputs = TRUE, check.stamps = 
             status.info = paste(status.info, apply(outdated, 1,
                                                    function(x) if (length(which(x))>0) paste('Updates in', paste(colnames(outdated)[which(x)], collapse = ', '))
                                                                else ''))
-
+            ## runinfo_profile = get0("profile", as.environment(new.object@runinfo), ifnotfound = NULL)
+            ## is_null_profile = is.null(runinfo_profile)
+            ## is_profile_na = rep_len(FALSE, NROW(outdated))
+            ## ## This only should happen if we instantiate a profile using an entities column
+            ## if (!is_null_profile) is_profile_na = is.na(runinfo_profile)
             notready = (
                 rowSums(is.na(outdated))>0 
-                | is.na(new.object@runinfo$profile) # TODO: test if this is valid.
+                ## | is_profile_na # TODO: test if this is valid.
             )
             if (any(notready))
             {
