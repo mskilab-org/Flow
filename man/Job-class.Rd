@@ -44,18 +44,18 @@ now(.Object)
 
 report(.Object, ...)
 
-merge(x, y, ...)
+\S4method{merge}{Job,data.table}(x, y, suffix = NULL, prefix = NULL, force = FALSE, sep = "_")
 }
 \arguments{
 \item{x}{data.table or Job}
 
 \item{y}{data.table or Job}
 
-\item{force}{logical flag whether to force overwrite}
+\item{suffix}{suffix to add to columns merged from the Job}
 
 \item{prefix}{prefix to add to columns merged from the Job}
 
-\item{suffix}{suffix to add to columns merged from the Job}
+\item{force}{logical flag whether to force overwrite}
 
 \item{sep}{separator to add to columns merged from the Job}
 }
@@ -81,8 +81,6 @@ getting output data.table associated with Job object
 
 As jobs complete, one may want to update a "master" data.table with the outputs of Jobs.  This can
 be useful for manual running of larger workflows to which a given task contributes.
-
-#@exportMethod merge
 }
 \details{
 Replacing a subset of Job object with another (compatible Job object)

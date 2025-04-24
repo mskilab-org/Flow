@@ -360,11 +360,12 @@ setMethod('initialize', 'Task', function(.Object,
                     num_elements = length(x)
                     are_remaining_elements_all_paths = all(grepl("/", x[-1]))
                     is_second_element_not_a_path = ! grepl("/", x[2])
+					is_only_two_elements = num_elements == 2
                     is_third_element_a_path = num_elements == 3 && grepl("/", x[3])
                     is_fourth_element_a_path = num_elements > 3 && grepl("/", x[4])
                     name_out = "profile"
                     default_path = NA_character_
-                    if (num_elements == 2 && are_remaining_elements_all_paths)  {
+                    if (num_elements >= 2 && are_remaining_elements_all_paths)  {
                         remaining_profile_paths = list(x[-1])
                         arg_out = remaining_profile_paths
                         is_path = FALSE
@@ -372,7 +373,10 @@ setMethod('initialize', 'Task', function(.Object,
                         arg_out = x[2]
                         is_path = TRUE
                         default_path = x[3]
-                    }
+                    } else if (is_only_two_elements) {
+						arg_out = x[2]
+						is_path = TRUE
+					}
                     return(FlowAnnotation(name = name_out, arg = arg_out, path = is_path, default = default_path))
                 })
             }
@@ -3630,6 +3634,8 @@ dedup = function(x, suffix = '.')
   return(out)
 }
 
+#' @export merge
+setGeneric('merge', function(x, y, ...) standardGeneric('merge'))
 
 
 #' Merge Job output annotations with data.table
@@ -3644,7 +3650,6 @@ dedup = function(x, suffix = '.')
 #' As jobs complete, one may want to update a "master" data.table with the outputs of Jobs.  This can
 #' be useful for manual running of larger workflows to which a given task contributes.
 #'
-#' #@exportMethod merge
 #' @param x data.table or Job
 #' @param y data.table or Job
 #' @param force logical flag whether to force overwrite
@@ -3653,7 +3658,6 @@ dedup = function(x, suffix = '.')
 #' @param sep  separator to add to columns merged from the Job
 #' @author Marcin Imielinski
 #' @export
-setGeneric('merge', function(x, y, ...) standardGeneric('merge'))
 setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix = NULL, prefix = NULL, force = FALSE, sep = '_') {
         if (!is.data.table(y))
             stop('y must be keyed data.table')
@@ -3742,9 +3746,10 @@ setMethod('merge', signature(x="Job", y = 'data.table'), function(x, y, suffix =
         return(out)
     })
 
+#' @export
 setMethod('merge', signature(x='data.table', y="Job"), function(x, y, ...) {
-        merge(y, x, ...)
-    })
+        Flow::merge(y, x, ...)
+})
 
 
 
